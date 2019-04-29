@@ -8,7 +8,7 @@ from clint.textui import colored, puts, indent
 def get_nanopolish_header(ref):
     recs = list(SeqIO.parse(open(ref), "fasta"))
     if len (recs) != 1:
-        print("FASTA has more than one sequence", file=sys.stderr)
+        print(("FASTA has more than one sequence", sys.stderr))
         raise SystemExit
 
     return  "%s:%d-%d" % (recs[0].id, 1, len(recs[0])+1)
@@ -32,10 +32,10 @@ def run(parser, args):
         read_file = "%s.fasta" % (args.sample)
 
     if not os.path.exists(ref):
-        print(colored.red('Scheme reference file not found: ') + ref)
+        print((colored.red('Scheme reference file not found: ') + ref))
         raise SystemExit
     if not os.path.exists(bed):
-        print(colored.red('Scheme BED file not found: ') + bed)
+        print((colored.red('Scheme BED file not found: ') + bed))
         raise SystemExit
 
     cmds = []
@@ -84,11 +84,11 @@ def run(parser, args):
         cmds.append("margin_cons %s %s.vcf %s.primertrimmed.sorted.bam a > %s.consensus.fasta" % (ref, args.sample, args.sample, args.sample))
 
     for cmd in cmds:
-        print(colored.green("Running: ") + cmd, file=sys.stderr)
-        print(cmd, file=logfh)
+        print((colored.green("Running: ") + cmd, sys.stderr))
+        print((cmd, logfh))
         retval = os.system(cmd)
         if retval != 0:
-            print(colored.red('Command failed:' ) + cmd, file=sys.stderr)
+            print((colored.red('Command failed:' ) + cmd, sys.stderr))
 
     logfh.close()
 

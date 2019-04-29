@@ -9,6 +9,6 @@ root = sys.argv[2]
 t = Tree(tree)
 t.set_outgroup(t & root)
 
-print t.write()
+print(t.write())
 
 

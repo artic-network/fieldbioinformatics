@@ -7,50 +7,50 @@ import sys
 #   -- always unique read ID
 
 def run(parser, args):
-	flowcells = set()
-	reads = set()
-	i = 0
-	basecaller_version = None
+    flowcells = set()
+    reads = set()
+    i = 0
+    basecaller_version = None
 
-	for fast5 in Fast5FileSet(args.directory, None, args.basecaller):
-#		if not basecaller_version:
-#			basecaller_version = fast5.get_basecaller_version()
-#		elif fast5.get_basecaller_version() != basecaller_version:
-#			print >>sys.stderr, "ABORTED: More than one basecaller version found: %s, %s" % (basecaller_version, fast5.get_basecaller_version())
-#			raise SystemExit
-				
+    for fast5 in Fast5FileSet(args.directory, None, args.basecaller):
+#        if not basecaller_version:
+#            basecaller_version = fast5.get_basecaller_version()
+#        elif fast5.get_basecaller_version() != basecaller_version:
+#            print >>sys.stderr, "ABORTED: More than one basecaller version found: %s, %s" % (basecaller_version, fast5.get_basecaller_version())
+#            raise SystemExit
+                
 
-		if not fast5.is_open:
-			print("Skipping read: %s" % (fast5.filename), file=sys.stderr)
-			continue
+        if not fast5.is_open:
+            print(("Skipping read: %s" % (fast5.filename), sys.stderr))
+            continue
 
-		read_flowcell_id = fast5.get_flowcell_id()
-		flowcells.add(read_flowcell_id)
-		if len(flowcells) != 1:
-			print("ABORTED: More than one flowcell found in dataset: %s" % (flowcells,), file=sys.stderr)
-			raise SystemExit
+        read_flowcell_id = fast5.get_flowcell_id()
+        flowcells.add(read_flowcell_id)
+        if len(flowcells) != 1:
+            print(("ABORTED: More than one flowcell found in dataset: %s" % (flowcells,), sys.stderr))
+            raise SystemExit
 
-		#if flowcell_id != read_flowcell_id:
-		#	print >>sys.stderr, "Skipping read from flowcell: %s" % (read_flowcell_id)
-		#	continue
+        #if flowcell_id != read_flowcell_id:
+        #    print >>sys.stderr, "Skipping read from flowcell: %s" % (read_flowcell_id)
+        #    continue
 
-		read_id = fast5.get_read_id()
-		if read_id in reads:
-			print("Skipping duplicate read: %s" % (read_id), file=sys.stderr)
-			continue
+        read_id = fast5.get_read_id()
+        if read_id in reads:
+            print(("Skipping duplicate read: %s" % (read_id), sys.stderr))
+            continue
 
-		reads.add(read_id)
+        reads.add(read_id)
 
-		fas = fast5.get_fastas('fwd')
-		for read in fas:
-			if read:
-				print(read)
-		fast5.close()
+        fas = fast5.get_fastas('fwd')
+        for read in fas:
+            if read:
+                print(read)
+        fast5.close()
 
-		i += 1
+        i += 1
 
-		if i % 1000 == 0:
-			print("Extracted %s reads" % (i,), file=sys.stderr)
+        if i % 1000 == 0:
+            print(("Extracted %s reads" % (i,), sys.stderr))
 
 # zibra.py 
 #  run

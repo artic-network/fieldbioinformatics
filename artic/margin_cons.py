@@ -21,7 +21,7 @@ def collect_depths(bamfile):
     if not os.path.exists(bamfile):
         raise SystemExit("bamfile %s doesn't exist" % (bamfile,))
 
-    print(bamfile, file=sys.stderr)
+    print((bamfile, sys.stderr))
 
     p = subprocess.Popen(['samtools', 'depth', bamfile],
                              stdout=subprocess.PIPE)
@@ -37,12 +37,12 @@ depths = collect_depths(bamfile)
 
 def report(r, status, allele):
     idfile = os.path.basename(vcffile).split(".")[0]
-    print("%s\t%s\tstatus\t%s" % (idfile, r.POS, status), file=sys.stderr)
-    print("%s\t%s\tdepth\t%s" % (idfile, r.POS, r.INFO.get('TotalReads', ['n/a'])), file=sys.stderr)
-    print("%s\t%s\tbasecalledfrac\t%s" % (idfile, r.POS, r.INFO.get('BaseCalledFraction', ['n/a'])), file=sys.stderr)
-    print("%s\t%s\tsupportfrac\t%s" % (idfile, r.POS, r.INFO.get('SupportFraction', ['n/a'])), file=sys.stderr)
-    print("%s\t%s\tallele\t%s" % (idfile, r.POS, allele), file=sys.stderr)
-    print("%s\t%s\tref\t%s" % (idfile, r.POS, r.REF), file=sys.stderr)
+    print(("%s\t%s\tstatus\t%s" % (idfile, r.POS, status), sys.stderr))
+    print(("%s\t%s\tdepth\t%s" % (idfile, r.POS, r.INFO.get('TotalReads', ['n/a'])), sys.stderr))
+    print(("%s\t%s\tbasecalledfrac\t%s" % (idfile, r.POS, r.INFO.get('BaseCalledFraction', ['n/a'])), sys.stderr))
+    print(("%s\t%s\tsupportfrac\t%s" % (idfile, r.POS, r.INFO.get('SupportFraction', ['n/a'])), sys.stderr))
+    print(("%s\t%s\tallele\t%s" % (idfile, r.POS, allele), sys.stderr))
+    print(("%s\t%s\tref\t%s" % (idfile, r.POS, r.REF), sys.stderr))
 
 def main():
     cons = ''
@@ -85,12 +85,12 @@ def main():
             ALT = str(record.ALT[0])
 
             if len(ALT) > len(REF):
-                print("Skipping insertion at position: %s" % (record.POS), file=sys.stderr)
+                print(("Skipping insertion at position: %s" % (record.POS), sys.stderr))
                 continue
 
             if qual >= 200 and total_reads >= 20:
                 if len(REF) > len(ALT):
-                    print("N-masking confident deletion at %s" % (record.POS), file=sys.stderr)
+                    print(("N-masking confident deletion at %s" % (record.POS), sys.stderr))
                     for n in range(len(REF)):
                         cons[record.POS-1+n] = 'N'
                     continue
@@ -98,11 +98,11 @@ def main():
                 report(record, "variant", ALT)
                 sett.add(record.POS)
                 if len(REF) > len(ALT):
-                    print("deletion", file=sys.stderr)
+                    print(("deletion", sys.stderr))
                     continue
 
                 if len(ALT) > len(REF):
-                    print("insertion", file=sys.stderr)
+                    print(("insertion", sys.stderr))
                     continue
 
                 cons[record.POS-1] = str(ALT)
@@ -115,8 +115,8 @@ def main():
 
     #print >>sys.stderr, str(sett)
 
-    print(">%s" % (sys.argv[3]))
-    print("".join(cons))
+    print((">%s" % (sys.argv[3])))
+    print(("".join(cons)))
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ import sys
 from tabulate import tabulate
 from pandas import DataFrame
 import collections
-from runs import get_runs
+from .runs import get_runs
 from operator import attrgetter
 from Bio import SeqIO
 
@@ -27,11 +27,11 @@ class OrderedDefaultdict(collections.OrderedDict):
 
     def __reduce__(self):  # optional, for pickle support
         args = (self.default_factory,) if self.default_factory else tuple()
-        return self.__class__, args, None, None, self.iteritems()
+        return self.__class__, args, None, None, iter(self.items())
 
     def __repr__(self):  # optional
         return '%s(%r, %r)' % (self.__class__.__name__, self.default_factory,
-                               list(self.iteritems()))
+                               list(self.items()))
 
 def shell(cmd):
     p = subprocess.Popen([cmd], shell=True, stdout=subprocess.PIPE)
@@ -67,18 +67,18 @@ OrderedDefaultdict(list)
 
 runs = get_runs()
 directory = '.'
-for directory, samples in runs.iteritems():
-    for sample in samples.keys():
+for directory, samples in runs.items():
+    for sample in list(samples.keys()):
         s = Stat("%s/%s" % (directory, sample), reflen)
         a = OrderedDefaultdict()
         a['run'] = directory
         a['sample'] = sample
-        for k,v in s.hash().iteritems():
+        for k,v in s.hash().items():
             a[k] = v
         table.append(a)
 
 headers = table[0]
-print "\t".join(headers.keys())
+print("\t".join(list(headers.keys())))
 for row in table:
-    print "\t".join([str(s) for s in row.values()])
+    print("\t".join([str(s) for s in list(row.values())]))
 

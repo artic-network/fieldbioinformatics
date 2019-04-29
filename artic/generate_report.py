@@ -10,13 +10,13 @@ prefix = sys.argv[1]
 dist = sys.argv[2]
 
 def get_clusters(prefix, dist):
-	s = set()
-	clusters = glob.glob("%s_dist_%s_aligned_short.fasta-cluster*" % (prefix, dist))
-	for c in clusters:
-		m = re.match(r'%s_dist_%s_aligned_short.fasta-cluster(\d+)' % (prefix, dist), c)
-		if m:
-			s.add(int(m.group(1)))
-	return sorted(list(s))
+    s = set()
+    clusters = glob.glob("%s_dist_%s_aligned_short.fasta-cluster*" % (prefix, dist))
+    for c in clusters:
+        m = re.match(r'%s_dist_%s_aligned_short.fasta-cluster(\d+)' % (prefix, dist), c)
+        if m:
+            s.add(int(m.group(1)))
+    return sorted(list(s))
 
 clusters = get_clusters(prefix, dist)
 
@@ -71,35 +71,35 @@ Alignments of differences within clusters demonstrate only positions that vary b
 
 """ % (dist, prefix)
 
-print report
+print(report)
 
 def dump_cluster(c):
-	if os.path.exists("%s_dist_%s_aligned_short.fasta-cluster%d.png" % (prefix, dist, c)):
-		print """
+    if os.path.exists("%s_dist_%s_aligned_short.fasta-cluster%d.png" % (prefix, dist, c)):
+        print("""
 ## Subcluster %d
-		""" % (c)
+        """ % (c))
 
-		if c == 0:
-			print "Cluster 0 represents isolates that do not cluster with any other isolates within the distance cut-off, i.e. singleton sequences. The sequences presented are unrelated."
+        if c == 0:
+            print("Cluster 0 represents isolates that do not cluster with any other isolates within the distance cut-off, i.e. singleton sequences. The sequences presented are unrelated.")
 
-		print """
+        print("""
 ![Subcluster %d](%s_dist_%s_aligned_short.fasta-cluster%d.pdf.png)
-""" % (c, prefix, dist, c)
-	else:
-		print """
+""" % (c, prefix, dist, c))
+    else:
+        print("""
 ## Subcluster %s
 
 (Tree not shown for clusters with <5 isolates)
 
 Isolates:
 
-		""" % (c)
-		for rec in SeqIO.parse(open("%s_dist_%s_aligned_short.fasta-cluster%d" % (prefix, dist, c)), "fasta"):
-			print "  - %s" % (rec.id)
+        """ % (c))
+        for rec in SeqIO.parse(open("%s_dist_%s_aligned_short.fasta-cluster%d" % (prefix, dist, c)), "fasta"):
+            print("  - %s" % (rec.id))
 
 
 for c in clusters:
-	if c == 0: continue
-	dump_cluster(c)
+    if c == 0: continue
+    dump_cluster(c)
 
 dump_cluster(0)

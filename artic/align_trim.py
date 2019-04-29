@@ -30,7 +30,7 @@ def trim(args, cigar, s, start_pos, end):
             flag, length = cigar.pop(0)
 
         if args.verbose:
-            print("Chomped a %s, %s" % (flag, length), file=sys.stderr)
+            print(("Chomped a %s, %s" % (flag, length), sys.stderr))
 
         if flag == 0:
             ## match
@@ -63,11 +63,11 @@ def trim(args, cigar, s, start_pos, end):
 
     extra = abs(pos - start_pos)
     if args.verbose:
-        print("extra %s" % (extra), file=sys.stderr)
+        print(("extra %s" % (extra), sys.stderr))
     if extra:
         if flag == 0:
             if args.verbose:
-                print("Inserted a %s, %s" % (0, extra), file=sys.stderr)
+                print(("Inserted a %s, %s" % (0, extra), sys.stderr))
 
             if end:
                 cigar.append((0, extra))
@@ -79,7 +79,7 @@ def trim(args, cigar, s, start_pos, end):
         s.pos = pos - extra
 
     if args.verbose:
-        print("New pos: %s" % (s.pos), file=sys.stderr)
+        print(("New pos: %s" % (s.pos), sys.stderr))
 
     if end:
         cigar.append((4, eaten))
@@ -108,7 +108,7 @@ def is_correctly_paired(p1, p2):
 def go(args):
     if args.report:
         reportfh = open(args.report, "w")
-        print("QueryName\tReferenceStart\tReferenceEnd\tPrimerPair\tPrimer1\tPrimer1Start\tPrimer2\tPrimer2Start\tIsSecondary\tIsSupplementary\tStart\tEnd\tCorrectlyPaired", file=reportfh)
+        print(("QueryName\tReferenceStart\tReferenceEnd\tPrimerPair\tPrimer1\tPrimer1Start\tPrimer2\tPrimer2Start\tIsSecondary\tIsSupplementary\tStart\tEnd\tCorrectlyPaired", reportfh))
 
     bed = read_bed_file(args.bedfile)
 
@@ -123,11 +123,11 @@ def go(args):
         ## a primer site, trim it off
 
         if s.is_unmapped:
-            print("%s skipped as unmapped" % (s.query_name), file=sys.stderr)
+            print(("%s skipped as unmapped" % (s.query_name), sys.stderr))
             continue
 
         if s.is_supplementary:
-            print("%s skipped as supplementary" % (s.query_name), file=sys.stderr)
+            print(("%s skipped as supplementary" % (s.query_name), sys.stderr))
             continue
 
         p1 = find_primer(bed, s.reference_start, '+')
@@ -137,10 +137,10 @@ def go(args):
 
         report = "%s\t%s\t%s\t%s_%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d" % (s.query_name, s.reference_start, s.reference_end, p1[2]['Primer_ID'], p2[2]['Primer_ID'], p1[2]['Primer_ID'], abs(p1[1]), p2[2]['Primer_ID'], abs(p2[1]), s.is_secondary, s.is_supplementary, p1[2]['start'], p2[2]['end'], correctly_paired)
         if args.report:
-            print(report, file=reportfh)
+            print((report, reportfh))
 
         if args.verbose:
-            print(report, file=sys.stderr)
+            print((report, sys.stderr))
 
         ## if the alignment starts before the end of the primer, trim to that position
 
@@ -154,7 +154,7 @@ def go(args):
                 trim(args, cigar, s, primer_position, 0)
             else:
                 if args.verbose:
-                    print("ref start %s >= primer_position %s" % (s.reference_start, primer_position), file=sys.stderr)
+                    print(("ref start %s >= primer_position %s" % (s.reference_start, primer_position), sys.stderr))
 
             if args.start:
                 primer_position = p2[2]['start']
@@ -165,9 +165,9 @@ def go(args):
                 trim(args, cigar, s, primer_position, 1)
             else:
                 if args.verbose:
-                    print("ref end %s >= primer_position %s" % (s.reference_end, primer_position), file=sys.stderr)
+                    print(("ref end %s >= primer_position %s" % (s.reference_end, primer_position), sys.stderr))
         except Exception as e:
-            print("problem %s" % (e,), file=sys.stderr)
+            print(("problem %s" % (e,), sys.stderr))
             pass
 
         if args.normalise:
@@ -189,7 +189,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='Trim alignments from an amplicon scheme.')
     parser.add_argument('bedfile', help='BED file containing the amplicon scheme')
-    parser.add_argument('--normalise', type=int, help='Subsample to n coverage per strand')
+    parser.add_argument('--normalise', type=int, help='Subsample to n coverage')
     parser.add_argument('--report', type=str, help='Output report to file')
     parser.add_argument('--start', action='store_true', help='Trim to start of primers instead of ends')
     parser.add_argument('--verbose', action='store_true', help='Debug mode')

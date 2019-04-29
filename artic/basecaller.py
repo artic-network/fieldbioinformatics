@@ -11,58 +11,58 @@ from collections import defaultdict
 matcher = re.compile('Basecall_1D_(\d+)')
 
 def get_basecaller_version(g):
-	try:
-		return g.attrs['chimaera version']
-	except:
-		pass
+    try:
+        return g.attrs['chimaera version']
+    except:
+        pass
 
-	try:
-		return g.attrs['version']
-	except:
-		return None
+    try:
+        return g.attrs['version']
+    except:
+        return None
 
 def get_basecallers(fast5):
-	basecallers = []
-	analyses = fast5.hdf5file.get('Analyses')
-	if analyses:
-		for k, g in analyses.items():
-			m = matcher.match(k)
-			if m:
-				basecaller_name = g.attrs['name']
-				group = m.group(1)
-				version = get_basecaller_version(g)
+    basecallers = []
+    analyses = fast5.hdf5file.get('Analyses')
+    if analyses:
+        for k, g in list(analyses.items()):
+            m = matcher.match(k)
+            if m:
+                basecaller_name = g.attrs['name']
+                group = m.group(1)
+                version = get_basecaller_version(g)
 
-				basecallers.append([basecaller_name, group, version])
-	return basecallers
+                basecallers.append([basecaller_name, group, version])
+    return basecallers
 
 def print_basecallers(basecallers):
-	for key, item in basecallers.items():
-		print("%s: %d reads" % (key, item))
+    for key, item in list(basecallers.items()):
+        print(("%s: %d reads" % (key, item)))
 
 def run(parser, args):
-	flowcells = set()
-	reads = set()
-	basecallers = {}
-	i = 0
+    flowcells = set()
+    reads = set()
+    basecallers = {}
+    i = 0
 
-	for fast5 in Fast5FileSet(args.directory):
-		#, 0, basecaller):
-		if not fast5.is_open:
-			print("Skipping read: %s" % (fast5.filename), file=sys.stderr)
-			continue
+    for fast5 in Fast5FileSet(args.directory):
+        #, 0, basecaller):
+        if not fast5.is_open:
+            print(("Skipping read: %s" % (fast5.filename), sys.stderr))
+            continue
 
-		bcs = get_basecallers(fast5)
-		for bc in bcs:
-			bcstring = "%s=%s" % (bc[0], bc[2])
-			if bcstring not in basecallers:
-				basecallers[bcstring] = 1
-				print_basecallers(basecallers)
-			else:
-				basecallers[bcstring] += 1
+        bcs = get_basecallers(fast5)
+        for bc in bcs:
+            bcstring = "%s=%s" % (bc[0], bc[2])
+            if bcstring not in basecallers:
+                basecallers[bcstring] = 1
+                print_basecallers(basecallers)
+            else:
+                basecallers[bcstring] += 1
 
-		i += 1
-		if i % 1000 == 0:
-			print_basecallers(basecallers)
+        i += 1
+        if i % 1000 == 0:
+            print_basecallers(basecallers)
 
 # zibra.py 
 #  run

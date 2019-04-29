@@ -37,7 +37,7 @@ def main():
             if not os.path.exists(vcffn):
                 continue
 
-            print(vcffn, file=sys.stderr)
+            print((vcffn, sys.stderr))
 
             vcf_reader = vcf.Reader(filename=vcffn)
             for record in vcf_reader:
@@ -55,7 +55,7 @@ def main():
         for vcfset in ['', '.primertrimmed']:
             vcffn = "%s%s.vcf" % (sample_tag, vcfset)
             if not os.path.exists(vcffn):
-                print("%s does not exist" % (vcffn))
+                print(("%s does not exist" % (vcffn)))
                 continue
 
             vcffile = read_vcf(vcffn)
@@ -63,7 +63,7 @@ def main():
             depths = collect_depths(bamfn)
 
             #1-based pyvcf
-            for pos, variant_type in positions.items():
+            for pos, variant_type in list(positions.items()):
                 if pos-1 in depths:
                     depth = depths[pos-1]
                 else:
@@ -71,9 +71,9 @@ def main():
 
                 if pos in vcffile:
                     info = vcffile[pos].INFO
-                    print("%s\t%s\t%s\t%s\t%s\t%s\t%s" % (pos, vcfset, sample_tag, variant_type, depth, info['SupportFraction'], info['BaseCalledFraction']))
+                    print(("%s\t%s\t%s\t%s\t%s\t%s\t%s" % (pos, vcfset, sample_tag, variant_type, depth, info['SupportFraction'], info['BaseCalledFraction'])))
                 else:
-                    print("%s\t%s\t%s\tinvariant\t%s\t0\t0" % (pos, vcfset, sample_tag, depth))
+                    print(("%s\t%s\t%s\tinvariant\t%s\t0\t0" % (pos, vcfset, sample_tag, depth)))
 
 if __name__ == "__main__":
     main()

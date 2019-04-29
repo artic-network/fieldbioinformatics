@@ -6,8 +6,8 @@
 import argparse
 import pysam
 import sys
-from align_trim import find_primer
-from vcftagprimersites import read_bed_file
+from .align_trim import find_primer
+from .vcftagprimersites import read_bed_file
 
 def find_query_pos(alignment, reference_pos):
     nearest = -1
@@ -37,12 +37,12 @@ def go(args):
         query_align_start = find_query_pos(s, primer_start)
         query_align_end = find_query_pos(s, primer_end)
 
-        print >> sys.stderr, "%s\t%s\t%s\t%s" % (primer_start, primer_end, primer_end - primer_start, s.query_length)
+        print("%s\t%s\t%s\t%s" % (primer_start, primer_end, primer_end - primer_start, s.query_length), file=sys.stderr)
 
         startpos = max(0, query_align_start - 40)
         endpos = min(query_align_end+40, s.query_length)
 
-        print ">%s\n%s" % (s.query_name, s.query_sequence[startpos:endpos])
+        print(">%s\n%s" % (s.query_name, s.query_sequence[startpos:endpos]))
         #query_align_end + 30])
 
 parser = argparse.ArgumentParser(description='Trim alignments from an amplicon scheme.')
