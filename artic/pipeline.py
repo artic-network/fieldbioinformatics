@@ -73,6 +73,7 @@ def main():
     parser_minion.add_argument('scheme', metavar='scheme', help='The name of the scheme.')
     parser_minion.add_argument('sample', metavar='sample', help='The name of the sample.')
     parser_minion.add_argument('--medaka', dest='medaka', type=bool, default=False, help='Use medaka instead of nanopolish for variants')
+    parser_minion.add_argument('--medaka-model', dest='medaka_model', default='r941_min_high_g344_model.hdf5', help='Medaka model to use')
     parser_minion.add_argument('--normalise', dest='normalise', type=int, default=100, help='Normalise down to moderate coverage to save runtime.')
     parser_minion.add_argument('--threads', type=int, default=8, help='Number of threads')
     parser_minion.add_argument('--scheme-directory', metavar='scheme_directory', default='/artic/schemes', help='Default scheme directory')
