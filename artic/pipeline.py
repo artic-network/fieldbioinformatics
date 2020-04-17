@@ -159,6 +159,8 @@ def init_pipeline_parser():
         '--prefix', help='Prefix for guppyplex files')
     parser_guppyplex.add_argument('--output', metavar='output',
                                   help='FASTQ file to write')
+    parser_guppyplex.add_argument('--processes', type=int, default=4,
+                                  help='number of processes')
     parser_guppyplex.set_defaults(func=run_subtool)
 
     # filter
