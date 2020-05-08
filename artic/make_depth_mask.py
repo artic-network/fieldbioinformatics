@@ -108,9 +108,9 @@ def go(args):
 
     # print the readgroup depths to individual files if requested
     if args.store_rg_depths:
-        for rg, depths in rgDepths.items():
+        for rg, dep in rgDepths.items():
             fh = open(args.outfile + "." + rg + ".depths", 'w')
-            for pos, depth in enumerate(depths):
+            for pos, depth in enumerate(dep):
                 fh.write("%s\t%s\t%d\t%d\n" % (seqID, rg, pos, depth))
             fh.close()
 
