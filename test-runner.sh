@@ -9,7 +9,10 @@ set -e
 # usage:
 #       ./test-runner.sh [medaka|nanopolish]
 #
-#   specify either medaka or nanopolish to run the respective workflow of the pipeline
+#   specify either medaka or nanopolish to run the respective workflow of the pipeline.
+#
+#   the medaka workflow tests guppyplex by tagging it after the original gather and demux
+#   steps (in real-world cases, guppyplex would feed on guppy output instead).
 #
 ###########################################################################################
 # Setup the data, commands and the testing function.
@@ -25,10 +28,6 @@ downloadCmd="wget http://artic.s3.climb.ac.uk/run-folders/EBOV_Amplicons_flongle
 extractCmd="tar -vxzf EBOV_Amplicons_flongle.tar.gz"
 
 # pipeline commands
-demultiplexCmd="artic demultiplex \
-            --threads ${threads} \
-            ${prefix}_fastq_pass.fastq"
-
 ## nanopolish workflow specific
 gatherCmd_n="artic gather \
         --min-length 400 \
@@ -36,6 +35,10 @@ gatherCmd_n="artic gather \
         --prefix ${prefix} \
         --directory ${inputData} \
         --fast5-directory ${inputData}/fast5_pass"
+
+demuxCmd_n="artic demultiplex \
+            --threads ${threads} \
+            ${prefix}_fastq_pass.fastq"
 
 minionCmd_n="artic minion \
                 --normalise 200 \
@@ -55,11 +58,22 @@ gatherCmd_m="artic gather \
         --directory ${inputData} \
         --no-fast5s"
 
+demuxCmd_m="artic demultiplex \
+            --threads ${threads} \
+            ${prefix}_fastq_pass.fastq"
+
+guppyplexCmd_m="artic guppyplex \
+        --min-length 400 \
+        --max-length 800 \
+        --prefix ${prefix} \
+        --directory ./ \
+        --output ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq"
+
 minionCmd_m="artic minion \
             --normalise 200 \
             --threads ${threads} \
             --scheme-directory ${primerSchemes} \
-            --read-file ${prefix}_fastq_pass-NB${barcode}.fastq \
+            --read-file ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq \
             --medaka \
             ${primerScheme} \
             ${prefix}"
@@ -120,7 +134,7 @@ then
     cmdTester $gatherCmd_n
 
     # demultiplex
-    cmdTester $demultiplexCmd
+    cmdTester $demuxCmd_n
 
     # run the core pipeline with nanopolish
     cmdTester $minionCmd_n
@@ -130,7 +144,10 @@ else
     cmdTester $gatherCmd_m
 
     # demultiplex
-    cmdTester $demultiplexCmd
+    cmdTester $demuxCmd_m
+
+    # guppyplex
+    cmdTester $guppyplexCmd_m
 
     # run the core pipeline with medaka
     cmdTester $minionCmd_m
@@ -148,8 +165,6 @@ else
     echo -e "${RED} - no consensus found${NC}"
     exit 1
 fi
-
-# TODO: add more checks....
 
 # cleanup
 cd .. && rm -r tmp
