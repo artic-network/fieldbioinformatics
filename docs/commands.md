@@ -155,7 +155,7 @@ artic guppyplex --directory ./
 | --quality quality    | N        | 7             | Remove reads against this quality filter                          |
 | --sample sample      | N        | 1             | Sampling frequency for random sample of sequence to reduce excess |
 | --skip-quality-check | N        | NA            | Do not filter on quality score (speeds up)                        |
-| --processes          | N        | 4             | number of processes                                               |
+| --processes          | N        | 2             | number of processes                                               |
 
 ***
 
