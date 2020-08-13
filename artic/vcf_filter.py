@@ -51,20 +51,10 @@ class MedakaFilter:
         self.no_frameshifts = no_frameshifts
 
     def check_filter(self, v):
-        if self.no_frameshifts and not in_frame(v):
-            return False
-
-        if v.num_het:
-            return False
-        return True
-
-class LongshotFilter:
-    def __init__(self, no_frameshifts):
-        self.no_frameshifts = no_frameshifts
-
-    def check_filter(self, v):
         depth = v.INFO['DP']
         if depth < 20:
+            return False
+        if v.QUAL < 20:
             return False
 
         if self.no_frameshifts and not in_frame(v):
@@ -82,8 +72,6 @@ def go(args):
         filter = NanoporeFilter(args.no_frameshifts)
     elif args.medaka:
         filter = MedakaFilter(args.no_frameshifts)
-    elif args.longshot:
-        filter = LongshotFilter(args.no_frameshifts)
     else:
         print("Please specify a VCF type, i.e. --nanopolish or --medaka\n")
         raise SystemExit
@@ -96,6 +84,22 @@ def go(args):
         group_variants[indx].append(v)
     
     for v in variants:
+
+        # if using medaka, we need to do a quick pre-filter to remove rubbish
+        if args.medaka:
+            dp = v.INFO['DP']
+            ar = sum(v.INFO['AR'])
+
+            # skip where only one read is in support
+            if dp <= 1:
+                continue
+
+            # skip vars where there are too many ambiguous reads in support
+            if ar != 0:
+                if (ar/dp > 0.7):
+                    continue
+
+        # now apply the filter to send variants to PASS or FAIL file
         if filter.check_filter(v):
             vcf_writer.write_record(v)
         else:
@@ -118,7 +122,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--nanopolish', action='store_true')
     parser.add_argument('--medaka', action='store_true')
-    parser.add_argument('--longshot', action='store_true')
     parser.add_argument('--no-frameshifts', action='store_true')
     parser.add_argument('inputvcf')
     parser.add_argument('output_pass_vcf')
