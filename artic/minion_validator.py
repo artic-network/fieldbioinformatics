@@ -37,7 +37,7 @@ dataDir = TEST_DIR + "/../test-data/"
 
 # testData is a lookup of sampleIDs to download urls
 testData = {
-    #"MT007544": "https://raw.githubusercontent.com/artic-network/fieldbioinformatics/master/test-data/MT007544/MT007544.fastq",
+    "MT007544": "https://raw.githubusercontent.com/artic-network/fieldbioinformatics/master/test-data/MT007544/MT007544.fastq",
     "CVR1": "https://artic.s3.climb.ac.uk/validation-sets/CVR1.tgz",
     "NRW01": "http://artic.s3.climb.ac.uk/validation-teams/NRW01.tgz",
     "SP1": "http://artic.s3.climb.ac.uk/validation-teams/SP1.tgz"
@@ -52,7 +52,7 @@ refConsensuses = {
 
 # refMedakaConsensuses is a nested dict of sample IDs and their expected consensus sequences from the medaka workflow
 refMedakaConsensuses = {
-    #"MT007544": dataDir + "consensus-sequences/MT007544.consensus.medaka.fasta",
+    "MT007544": dataDir + "consensus-sequences/MT007544.consensus.medaka.fasta",
     "CVR1": dataDir + "consensus-sequences/CVR1.consensus.medaka.fasta",
     "NRW01": dataDir + "consensus-sequences/NRW01.consensus.medaka.fasta",
     "SP1": dataDir + "consensus-sequences/SP1.consensus.medaka.fasta"
@@ -93,16 +93,15 @@ nanopolishTestVariants = {
 
 # medakaTestVariants is a nested dict of sample IDs and their expected variants when using the medaka workflow
 medakaTestVariants = {
-    #"MT007544":
-    #    {
-    #        # pos: (ref, alt, type, count)
-    #        29749: ["ACGATCGAGTG", 'A', "del", 1]
-    #    },
+    "MT007544":
+        {
+            # pos: (ref, alt, type, count)
+            29749: ["ACGATCGAGTG", 'A', "del", 1]
+        },
     "CVR1":
         {
             241: ['C', 'T', "snp", 1],
             3037: ['C', 'T', "snp", 1],
-            12733: ['C', 'T', "snp", 1],
             12733: ['C', 'T', "snp", 2],
             14408: ['C', 'T', "snp", 1],
             23403: ['A', 'G', "snp", 1],

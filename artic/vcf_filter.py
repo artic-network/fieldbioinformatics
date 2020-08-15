@@ -54,8 +54,6 @@ class MedakaFilter:
         depth = v.INFO['DP']
         if depth < 20:
             return False
-        if v.QUAL < 20:
-            return False
 
         if self.no_frameshifts and not in_frame(v):
             return False
@@ -85,19 +83,12 @@ def go(args):
     
     for v in variants:
 
-        # if using medaka, we need to do a quick pre-filter to remove rubbish
+        # if using medaka, we need to do a quick pre-filter to remove rubbish that we don't want adding to the mask
         if args.medaka:
-            dp = v.INFO['DP']
-            ar = sum(v.INFO['AR'])
-
-            # skip where only one read is in support
-            if dp <= 1:
+            if v.INFO['DP'] <= 1:
                 continue
-
-            # skip vars where there are too many ambiguous reads in support
-            if ar != 0:
-                if (ar/dp > 0.7):
-                    continue
+            if v.QUAL < 20:
+                continue
 
         # now apply the filter to send variants to PASS or FAIL file
         if filter.check_filter(v):

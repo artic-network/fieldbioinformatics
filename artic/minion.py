@@ -76,14 +76,15 @@ def run(parser, args):
         for p in pools:
             if os.path.exists("%s.%s.hdf" % (args.sample, p)):
                 os.remove("%s.%s.hdf" % (args.sample, p))
-            cmds.append("medaka consensus --model %s --threads %s --chunk_len 800 --chunk_ovlp 400 --RG %s %s.primertrimmed.rg.sorted.bam %s.%s.hdf" % (args.medaka_model, args.threads, p, args.sample, args.sample, p))
+            cmds.append("medaka consensus --model %s --threads %s --chunk_len 800 --chunk_ovlp 400 --RG %s %s.trimmed.rg.sorted.bam %s.%s.hdf" % (args.medaka_model, args.threads, p, args.sample, args.sample, p))
             if args.no_indels:
                 cmds.append("medaka snp %s %s.%s.hdf %s.%s.medaka.vcf" % (ref, args.sample, p, args.sample, p))
             else:
                 cmds.append("medaka variant %s %s.%s.hdf %s.%s.medaka.vcf" % (ref, args.sample, p, args.sample, p))
             
             # annotate VCF with read depth info
-            cmds.append("medaka tools annotate --pad 1 --RG %s %s.%s.medaka.vcf %s %s.primertrimmed.rg.sorted.bam %s.%s.vcf" % (p, args.sample, p, ref, args.sample, args.sample, p))
+            cmds.append("medaka tools annotate --pad 25 --RG %s %s.%s.medaka.vcf %s %s.trimmed.rg.sorted.bam %s.%s.vcf" % (p, args.sample, p, ref, args.sample, args.sample, p))
+
     else:
         if not args.skip_nanopolish:
             indexed_nanopolish_file = read_file
@@ -99,6 +100,12 @@ def run(parser, args):
     for p in pools:
         merge_vcf_cmd += " %s:%s.%s.vcf" % (p, args.sample, p)
     cmds.append(merge_vcf_cmd)
+
+    # add in longshot here for medaka annotate results, just to apply a filter to get tests passing
+    if args.medaka and not args.no_longshot:
+        cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
+        cmds.append("tabix -p vcf %s.merged.vcf.gz" % (args.sample))
+        cmds.append("longshot -P 0 -F -A --no_haps --bam %s.primertrimmed.rg.sorted.bam --ref %s --out %s.merged.vcf --potential_variants %s.merged.vcf.gz" % (args.sample, ref, args.sample, args.sample))
 
     # set up some name holder vars for ease
     if args.medaka:
