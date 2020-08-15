@@ -55,10 +55,10 @@ def run(parser, args):
 
     # 3) index the ref & align with minimap or bwa
     if not args.bwa:
-        cmds.append("minimap2 -a -x map-ont -t %s %s %s | samtools view -q 30 -bS -F 4 - | samtools sort -o %s.sorted.bam -" % (args.threads, ref, read_file, args.sample))
+        cmds.append("minimap2 -a -x map-ont -t %s %s %s | samtools view -bS -F 4 - | samtools sort -o %s.sorted.bam -" % (args.threads, ref, read_file, args.sample))
     else:
         cmds.append("bwa index %s" % (ref,))
-        cmds.append("bwa mem -t %s -x ont2d %s %s | samtools view -q 30 -bS -F 4 - | samtools sort -o %s.sorted.bam -" % (args.threads, ref, read_file, args.sample))
+        cmds.append("bwa mem -t %s -x ont2d %s %s | samtools view -bS -F 4 - | samtools sort -o %s.sorted.bam -" % (args.threads, ref, read_file, args.sample))
     cmds.append("samtools index %s.sorted.bam" % (args.sample,))
 
     # 4) trim the alignments to the primer start sites and normalise the coverage to save time
@@ -115,7 +115,7 @@ def run(parser, args):
     vcf_file = "%s.pass.vcf" % (args.sample)
 
     # filter the variants to produce PASS and FAIL lists, then index them
-    cmds.append("artic_vcf_filter --%s %s.merged.vcf %s.pass.vcf %s.fail.vcf" % (method, args.sample, args.sample, args.sample))
+    cmds.append("artic_vcf_filter --%s %s %s.merged.vcf %s.pass.vcf %s.fail.vcf" % (method, bed, args.sample, args.sample, args.sample))
     cmds.append("bgzip -f %s" % (vcf_file))
     cmds.append("tabix -p vcf %s.gz" % (vcf_file))
 
