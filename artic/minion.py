@@ -71,19 +71,20 @@ def run(parser, args):
     cmds.append("samtools index %s.trimmed.rg.sorted.bam" % (args.sample))
     cmds.append("samtools index %s.primertrimmed.rg.sorted.bam" % (args.sample))
 
-    # 6) do variant calling on each read group using the raw signal alignment
+    # 6) do variant calling on each read group, either using the medaka or nanopolish workflow
     if args.medaka:
         for p in pools:
             if os.path.exists("%s.%s.hdf" % (args.sample, p)):
                 os.remove("%s.%s.hdf" % (args.sample, p))
             cmds.append("medaka consensus --model %s --threads %s --chunk_len 800 --chunk_ovlp 400 --RG %s %s.trimmed.rg.sorted.bam %s.%s.hdf" % (args.medaka_model, args.threads, p, args.sample, args.sample, p))
             if args.no_indels:
-                cmds.append("medaka snp %s %s.%s.hdf %s.%s.medaka.vcf" % (ref, args.sample, p, args.sample, p))
+                cmds.append("medaka snp %s %s.%s.hdf %s.%s.vcf" % (ref, args.sample, p, args.sample, p))
             else:
-                cmds.append("medaka variant %s %s.%s.hdf %s.%s.medaka.vcf" % (ref, args.sample, p, args.sample, p))
+                cmds.append("medaka variant %s %s.%s.hdf %s.%s.vcf" % (ref, args.sample, p, args.sample, p))
             
-            # annotate VCF with read depth info
-            cmds.append("medaka tools annotate --pad 25 --RG %s %s.%s.medaka.vcf %s %s.trimmed.rg.sorted.bam %s.%s.vcf" % (p, args.sample, p, ref, args.sample, args.sample, p))
+            # if not using longshot, annotate VCF with read depth info etc. so we can filter it
+            if args.no_longshot:
+                cmds.append("medaka tools annotate --pad 25 --RG %s %s.%s.vcf %s %s.trimmed.rg.sorted.bam %s.%s.vcf" % (p, args.sample, p, ref, args.sample, args.sample, p))
 
     else:
         if not args.skip_nanopolish:
@@ -101,7 +102,7 @@ def run(parser, args):
         merge_vcf_cmd += " %s:%s.%s.vcf" % (p, args.sample, p)
     cmds.append(merge_vcf_cmd)
 
-    # add in longshot here for medaka annotate results, just to apply a filter to get tests passing
+    # if doing the medaka workflow and longshot required, do it on the merged VCF
     if args.medaka and not args.no_longshot:
         cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
         cmds.append("tabix -p vcf %s.merged.vcf.gz" % (args.sample))
@@ -115,7 +116,7 @@ def run(parser, args):
     vcf_file = "%s.pass.vcf" % (args.sample)
 
     # filter the variants to produce PASS and FAIL lists, then index them
-    cmds.append("artic_vcf_filter --%s %s %s.merged.vcf %s.pass.vcf %s.fail.vcf" % (method, bed, args.sample, args.sample, args.sample))
+    cmds.append("artic_vcf_filter --%s %s.merged.vcf %s.pass.vcf %s.fail.vcf" % (method, args.sample, args.sample, args.sample))
     cmds.append("bgzip -f %s" % (vcf_file))
     cmds.append("tabix -p vcf %s.gz" % (vcf_file))
 
