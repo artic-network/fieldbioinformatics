@@ -84,7 +84,8 @@ def run(parser, args):
             
             # if not using longshot, annotate VCF with read depth info etc. so we can filter it
             if args.no_longshot:
-                cmds.append("medaka tools annotate --pad 25 --RG %s %s.%s.vcf %s %s.trimmed.rg.sorted.bam %s.%s.vcf" % (p, args.sample, p, ref, args.sample, args.sample, p))
+                cmds.append("medaka tools annotate --pad 25 --RG %s %s.%s.vcf %s %s.trimmed.rg.sorted.bam tmp.medaka-annotate.vcf" % (p, args.sample, p, ref, args.sample))
+                cmds.append("mv tmp.medaka-annotate.vcf %s.%s.vcf" % (args.sample, p))
 
     else:
         if not args.skip_nanopolish:
