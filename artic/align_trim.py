@@ -194,20 +194,24 @@ def go(args):
         p1 = find_primer(bed, segment.reference_start, '+')
         p2 = find_primer(bed, segment.reference_end, '-')
 
-        # check if primers are correctly paired and then assign read group
-        # NOTE: removed this as a function as only called once
-        # TODO: will try improving this / moving it to the primer scheme processing code
+        # check if primers are correctly paired and the segment covers all the amplicon
         correctly_paired = p1[2]['Primer_ID'].replace(
             '_LEFT', '') == p2[2]['Primer_ID'].replace('_RIGHT', '')
+        if args.remove_incorrect_pairs and not correctly_paired:
+            print("%s skipped as not correctly paired" %
+                  (segment.query_name), file=sys.stderr)
+            continue
+        if (segment.reference_length < abs(p1[2]['end'] - p2[2]['end'])):
+            print("%s skipped as shorter than amplicon" %
+                  (segment.query_name), file=sys.stderr)
+            continue
+
+        #  assign read group
         if not args.no_read_groups:
             if correctly_paired:
                 segment.set_tag('RG', p1[2]['PoolName'])
             else:
                 segment.set_tag('RG', 'unmatched')
-        if args.remove_incorrect_pairs and not correctly_paired:
-            print("%s skipped as not correctly paired" %
-                  (segment.query_name), file=sys.stderr)
-            continue
 
         # update the report with this alignment segment + primer details
         report = "%s\t%s\t%s\t%s_%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d" % (segment.query_name, segment.reference_start, segment.reference_end, p1[2]['Primer_ID'], p2[2]['Primer_ID'], p1[2]['Primer_ID'], abs(
