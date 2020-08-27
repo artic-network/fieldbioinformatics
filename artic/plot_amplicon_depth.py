@@ -57,8 +57,12 @@ def go(args):
     for depthFile in args.depthFiles:
 
         # read in the depth file
-        df = pd.read_csv(depthFile, sep='\t', header=None)
-        df.columns = ["refName", "readGroup", "position", "depth"]
+        df = pd.read_csv(depthFile, sep='\t', header=None,
+                            names=['refName', 'readGroup',
+                                 'position', 'depth'],
+                            dtype={'refName': str, 'readGroup': str,
+                                 'position': int, 'depth': int},
+                            usecols=(0, 1, 2, 3),)
 
         # check that there aren't too many positions in the depth data for plotting
         # assert len(df.index) < 30000, "error: too many data points to plot"

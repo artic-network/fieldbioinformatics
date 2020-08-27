@@ -70,7 +70,7 @@ def get_scheme(scheme_name, scheme_directory, scheme_version="1"):
     if (os.system(getScheme) != 0):
         print(colored.red("scheme download failed"), file=sys.stderr)
         raise SystemExit(1)
-    bed = "%s.v%s.scheme.bed" % (scheme_name, scheme_version)
+    bed = "%s.v%s.primer.bed" % (scheme_name, scheme_version)
     ref = "%s.v%s.reference.fasta" % (scheme_name, scheme_version)
     if os.path.exists(bed) and os.path.exists(ref):
         return bed, ref, scheme_version
