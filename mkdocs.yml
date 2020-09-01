@@ -10,6 +10,8 @@ nav:
       - "Tests": "tests.md"
   - About:
       - "FAQ": "faq.md"
+      - "Primer Schemes": "primer-schemes.md"
+      - "Core Pipeline": "minion.md"
       - "License": "license.md"
       - "Release Notes": "release-notes.md"
 markdown_extensions:
