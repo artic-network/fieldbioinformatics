@@ -9,6 +9,10 @@ date: 2020-03-30
 
 # FAQ
 
+## Where can I find the SOP for SARS-CoV-2
+
+The standard operating proceedure for the ARTIC Network SARS-SoV-2 bioinformatics can be found [here](https://artic.network/ncov-2019/ncov2019-bioinformatics-sop.html).
+
 ## Lab-on-an-SSD
 
 Please refer to [the ARTIC website](https://artic.network/lab-on-an-SSD) for more information about lab-on-SSD.
@@ -18,7 +22,7 @@ Please refer to [the ARTIC website](https://artic.network/lab-on-an-SSD) for mor
 Within the parent repo add the submodule:
 
 ```
-git submodule add https://github.com/artic-network/<repo_name>.git
+git submodule add https://github.com/artic-network/fieldbioinformatics.git
 ```
 
 Commit the change and push:
