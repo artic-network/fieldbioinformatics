@@ -120,7 +120,8 @@ def init_pipeline_parser():
     parser_minion.add_argument(
         '--sequencing-summary', help='Path to Guppy sequencing summary')
     parser_minion.add_argument('--skip-nanopolish', action='store_true')
-    parser_minion.add_argument('--no-indels', action='store_true')
+    parser_minion.add_argument('--no-indels', action='store_true', help='Do not report InDels (uses SNP-only mode of nanopolish/medaka)')
+    parser_minion.add_argument('--no-frameshifts', action='store_true', help='Remove variants which induce frameshifts (ignored when --no-indels set)')
     parser_minion.add_argument('--dry-run', action='store_true')
     parser_minion.add_argument('--strict', action='store_true', help='Run with strict filtering of variants against primer scheme')
     parser_minion.set_defaults(func=run_subtool)
