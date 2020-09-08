@@ -170,6 +170,8 @@ def genCommand(sampleID, workflow):
     if workflow=="nanopolish":
         return [
             "minion",
+            "--threads",
+            "2",
             "--read-file",
             TEST_DIR + "/../test-data/" + sampleID + "/*.fast[aq]",
             "--scheme-directory",
@@ -184,6 +186,8 @@ def genCommand(sampleID, workflow):
     if workflow=="medaka":    
         return [
             "minion",
+            "--threads",
+            "2",
             "--medaka",
             "--read-file",
             TEST_DIR + "/../test-data/" + sampleID + "/*.fast[aq]",
