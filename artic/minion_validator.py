@@ -190,8 +190,9 @@ def genCommand(sampleID, workflow):
             TEST_DIR + "/../test-data/" + sampleID + "/fast5",
             "--sequencing-summary",
             TEST_DIR + "/../test-data/" + sampleID + "/" + sampleID + "_sequencing_summary.txt",
-            "--" + workflow
     ]
+    if workflow=="medaka":
+        cmd.append("--medaka")
     if sampleID in extraFlags[workflow]:
         for flag in extraFlags[workflow][sampleID]:
             cmd.append(flag)
