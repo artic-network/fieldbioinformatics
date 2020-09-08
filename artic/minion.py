@@ -156,7 +156,7 @@ def run(parser, args):
                 cmds.append("nanopolish variants --min-flanking-sequence 10 -x %s --progress -t %s --reads %s -o %s.%s.vcf -b %s.trimmed.rg.sorted.bam -g %s -w \"%s\" --ploidy 1 -m 0.15 --read-group %s %s" % (args.max_haplotypes, args.threads, indexed_nanopolish_file, args.sample, p, args.sample, ref, nanopolish_header, p, nanopolish_extra_args))
 
     # 7) merge the called variants for each read group
-    merge_vcf_cmd = "artic_vcf_merge %s %s" % (args.sample, bed)
+    merge_vcf_cmd = "artic_vcf_merge %s %s 2> %s.primersitereport.txt" % (args.sample, bed, args.sample)
     for p in pools:
         merge_vcf_cmd += " %s:%s.%s.vcf" % (p, args.sample, p)
     cmds.append(merge_vcf_cmd)

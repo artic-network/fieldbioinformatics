@@ -39,7 +39,7 @@ def vcf_merge(args):
    for v in variants:
       if v.POS in primer_map[v.INFO['Pool']]:
          vcf_writer_primers.write_record(v)
-         print("Found primer binding site mismatch: %s" % (primer_map[v.POS]))
+         print("found primer binding site mismatch: %s" % (primer_map[v.INFO['Pool']][v.POS]), file=sys.stderr)
       else:
          vcf_writer.write_record(v)
 
