@@ -7,7 +7,11 @@ authors:
 date: 2020-03-30
 ---
 
-# ARTIC
+<div align="center">
+    <img src="https://raw.githubusercontent.com/artic-network/fieldbioinformatics/master/docs/artic-logo.png" alt="artic-logo" width="250">
+    <h1>ARTIC</h1>
+    <hr/>
+</div>
 
 `artic` is a pipeline and set of accompanying tools for working with viral nanopore sequencing data, generated from tiling amplicon schemes.
 

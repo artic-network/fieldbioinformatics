@@ -9,13 +9,16 @@ date: 2020-03-30
 
 # Commands
 
-This page documents the available commands via the `artic pipeline` command line interface.
+This page documents the available commands via the `artic` command line interface.
 
-***
+---
 
 ## basecaller
+
 ### Overview
+
 Display basecallers in files
+
 ### Input
 
 ### Output
@@ -26,16 +29,24 @@ Display basecallers in files
 artic basecaller <directory>
 ```
 
-***
+---
 
 ## demultiplex
+
 ### Overview
+
 Run demultiplex
+
 ### Input
-* undemultiplexed FASTA file
+
+- undemultiplexed FASTA file
+
 ### Output
-* demultiplexed FASTA file(s)
+
+- demultiplexed FASTA file(s)
+
 ### Usage example
+
 ```bash
 artic demultiplex <fasta>
 ```
@@ -47,16 +58,24 @@ artic demultiplex <fasta>
 | --prefix              | N        | NA            | Prefix for demultiplexed files |
 | --no-remove-directory | N        | NA            | Don't remove the directory     |
 
-***
+---
 
 ## export
+
 ### Overview
+
 The export command is used to make a redistributable package of data for re-analysis. This includes the FASTQ file, the sequencing summary and the FAST5 file. The selection of reads to be used comes from a BAM file, and only aligned reads are used.
+
 ### Input
-* a completed minion pipeline run
+
+- a completed minion pipeline run
+
 ### Output
-* a redistributable package of data
+
+- a redistributable package of data
+
 ### Usage example
+
 ```bash
 artic export <prefix> <bamfile> <sequencing_summary> <fast5_directory> <output_directory>
 ```
@@ -69,16 +88,24 @@ artic export <prefix> <bamfile> <sequencing_summary> <fast5_directory> <output_d
 | fast5_directory    | Y        | NA            | The path to directory of FAST5 files |
 | output_directory   | Y        | NA            | The path to export the data to       |
 
-***
+---
 
 ## extract
+
 ### Overview
+
 Create an empty poredb database
+
 ### Input
-* na
+
+- na
+
 ### Output
-* an initialised poredb database
+
+- an initialised poredb database
+
 ### Usage example
+
 ```bash
 artic extract <directory>
 ```
@@ -88,16 +115,24 @@ artic extract <directory>
 | directory        | Y        | NA                               | The name of the database   |
 | --basecalller    | N        | ONT Albacore Sequencing Software | The name of the basecaller |
 
-***
+---
 
 ## filter
+
 ### Overview
+
 Filter FASTQ files by length
+
 ### Input
-* unfiltered reads
+
+- unfiltered reads
+
 ### Output
-* filtered reads
+
+- filtered reads
+
 ### Usage example
+
 ```bash
 artic filter --max-length 500 --min-length 50 <filename>
 ```
@@ -108,16 +143,24 @@ artic filter --max-length 500 --min-length 50 <filename>
 | --max-length     | N        | NA            | Remove reads greater than max-length   |
 | --min-length     | N        | NA            | Remove reads less than than min-length |
 
-***
+---
 
 ## gather
+
 ### Overview
+
 Gather up demultiplexed files
+
 ### Input
-* director[y/ies] to gather from
+
+- director[y/ies] to gather from
+
 ### Output
-* directory of gathered files
+
+- directory of gathered files
+
 ### Usage example
+
 ```bash
 artic gather --directory ./
 ```
@@ -131,17 +174,25 @@ artic gather --directory ./
 | --prompt-directory | N        | NA            | The run directory for interactive prompts |
 | --fast5-directory  | N        | NA            | The directory with fast5 files            |
 | --no-fast5s        | N        | NA            | Do not use fast5s and nanopolish          |
-              
-***
+
+---
 
 ## guppyplex
+
 ### Overview
+
 Aggregate pre-demultiplexed reads from MinKNOW/Guppy
+
 ### Input
-* director[y/ies] to aggregate from
+
+- director[y/ies] to aggregate from
+
 ### Output
-* directory of aggregated files
+
+- directory of aggregated files
+
 ### Usage example
+
 ```bash
 artic guppyplex --directory ./
 ```
@@ -156,16 +207,24 @@ artic guppyplex --directory ./
 | --sample sample      | N        | 1             | Sampling frequency for random sample of sequence to reduce excess |
 | --skip-quality-check | N        | NA            | Do not filter on quality score (speeds up)                        |
 
-***
+---
 
 ## minion
+
 ### Overview
+
 Run the alignment/variant-call/consensus pipeline
+
 ### Input
-* a primer scheme and a sample directory
+
+- a primer scheme and a sample directory
+
 ### Output
-* trimmed alignments, variants calls and consensus sequence
+
+- trimmed alignments, variants calls and consensus sequence
+
 ### Usage example
+
 ```bash
 artic minion <scheme> <sample>
 ```
@@ -187,30 +246,38 @@ artic minion <scheme> <sample>
 | --skip-nanopolish    | N        | False          | Skip nanopolish                                                                              |
 | --dry-run            | N        | False          | Perform a dry run of the minion pipeline, outputing commands to a log but not executing them |
 
-***
+---
 
 ## rampart
+
 ### Overview
+
 Interactive prompts to start RAMPART
+
 ### Input
 
 ### Output
 
 ### Usage example
+
 ```bash
 
 ```
 
-***
+---
 
 ## run
+
 ### Overview
+
 Process an entire run folder interactively
+
 ### Input
 
 ### Output
 
 ### Usage example
+
 ```bash
 
 ```
