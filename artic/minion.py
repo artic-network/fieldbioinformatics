@@ -62,7 +62,7 @@ def get_scheme(scheme_name, scheme_directory, scheme_version="1"):
     ref = "%s/%s/V%s/%s.reference.fasta" % (scheme_directory, scheme_name, scheme_version, scheme_name)
     if os.path.exists(bed) and os.path.exists(ref):
         return bed, ref, scheme_version
-    
+
     # if they don't exist, try downloading them to the current directory
     print(colored.yellow("could not find primer scheme and reference sequence, attempting to download"), file=sys.stderr)
     getScheme = "artic-tools get_scheme %s --schemeVersion %s" % (scheme_name, scheme_version)
@@ -70,22 +70,33 @@ def get_scheme(scheme_name, scheme_directory, scheme_version="1"):
     if (os.system(getScheme) != 0):
         print(colored.red("scheme download failed"), file=sys.stderr)
         raise SystemExit(1)
-    bed = "%s.v%s.primer.bed" % (scheme_name, scheme_version)
-    ref = "%s.v%s.reference.fasta" % (scheme_name, scheme_version)
-    if os.path.exists(bed) and os.path.exists(ref):
-        return bed, ref, scheme_version
-    print(colored.red('could not find/download primer scheme: ') + scheme_name)
-    raise SystemExit(1)
+    downloadedBed = "%s.v%s.primer.bed" % (scheme_name, scheme_version)
+    downloadedRef = "%s.v%s.reference.fasta" % (scheme_name, scheme_version)
+    if not (os.path.exists(downloadedBed) and os.path.exists(downloadedRef)):
+        print(colored.red("could not find/download primer scheme: ") + scheme_name)
+        raise SystemExit(1)
+
+    # now put them where they pipeline usually expects them to save us downloading them on future runs
+    targetDir = os.path.dirname(bed)
+    if not os.path.exists(targetDir):
+        try:
+            os.makedirs(targetDir)
+        except OSError as error:
+            print(colored.red("could not create provided scheme directory ({}): {}") .format(targetDir, error))
+            raise SystemExit(1)
+    os.rename(downloadedBed, bed)
+    os.rename(downloadedRef, ref)
+    return bed, ref, scheme_version
 
 def run(parser, args):
 
     # 1) check the parameters and set up the filenames
     ## find the primer scheme, reference sequence and confirm scheme version
-    bed, ref, scheme_version = get_scheme(args.scheme, args.scheme_directory, args.scheme_version)
+    bed, ref, _ = get_scheme(args.scheme, args.scheme_directory, args.scheme_version)
 
     ## if in strict mode, validate the primer scheme
     if args.strict:
-        checkScheme = "artic-tools validate_scheme %s --schemeVersion %s" % (bed, scheme_version)
+        checkScheme = "artic-tools validate_scheme %s" % (bed)
         print(colored.green("Running: "), checkScheme, file=sys.stderr)
         if (os.system(checkScheme) != 0):
             print(colored.red("primer scheme failed strict checking"), file=sys.stderr)
@@ -164,7 +175,7 @@ def run(parser, args):
     # 8) check and filter the VCFs
     ## if using strict, run the vcf checker to remove vars present only once in overlap regions (this replaces the original merged vcf from the previous step)
     if args.strict:
-        cmds.append("artic-tools check_vcf --dropPrimerVars --dropOverlapFails --vcfOut %s.merged.filtered.vcf --schemeVersion %s %s %s.merged.vcf 2> %s.vcfreport.txt" % (args.sample, scheme_version, bed, args.sample, args.sample))
+        cmds.append("artic-tools check_vcf --dropPrimerVars --dropOverlapFails --vcfOut %s.merged.filtered.vcf %s.merged.vcf %s 2> %s.vcfreport.txt" % (args.sample, args.sample, bed, args.sample))
         cmds.append("mv %s.merged.filtered.vcf %s.merged.vcf" % (args.sample, args.sample))
 
     ## if doing the medaka workflow and longshot required, do it on the merged VCF
