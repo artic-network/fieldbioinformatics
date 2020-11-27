@@ -12,7 +12,7 @@ dependencies:
   - clint=0.5.1
   - htslib=1.10.2
   - longshot=0.4.1
-  - medaka=1.2.0
+  - medaka=1.0.3
   - minimap2=2.17
   - muscle=3.8
   - nanopolish=0.13.2
