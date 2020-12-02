@@ -5,7 +5,7 @@ channels:
   - defaults
 dependencies:
   - artic-porechop==0.3.2pre
-  - artic-tools==0.2.5
+  - artic-tools==0.2.6
   - bcftools=1.10.2
   - biopython=1.76
   - bwa=0.7.17
