@@ -107,6 +107,9 @@ def run(parser, args):
         read_file = args.read_file
     else:
         read_file = "%s.fasta" % (args.sample)
+    if not os.path.exists(read_file):
+        print(colored.red("failed to find read-file: {}" .format(read_file)), file=sys.stderr)
+        raise SystemExit(1)
 
     ## collect the primer pools
     pools = set([row['PoolName'] for row in read_bed_file(bed)])
