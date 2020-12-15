@@ -20,6 +20,7 @@ import argparse
 import errno
 import glob
 import os
+import pathlib
 import pytest
 import requests
 import sys
@@ -30,10 +31,7 @@ import vcf
 from . import pipeline
 
 # help pytest resolve where test data is kept
-TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# dataDir is where to store the test data locally
-dataDir = TEST_DIR + "/../test-data/"
+dataDir = str(pathlib.Path(__file__).parent.parent) + "/test-data/"
 
 # testData is a lookup of sampleIDs to download urls
 testData = {
@@ -183,13 +181,13 @@ def genCommand(sampleID, workflow):
             "--threads",
             "2",
             "--read-file",
-            TEST_DIR + "/../test-data/" + sampleID + "/*.fast[aq]",
+            dataDir + sampleID + "/" + sampleID + ".fastq",
             "--scheme-directory",
-            TEST_DIR + "/../test-data/primer-schemes",
+            dataDir + "primer-schemes",
             "--fast5-directory",
-            TEST_DIR + "/../test-data/" + sampleID + "/fast5",
+            dataDir + sampleID + "/fast5",
             "--sequencing-summary",
-            TEST_DIR + "/../test-data/" + sampleID + "/" + sampleID + "_sequencing_summary.txt",
+            dataDir + sampleID + "/" + sampleID + "_sequencing_summary.txt",
     ]
     if workflow=="medaka":
         cmd.append("--medaka")
