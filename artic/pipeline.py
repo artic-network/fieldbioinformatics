@@ -109,7 +109,7 @@ def init_pipeline_parser():
     parser_minion.add_argument(
         '--threads', type=int, default=8, help='Number of threads (default: %(default)d)')
     parser_minion.add_argument('--scheme-directory', metavar='scheme_directory',
-                               default='/artic/schemes', help='Default scheme directory')
+                               default='./primer-schemes', help='Default scheme directory')
     parser_minion.add_argument('--scheme-version', metavar='scheme_version',
                                 default=1, help='Primer scheme version (default: %(default)d)')
     parser_minion.add_argument('--max-haplotypes', type=int, default=1000000,
