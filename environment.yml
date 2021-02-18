@@ -11,15 +11,13 @@ dependencies:
   - bwa=0.7.17
   - clint=0.5.1
   - htslib=1.10.2
-  - longshot=0.4.1
-  - medaka=1.0.3
   - minimap2=2.17
   - multiqc
   - muscle=3.8
   - nanopolish=0.13.2
   - nomkl
   - numpy
-  - pandas=0.23.0
+  - pandas
   - pip
   - pysam=0.16.0.1
   - pytest
@@ -27,3 +25,7 @@ dependencies:
   - pyvcf=0.6.8
   - samtools=1.10
   - tqdm
+  - whatshap
+  - parasail-python
+  - pip:
+      - medaka==1.2.3

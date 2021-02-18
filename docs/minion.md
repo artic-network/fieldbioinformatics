@@ -75,8 +75,7 @@ For the **medaka workflow**, we use the following commands on the `$SAMPLE.prime
 
 - [medaka consensus](https://github.com/nanoporetech/medaka)
 - medaka variant or snps (if pipeline has been told not to detect INDELS via `--no-indels`)
-- medaka tools annotate (if `--no-longshot` has been selected)
-- [longshot](https://github.com/pjedge/longshot) (if `--no-longshot` not selected)
+- medaka tools annotate
 
 And for the **nanopolish workflow** we use the following command on the `$SAMPLE.trimmed.rg.sorted.bam` alignment:
 
