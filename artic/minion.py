@@ -147,8 +147,22 @@ def run(parser, args):
         strict_string = '--enforce-amplicon-span'
     else:
         strict_string = ''
-    cmds.append("align_trim %s %s %s --start --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.trimmed.rg.sorted.bam" % (strict_string, normalise_string, bed, args.sample, args.sample, args.sample, args.sample, args.sample))
-    cmds.append("align_trim %s %s %s --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.primertrimmed.rg.sorted.bam" % (strict_string, normalise_string, bed, args.sample, args.sample, args.sample, args.sample, args.sample))
+    cmds.append(
+        "align_trim %s.sorted.bam %s "
+        "%s %s --start --report %s.alignreport.txt 2> %s.alignreport.er "
+        "| samtools sort -T %s - -o %s.trimmed.rg.sorted.bam" % (
+            args.sample, bed,
+            strict_string, normalise_string, args.sample, args.sample,
+            args.sample, args.sample)
+        )
+    cmds.append(
+        "align_trim %s.sorted.bam %s "
+        "%s %s --report %s.alignreport.txt 2> %s.alignreport.er "
+        "| samtools sort -T %s - -o %s.primertrimmed.rg.sorted.bam" % (
+            args.sample bed,
+            strict_string, normalise_string, args.sample, args.sample,
+            args.sample, args.sample)
+        )
     cmds.append("samtools index %s.trimmed.rg.sorted.bam" % (args.sample))
     cmds.append("samtools index %s.primertrimmed.rg.sorted.bam" % (args.sample))
 
