@@ -128,13 +128,17 @@ def trim(segment, primer_pos, end, debug):
 
 
 def overlap_trim(args):
+    """Detect to which amplicon a read is derived and according to trim primers."""
+
     if args.report:
         reportfh = open(args.report, "w")
         print(
             "QueryName\tReferenceStart\tReferenceEnd\t"
+            "PrimerPair\t"
+            "Primer1\tPrimer1Start\t"
+            "Primer2\tPrimer2Start\t"
             "IsSecondary\tIsSupplementary\t"
-            "PrimerPair\tLeftPresent\tRightPresent\t"
-            "CorrectlyPaired", file=reportfh)
+            "Start\tEnd\tCorrectlyPaired", file=reportfh)
 
     # open the primer scheme and get the pools
     bed = read_bed_file(args.bedfile)
@@ -142,7 +146,7 @@ def overlap_trim(args):
     pools.add('unmatched')
     primer_pairs = defaultdict(dict)
     for b in bed:
-       pair, side = b['Primer_ID'].split('_')
+       scheme, pair, side = b['Primer_ID'].split('_')
        primer_pairs[pair][side] = b
     # this data structure is more useful for searching...
     amplicons = np.fromiter((
@@ -159,8 +163,8 @@ def overlap_trim(args):
 
     # iterate over the alignment segments in the input SAM file
     passing_reads = defaultdict(list)  # by (amplicon, is_reverse)
-    with pysam.AlignmentFile(args.bamfile, "rb") as bam
-        bam_header = infile.header.copy().to_dict()
+    with pysam.AlignmentFile(args.bamfile, "rb") as bam:
+        bam_header = bam.header.copy().to_dict()
         if not args.no_read_groups:
             bam_header['RG'] = []
             for pool in pools:
@@ -211,9 +215,6 @@ def overlap_trim(args):
                 print("%s skipped as does not span: %s" %
                     (segment.query_name, extends), file=sys.stderr)
                 continue
-            if not args.no_read_groups:
-                segment.set_tag('RG', tag)
-
             passing_reads[amplicon['name'], segment.is_reverse].append(
                 PassRead(segment.qname, amplicon['name'], overlap, *extends))
     # end first pass
@@ -240,8 +241,13 @@ def overlap_trim(args):
                 continue
             chosen = chosen_reads[segment.qname]
             amplicon = amplicons[amplicons['name'] == chosen.amplicon]
+            if not args.no_read_groups:
+                segment.set_tag('RG', str(amplicon['pool'][0]))
+
             if len(amplicon) > 1:
                 raise IndexError("Found more than one amplicon matching: {}".format(chosen))
+            else:
+                amplicon = amplicon[0]
             if args.start:
                 trim_start, trim_end = amplicon['start'], amplicon['end']
             else:
@@ -285,12 +291,20 @@ def overlap_trim(args):
             # current alignment segment has passed filters, send it to the outfile
             # update the report with this alignment segment + primer details
             if args.report or args.verbose:
+                #"QueryName\tReferenceStart\tReferenceEnd\t"
+                #"PrimerPair\t"
+                #"Primer1\tPrimer1Start\t"
+                #"Primer2\tPrimer2Start\t"
+                #"IsSecondary\tIsSupplementary\t"
+                #"Start\tEnd\tCorrectlyPaired", file=reportfh)
                 report = '\t'.join(
                     str(x) for x in (
                         segment.query_name, segment.reference_start, segment.reference_end,
+                        '{}_{}'.format(amplicon['left_primer'], amplicon['right_primer']),
+                        amplicon['left_primer'], amplicon['start'],
+                        amplicon['right_primer'], amplicon['insert_end'],
                         segment.is_secondary, segment.is_supplementary,
-                        amplicon['name'], int(chosen.left), int(chosen.right),
-                        int(all(extends))))
+                        amplicon['start'], amplicon['end'], int(all(extends))))
                 if args.report:
                     print(report, file=reportfh)
                 if args.verbose:

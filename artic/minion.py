@@ -159,7 +159,7 @@ def run(parser, args):
         "align_trim %s.sorted.bam %s "
         "%s %s --report %s.alignreport.txt 2> %s.alignreport.er "
         "| samtools sort -T %s - -o %s.primertrimmed.rg.sorted.bam" % (
-            args.sample bed,
+            args.sample, bed,
             strict_string, normalise_string, args.sample, args.sample,
             args.sample, args.sample)
         )
