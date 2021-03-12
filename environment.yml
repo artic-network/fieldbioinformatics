@@ -16,6 +16,7 @@ dependencies:
   - muscle=3.8
   - nanopolish=0.13.2
   - nomkl
+  - numpy
   - pandas
   - pip
   - pysam=0.16.0.1

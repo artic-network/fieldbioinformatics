@@ -7,6 +7,7 @@ from collections import defaultdict
 import pysam
 import sys
 from .vcftagprimersites import read_bed_file
+import numpy as np
 
 # consumesReference lookup for if a CIGAR operation consumes the reference sequence
 consumesReference = [True, False, True, True, False, False, False, True]
@@ -156,9 +157,6 @@ def go(args):
         reportfh = open(args.report, "w")
         print("QueryName\tReferenceStart\tReferenceEnd\tPrimerPair\tPrimer1\tPrimer1Start\tPrimer2\tPrimer2Start\tIsSecondary\tIsSupplementary\tStart\tEnd\tCorrectlyPaired", file=reportfh)
 
-    # set up a counter to track amplicon abundance
-    counter = defaultdict(int)
-
     # open the primer scheme and get the pools
     bed = read_bed_file(args.bedfile)
     pools = set([row['PoolName'] for row in bed])
@@ -173,6 +171,11 @@ def go(args):
             read_group = {}
             read_group['ID'] = pool
             bam_header['RG'].append(read_group)
+
+    # track the coverage of each strand-specific position in every reference sequence
+    # It is worth thinking about using np.uint16 instead to half memory requirements
+    if args.normalise:
+        coverage = {ref_name:np.zeros(shape=(2,ref_len), dtype=np.uint32) for ref_name,ref_len in zip(infile.references, infile.lengths)}
 
     # prepare the alignment outfile
     outfile = pysam.AlignmentFile("-", "wh", header=bam_header)
@@ -256,11 +259,13 @@ def go(args):
 
         # normalise if requested
         if args.normalise:
-            pair = "%s-%s-%d" % (p1[2]['Primer_ID'],
-                                 p2[2]['Primer_ID'], segment.is_reverse)
-            counter[pair] += 1
-            if counter[pair] > args.normalise:
-                print("%s dropped as abundance theshold reached" %
+            # check if the coverage of any position within the region to which this read maps
+            # is below the requested normalisation threshold. Drop the read otherwise.
+            ref_name = infile.get_reference_name(segment.reference_id)
+            if (coverage[ref_name][int(segment.is_reverse), segment.reference_start:segment.reference_end] < args.normalise).any():
+                coverage[ref_name][int(segment.is_reverse), segment.reference_start:segment.reference_end] += 1
+            else:
+                print("%s dropped as abundance threshold reached" %
                       (segment.query_name), file=sys.stderr)
                 continue
 
