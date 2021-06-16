@@ -27,4 +27,4 @@ dependencies:
   - whatshap
   - parasail-python
   - pip:
-      - medaka==1.2.3
+      - medaka==1.4.2
