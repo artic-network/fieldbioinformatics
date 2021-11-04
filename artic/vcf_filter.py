@@ -54,6 +54,12 @@ def is_significant_alternate_heterozygotic(v,hetmf,hetmr):
     return any(p>=hetmf and c>=hetmr #p>=0.50 and c>=12
                for p,c in list(zip(ps,cnts))[1:])
 
+def is_ambiguous(v):
+    cnts = v.INFO['AC']
+    camb = v.INFO['AM']
+    s = sum(cnts)
+    return camb>s
+
 class MedakaFilter:
     def __init__(self, no_frameshifts,hetmf,hetmr):
         self.no_frameshifts = no_frameshifts
@@ -114,7 +120,7 @@ def go(args):
                     if filter.check_filter(check_variant):
                         variant_passes = True 
             
-            if not variant_passes:
+            if not variant_passes and not is_ambiguous(v):
                 vcf_writer_filtered.write_record(v)
             else:
                 print ("Suppress variant %s\n" % (v.POS))
