@@ -7,6 +7,7 @@ from collections import defaultdict
 import pysam
 import sys
 from .vcftagprimersites import read_bed_file
+#from scipy.spatial import cKDTree
 
 # consumesReference lookup for if a CIGAR operation consumes the reference sequence
 consumesReference = [True, False, True, True, False, False, False, True]
@@ -166,6 +167,7 @@ def go(args):
 
     # open the input SAM file and process read groups
     infile = pysam.AlignmentFile("-", "rb")
+    #infile = pysam.AlignmentFile("testin.bam", "rb")
     bam_header = infile.header.copy().to_dict()
     if not args.no_read_groups:
         bam_header['RG'] = []
@@ -176,7 +178,9 @@ def go(args):
 
     # prepare the alignment outfile
     outfile = pysam.AlignmentFile("-", "wh", header=bam_header)
+    #outfile = pysam.AlignmentFile("test.bam", "wh", header=bam_header)
 
+    TRIM_BOTH, TRIM_START, TRIM_END = 0, 1, 2
     # iterate over the alignment segments in the input SAM file
     for segment in infile:
 
@@ -186,9 +190,11 @@ def go(args):
                   (segment.query_name), file=sys.stderr)
             continue
         if segment.is_supplementary:
-            print("%s not skipped as supplementary" %
-                  (segment.query_name), file=sys.stderr)
-            #continue
+            print("%s %s skipped as supplementary" %
+                  (segment.query_name,('not','')[args.remove_supplementary]), file=sys.stderr)
+            if args.remove_supplementary:
+                continue
+                
 
         # locate the nearest primers to this alignment segment
         p1 = find_primer(bed, segment.reference_start, '+')
@@ -204,10 +210,43 @@ def go(args):
                 segment.set_tag('RG', p1[2]['PoolName'])
             else:
                 segment.set_tag('RG', 'unmatched')
-        if args.remove_incorrect_pairs and not correctly_paired:
-            print("%s skipped as not correctly paired" %
-                  (segment.query_name), file=sys.stderr)
-            continue
+        allowed_to_trim = TRIM_BOTH
+        if not correctly_paired:
+            print("%s found as not correctly paired:\n%s\n%s" %
+                  (segment.query_name,p1[2],p2[2]), file=sys.stderr)
+            #import ipdb; ipdb.set_trace()
+            if args.remove_incorrect_pairs:
+                continue
+            #p1_id = p1[2['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_','')
+            #p2_id = p2[2['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_','')
+            p1_id = p1[2]['PoolName']
+            p2_id = p2[2]['PoolName']
+            ## Check if the primers are invertly paired
+            if p1_id > p2_id:
+                #if not ((p1[2]['Primer_ID'].endswith('_LEFT')) 
+                #    and (p2[2]['Primer_ID'].endswith('_RIGHT'))):
+                #if not ((p1[2]['direction'] == '+') 
+                #    and (p2[2]['direction'] == '-')):
+                #    print("%s found as strangely paired paired:\n%s\n%s" %
+                #          (segment.query_name,p1[2],p2[2]), file=sys.stderr)
+                #    continue
+                ## The above is always true due to the way find_primer works
+
+                left_diff = p1[2]['start']-segment.reference_start
+                right_diff = segment.reference_end-p2[2]['end']
+                if left_diff >= right_diff and left_diff > args.TRIM_DIFF_THRESHOLD:
+                    allowed_to_trim = TRIM_END
+                elif right_diff >= left_diff and right_diff > args.TRIM_DIFF_THRESHOLD:
+                    allowed_to_trim = TRIM_START
+                else:
+                    print("%s found as not correctly paired and below TRIM_DIFF_THRESHOLD=%s, discarded:\n%s\n%s" %
+                            (segment.query_name,args.TRIM_DIFF_THRESHOLD,p1[2],p2[2]), file=sys.stderr)
+                    continue
+                if left_diff > args.TRIM_DIFF_THRESHOLD and right_diff > args.TRIM_DIFF_THRESHOLD:
+                    print("%s found as not correctly paired and both ends above TRIM_DIFF_THRESHOLD=%s, discarded:\n%s\n%s" %
+                            (segment.query_name,args.TRIM_DIFF_THRESHOLD,p1[2],p2[2]), file=sys.stderr)
+                    continue
+                
 
         # update the report with this alignment segment + primer details
         report = "%s\t%s\t%s\t%s_%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d" % (segment.query_name, segment.reference_start, segment.reference_end, p1[2]['Primer_ID'], p2[2]['Primer_ID'], p1[2]['Primer_ID'], abs(
@@ -226,7 +265,7 @@ def go(args):
             p2_position = p2[2]['start']
 
         # softmask the alignment if left primer start/end inside alignment
-        if segment.reference_start < p1_position:
+        if segment.reference_start < p1_position and allowed_to_trim in [TRIM_BOTH, TRIM_START]:
             try:
                 trim(segment, p1_position, False, args.verbose)
                 if args.verbose:
@@ -238,7 +277,7 @@ def go(args):
                 continue
 
         # softmask the alignment if right primer start/end inside alignment
-        if segment.reference_end > p2_position:
+        if segment.reference_end > p2_position and allowed_to_trim in [TRIM_BOTH, TRIM_END]:
             try:
                 trim(segment, p2_position, True, args.verbose)
                 if args.verbose:
@@ -249,6 +288,7 @@ def go(args):
                     segment.query_name, e), file=sys.stderr)
                 continue
 
+        
         # normalise if requested
         if args.normalise:
             pair = "%s-%s-%d" % (p1[2]['Primer_ID'],
@@ -289,6 +329,10 @@ def main():
                         help='Trim to start of primers instead of ends')
     parser.add_argument('--no-read-groups', dest='no_read_groups',
                         action='store_true', help='Do not divide reads into groups in SAM output')
+    parser.add_argument('--dont-remove-supplementary', dest='remove_supplementary', default=True,
+                        action='store_false', help='Do not remove supplementary alignments')
+    parser.add_argument('--invert-trim-diff-threshold', dest='TRIM_DIFF_THRESHOLD', type=int, default=70,
+                        help='Trim invertly paired if primer is within this many bases of the start/end of the alignment, otherwise discard')
     parser.add_argument('--verbose', action='store_true', help='Debug mode')
     parser.add_argument('--remove-incorrect-pairs', action='store_true')
 
