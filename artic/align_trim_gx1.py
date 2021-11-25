@@ -146,6 +146,7 @@ def trim(segment, primer_pos, end, debug):
     segment.cigartuples = cigar
     return
 
+debug_reads = ['6b04aa98-e7d7-4191-b459-85225318df5f',]
 
 def go(args):
     """Filter and soft mask an alignment file so that the alignment boundaries match the primer start and end sites.
@@ -199,7 +200,11 @@ def go(args):
         # locate the nearest primers to this alignment segment
         p1 = find_primer(bed, segment.reference_start, '+')
         p2 = find_primer(bed, segment.reference_end, '-')
-
+        assert(segment.reference_end >= segment.reference_start)
+        
+        if segment.query_name in debug_reads:
+            print("query_name=%s ref_start=%s ref_end=%s\np1=%s\np2=%s" % (segment.query_name, segment.reference_start, segment.reference_end, p1, p2), file=sys.stderr) 
+        
         # check if primers are correctly paired and then assign read group
         # NOTE: removed this as a function as only called once
         # TODO: will try improving this / moving it to the primer scheme processing code
@@ -217,12 +222,15 @@ def go(args):
             #import ipdb; ipdb.set_trace()
             if args.remove_incorrect_pairs:
                 continue
+        if True:
             #p1_id = p1[2['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_','')
             #p2_id = p2[2['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_','')
             p1_id = p1[2]['PoolName']
             p2_id = p2[2]['PoolName']
             ## Check if the primers are invertly paired
-            if p1_id > p2_id:
+            left_diff = p1[2]['start']-segment.reference_start
+            right_diff = segment.reference_end-p2[2]['end']
+            #if p1_id > p2_id:
                 #if not ((p1[2]['Primer_ID'].endswith('_LEFT')) 
                 #    and (p2[2]['Primer_ID'].endswith('_RIGHT'))):
                 #if not ((p1[2]['direction'] == '+') 
@@ -232,19 +240,22 @@ def go(args):
                 #    continue
                 ## The above is always true due to the way find_primer works
 
-                left_diff = p1[2]['start']-segment.reference_start
-                right_diff = segment.reference_end-p2[2]['end']
-                if left_diff >= right_diff and left_diff > args.TRIM_DIFF_THRESHOLD:
-                    allowed_to_trim = TRIM_END
-                elif right_diff >= left_diff and right_diff > args.TRIM_DIFF_THRESHOLD:
-                    allowed_to_trim = TRIM_START
-                else:
-                    print("%s found as not correctly paired and below TRIM_DIFF_THRESHOLD=%s, discarded:\n%s\n%s" %
-                            (segment.query_name,args.TRIM_DIFF_THRESHOLD,p1[2],p2[2]), file=sys.stderr)
+            if left_diff >= right_diff and left_diff > args.TRIM_DIFF_THRESHOLD:
+                allowed_to_trim = TRIM_END
+            elif right_diff >= left_diff and right_diff > args.TRIM_DIFF_THRESHOLD:
+                allowed_to_trim = TRIM_START
+            else:
+                print("%s found as %s correctly paired and below TRIM_DIFF_THRESHOLD=%s" %
+                        (segment.query_name,('not','')[correctly_paired],args.TRIM_DIFF_THRESHOLD), file=sys.stderr)
+                if p1_id > p2_id:
+                    print("%s found as %s correctly paired and below TRIM_DIFF_THRESHOLD=%s, discarded:\n%s\n%s" %
+                          (segment.query_name, ('not','')[p1_id == p2_id], args.TRIM_DIFF_THRESHOLD, p1[2], p2[2]), file=sys.stderr)
                     continue
+
+            if p1_id > p2_id:
                 if left_diff > args.TRIM_DIFF_THRESHOLD and right_diff > args.TRIM_DIFF_THRESHOLD:
-                    print("%s found as not correctly paired and both ends above TRIM_DIFF_THRESHOLD=%s, discarded:\n%s\n%s" %
-                            (segment.query_name,args.TRIM_DIFF_THRESHOLD,p1[2],p2[2]), file=sys.stderr)
+                    print("%s found as %s correctly paired and both ends above TRIM_DIFF_THRESHOLD=%s, discarded:\n%s\n%s" %
+                            (segment.query_name, ('not','')[p1_id == p2_id], args.TRIM_DIFF_THRESHOLD, p1[2], p2[2]), file=sys.stderr)
                     continue
                 
 
@@ -289,6 +300,18 @@ def go(args):
                 continue
 
         
+        if segment.query_name in debug_reads:
+            print("query_name=%s ref_start=%s ref_end=%s\np1_position=%s p2_position=%s\n" %
+                  (segment.query_name, segment.reference_start, segment.reference_end, p1_position, p2_position), file=sys.stderr)
+            print("p1_start=%s p1_end=%s p2_start=%s p2_end=%s" %
+                  (p1[2]['start'], p1[2]['end'], p2[2]['start'], p2[2]['end']), file=sys.stderr)
+            print("p1_id=%s p2_id=%s" % (p1[2]['Primer_ID'], p2[2]['Primer_ID']), file=sys.stderr)
+            print("p1_direction=%s p2_direction=%s" % (p1[2]['direction'], p2[2]['direction']), file=sys.stderr)
+            print("correctly_paired=%s" % correctly_paired, file=sys.stderr)
+            print("allowed_to_trim=%s" % allowed_to_trim, file=sys.stderr)
+            #assert(False)   
+            
+
         # normalise if requested
         if args.normalise:
             pair = "%s-%s-%d" % (p1[2]['Primer_ID'],
