@@ -146,7 +146,10 @@ def trim(segment, primer_pos, end, debug):
     segment.cigartuples = cigar
     return
 
-debug_reads = ['6b04aa98-e7d7-4191-b459-85225318df5f',]
+debug_reads = ['6b04aa98-e7d7-4191-b459-85225318df5f',
+               '9a307f67-b899-4451-a82c-daa4a25b8b97',
+               '79701cbf-3efc-472e-ba0b-0489f090fd22',]
+
 
 def go(args):
     """Filter and soft mask an alignment file so that the alignment boundaries match the primer start and end sites.
@@ -254,9 +257,12 @@ def go(args):
 
             if p1_id > p2_id:
                 if left_diff > args.TRIM_DIFF_THRESHOLD and right_diff > args.TRIM_DIFF_THRESHOLD:
-                    print("%s found as %s correctly paired and both ends above TRIM_DIFF_THRESHOLD=%s, discarded:\n%s\n%s" %
+                    print("%s found as %s correctly invertly paired and both ends above TRIM_DIFF_THRESHOLD=%s, discarded:\n%s\n%s" %
                             (segment.query_name, ('not','')[p1_id == p2_id], args.TRIM_DIFF_THRESHOLD, p1[2], p2[2]), file=sys.stderr)
                     continue
+                print("%s found as %s correctly invertly paired one end above TRIM_DIFF_THRESHOLD=%s, anyway discarded:\n%s\n%s" %
+                            (segment.query_name, ('not','')[p1_id == p2_id], args.TRIM_DIFF_THRESHOLD, p1[2], p2[2]), file=sys.stderr)
+                continue
                 
 
         # update the report with this alignment segment + primer details
