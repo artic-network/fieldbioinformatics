@@ -148,7 +148,9 @@ def trim(segment, primer_pos, end, debug):
 
 debug_reads = ['6b04aa98-e7d7-4191-b459-85225318df5f',
                '9a307f67-b899-4451-a82c-daa4a25b8b97',
-               '79701cbf-3efc-472e-ba0b-0489f090fd22',]
+               '79701cbf-3efc-472e-ba0b-0489f090fd22',
+               'd477aaf9-f5f6-45de-83b6-70f5a1ddcb5crep2',
+               ]
 
 
 def go(args):
@@ -228,8 +230,8 @@ def go(args):
         if True:
             #p1_id = p1[2['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_','')
             #p2_id = p2[2['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_','')
-            p1_id = p1[2]['PoolName']
-            p2_id = p2[2]['PoolName']
+            p1_id = int(p1[2]['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_',''))
+            p2_id = int(p2[2]['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_',''))
             ## Check if the primers are invertly paired
             left_diff = p1[2]['start']-segment.reference_start
             right_diff = segment.reference_end-p2[2]['end']
@@ -311,7 +313,7 @@ def go(args):
                   (segment.query_name, segment.reference_start, segment.reference_end, p1_position, p2_position), file=sys.stderr)
             print("p1_start=%s p1_end=%s p2_start=%s p2_end=%s" %
                   (p1[2]['start'], p1[2]['end'], p2[2]['start'], p2[2]['end']), file=sys.stderr)
-            print("p1_id=%s p2_id=%s" % (p1[2]['Primer_ID'], p2[2]['Primer_ID']), file=sys.stderr)
+            print("p1_primer_id=%s p2_primer_id=%s" % (p1[2]['Primer_ID'], p2[2]['Primer_ID']), file=sys.stderr)
             print("p1_direction=%s p2_direction=%s" % (p1[2]['direction'], p2[2]['direction']), file=sys.stderr)
             print("correctly_paired=%s" % correctly_paired, file=sys.stderr)
             print("allowed_to_trim=%s" % allowed_to_trim, file=sys.stderr)
