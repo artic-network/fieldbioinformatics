@@ -230,8 +230,8 @@ def go(args):
         if True:
             #p1_id = p1[2['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_','')
             #p2_id = p2[2['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_','')
-            p1_id = int(p1[2]['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_',''))
-            p2_id = int(p2[2]['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_',''))
+            p1_id = int(p1[2]['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_','').split('_')[-1])
+            p2_id = int(p2[2]['Primer_ID'].replace('_LEFT', '').replace('_RIGHT', '').replace('SARS-CoV-2_','').split('_')[-1])
             ## Check if the primers are invertly paired
             left_diff = p1[2]['start']-segment.reference_start
             right_diff = segment.reference_end-p2[2]['end']
