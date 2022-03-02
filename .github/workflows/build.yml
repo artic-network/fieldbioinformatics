@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.toolchain }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        toolchain:
+          - linux-gcc
+          - macos-clang
+          #- windows-msvc
+        configuration:
+          - debug
+        include:
+          - toolchain: linux-gcc
+            os: ubuntu-latest
+            compiler: gcc
+          - toolchain: macos-clang
+            os: macos-latest
+            compiler: clang
+          #- toolchain: windows-msvc
+          #  os: windows-latest
+          #  compiler: msvc
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Setup ARTIC environment
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: 3.6
+          activate-environment: artic
+          environment-file: environment.yml
+
+      - name: Print ARTIC environment
+        shell: bash -l {0}
+        run: |
+          conda info
+          conda list
+
+      - name: Install ARTIC pipeline
+        shell: bash -l {0}
+        run: |
+          pip install .
+          artic --help
+          artic --version
+
+      - name: Run ARTIC pipeline unit tests
+        shell: bash -l {0}
+        run: pytest -s artic/*_unit_test.py
+
+      #- name: Run ARTIC pipeline pipeline tests
+      #  shell: bash -l {0}
+      #  run: |
+      #    ./test-runner.sh medaka
+      #    ./test-runner.sh nanopolish
+
+      - name: Run ARTIC pipeline validation tests
+        shell: bash -l {0}
+        run: |
+          pytest -s artic/minion_validator.py --workFlow nanopolish --numValidations 1
+          pytest -s artic/minion_validator.py --workFlow medaka --numValidations 2

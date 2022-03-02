@@ -75,8 +75,7 @@ For the **medaka workflow**, we use the following commands on the `$SAMPLE.prime
 
 - [medaka consensus](https://github.com/nanoporetech/medaka)
 - medaka variant or snps (if pipeline has been told not to detect INDELS via `--no-indels`)
-- medaka tools annotate (if `--no-longshot` has been selected)
-- [longshot](https://github.com/pjedge/longshot) (if `--no-longshot` not selected)
+- medaka tools annotate
 
 And for the **nanopolish workflow** we use the following command on the `$SAMPLE.trimmed.rg.sorted.bam` alignment:
 
@@ -95,7 +94,7 @@ Finally, we use the `artic_vcf_filter` module to filter the merged variant file 
 | file name                | description                                                     |
 | ------------------------ | --------------------------------------------------------------- |
 | `$SAMPLE.$READGROUP.vcf` | the raw variants detected (one file per primer pool)            |
-| `$SAMPLE.merged.vcf`     | the raw variants detected merged into one file                  |
+| `$SAMPLE.merged.vcf.gz`  | the raw variants detected merged into one file                  |
 | `$SAMPLE.vcfreport.txt`  | a report evaluating reported variants against the primer scheme |
 | `$SAMPLE.fail.vcf`       | variants deemed too low quality                                 |
 | `$SAMPLE.pass.vcf.gz`    | detected variants (indexed)                                     |
@@ -118,18 +117,19 @@ Finally, the consensus sequence is aligned against the reference sequence using 
 
 ## Summary of pipeline modules
 
-| module                    | function                                                                                             |
-| ------------------------- | ---------------------------------------------------------------------------------------------------- |
-| align_trim                | alignment post processing (amplicon assignment, softmasking, normalisation)                          |
-| artic_vcf_merge           | combines VCF files from multiple read groups                                                         |
-| artic_vcf_filter          | filters a combined VCF into PASS and FAIL variant files                                              |
-| artic_make_depth_mask     | create a coverage mask from the post-processed alignment                                             |
-| artic_mask                | combines the reference sequence, FAIL variants and coverage mask to produce a pre-consensus sequence |
-| artic_fasta_header        | applies the artic workflow and identifier to the consensus sequence header                           |
+| module                | function                                                                                             |
+| --------------------- | ---------------------------------------------------------------------------------------------------- |
+| align_trim            | alignment post processing (amplicon assignment, softmasking, normalisation)                          |
+| artic_vcf_merge       | combines VCF files from multiple read groups                                                         |
+| artic_vcf_filter      | filters a combined VCF into PASS and FAIL variant files                                              |
+| artic_make_depth_mask | create a coverage mask from the post-processed alignment                                             |
+| artic_mask            | combines the reference sequence, FAIL variants and coverage mask to produce a pre-consensus sequence |
+| artic_fasta_header    | applies the artic workflow and identifier to the consensus sequence header                           |
+| artic_get_stats       | collects stats from the pipeline output files and generate summary files for use by MultiQC          |
 
 ## Optional pipeline report
 
-As of version 1.2.1, if you run the pipeline with `--strict`, you can run MultiQC (which should be installed as part of the artic conda environment) on the pipeline output directory and this will produce a report containing amplicon coverage plots and variant call information. To generate a report from within your pipeline output directory:
+As of version 1.3.0, you can run MultiQC (which should be installed as part of the artic conda environment) on the pipeline output directory and this will produce a report containing amplicon coverage plots and variant call information. To generate a report from within your pipeline output directory:
 
 ```
 multiqc .

@@ -229,25 +229,27 @@ Run the alignment/variant-call/consensus pipeline
 artic minion <scheme> <sample>
 ```
 
-| Argument name(s)     | Required | Default value  | Description                                                                                  |
-| :------------------- | :------- | :------------- | :------------------------------------------------------------------------------------------- |
-| scheme               | Y        | NA             | The name of the primer scheme                                                                |
-| sample               | Y        | NA             | The name of the sample                                                                       |
-| --medaka             | N        | False          | Use medaka instead of nanopolish for variants                                                |
-| --medaka-model       | *        | NA             | Medaka model to use (required if --medaka set)                                               |
-| --minimap2           | N        | True           | Use minimap2                                                                                 |
-| --bwa                | N        | False          | Use bwa instead of minimap2                                                                  |
-| --normalise          | N        | 100            | Normalise down to moderate coverage to save runtime                                          |
-| --threads            | N        | 8              | Number of threads                                                                            |
-| --scheme-directory   | N        | /artic/schemes | Default scheme directory                                                                     |
-| --max-haplotypes     | N        | 1000000        | Max-haplotypes value for nanopolish                                                          |
-| --read-file          | N        | NA             | Use alternative FASTA/FASTQ file to <sample>.fasta                                           |
-| --fast5-directory    | N        | NA             | FAST5 Directory                                                                              |
-| --sequencing-summary | N        | NA             | Path to Guppy sequencing summary                                                             |
-| --skip-nanopolish    | N        | False          | Skip nanopolish                                                                              |
-| --no-longshot        | N        | False          | Use medaka variant instead of longshot (experimental feautre from v1.2.0)                    |
-| --strict             | N        | False          | Enables experimental features (from v1.2.0), including VFC overlap checks and stats          |
-| --dry-run            | N        | False          | Perform a dry run of the minion pipeline, outputing commands to a log but not executing them |
+| Argument name(s)            | Required | Default value  | Description                                                                                    |
+| :-------------------------- | :------- | :------------- | :--------------------------------------------------------------------------------------------- |
+| scheme                      | Y        | NA             | The name of the primer scheme                                                                  |
+| sample                      | Y        | NA             | The name of the sample                                                                         |
+| --medaka                    | N        | False          | Use medaka instead of nanopolish for variants                                                  |
+| --medaka-model              | *        | NA             | Medaka model to use (required if --medaka set)                                                 |
+| --minimap2                  | N        | True           | Use minimap2                                                                                   |
+| --bwa                       | N        | False          | Use bwa instead of minimap2                                                                    |
+| --normalise                 | N        | 100            | Normalise down to moderate coverage to save runtime                                            |
+| --threads                   | N        | 8              | Number of threads                                                                              |
+| --scheme-directory          | N        | /artic/schemes | Default scheme directory                                                                       |
+| --max-haplotypes            | N        | 1000000        | Max-haplotypes value for nanopolish                                                            |
+| --read-file                 | N        | NA             | Use alternative FASTA/FASTQ file to <sample>.fasta                                             |
+| --fast5-directory           | N        | NA             | FAST5 Directory                                                                                |
+| --sequencing-summary        | N        | NA             | Path to Guppy sequencing summary                                                               |
+| --skip-nanopolish           | N        | False          | Skip nanopolish                                                                                |
+| --min-depth                 | N        | 20             | Minimum read depth per-base for consensus masking                                              |
+| --min-qual                  | N        | 20             | Minimum variant quality for consensus masking                                                  |
+| --nanopolish-qual-cov-ratio | N        | 3.0            | The quality/coverage cutoff for filtering nanopolish variants                                  |
+| --strict                    | N        | False          | Run withn full-length amplicon alignments & strict filtering of variants against primer scheme |
+| --dry-run                   | N        | False          | Perform a dry run of the minion pipeline, outputing commands to a log but not executing them   |
 
 * `--medaka-model` is required if `--medaka` is set.
 

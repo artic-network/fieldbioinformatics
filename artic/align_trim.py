@@ -209,6 +209,11 @@ def go(args):
                   (segment.query_name), file=sys.stderr)
             continue
 
+        # ignore the read if it does not cover the entire amplicon
+        if args.enforce_amplicon_span and (segment.query_alignment_length < abs(p2[2]['start'] - p1[2]['end'])):
+            print("%s skipped as not full length amplicon match" % (segment.query_name), file=sys.stderr)
+            continue
+
         # update the report with this alignment segment + primer details
         report = "%s\t%s\t%s\t%s_%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d" % (segment.query_name, segment.reference_start, segment.reference_end, p1[2]['Primer_ID'], p2[2]['Primer_ID'], p1[2]['Primer_ID'], abs(
             p1[1]), p2[2]['Primer_ID'], abs(p2[1]), segment.is_secondary, segment.is_supplementary, p1[2]['start'], p2[2]['end'], correctly_paired)
@@ -291,6 +296,7 @@ def main():
                         action='store_true', help='Do not divide reads into groups in SAM output')
     parser.add_argument('--verbose', action='store_true', help='Debug mode')
     parser.add_argument('--remove-incorrect-pairs', action='store_true')
+    parser.add_argument('--enforce-amplicon-span', dest='enforce_amplicon_span', action='store_true', help='Discard reads that don\'t cover the entire amplicon')
 
     args = parser.parse_args()
     go(args)

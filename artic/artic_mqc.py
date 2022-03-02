@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import csv
 import json
 import re
 import sys
@@ -9,49 +10,81 @@ from .vcftagprimersites import read_bed_file
 # Alignment_Length_Threshold drops binned reads that are <X% of amplicon length)
 Alignment_Length_Threshold = 0.95
 
-# Amplicon_Dropout_Val will report amplicon dropout in any amplicon which has fewer than X reads
-Amplicon_Dropout_Val = 50
+# GetPlotDataTemplate returns the template for the amplicon plot data
+def GetPlotDataTemplate(ampliconDropoutThreshold, sample, data):
+    """Get the amplicon plot data into JSON format for multiqc.
 
-# Template for the amplicon plot data
-amplicon_plot_template = {
-    "id": "custom_data_lineplot",
-    "section_name": "ARTIC: Amplicon Coverage",
-    "description": "This plot summarises the number of reads that were assigned to each amplicon in the primer scheme.\nWe use the align_trim report file from the ARTIC pipeline and group each read by its assigned amplicon.\nIf the length of alignment between read and reference is <{}% of the amplicon length, the read discarded from the coverage plot.\nIf the total number of reads assigned to an amplicon is below {} (red dashed line),\nthe amplicon is marked as dropped out." .format(Alignment_Length_Threshold, Amplicon_Dropout_Val),
-    "plot_type": "linegraph",
-    "pconfig": {
-        "id": "custom_data_linegraph",
-        "title": "",
-        "categories": "True",
-        "yDecimals": "False",
-        "xDecimals": "False",
-        "ylab": "# reads",
-        "xlab": "amplicon",
-        "yPlotLines": [{
-            "color": "#FF0000",
-            "width": 2,
-            "dashStyle": "LongDash",
-            "label": "Amplicon dropout",
-            "value": Amplicon_Dropout_Val
-        }]
-    },
-    "data": {}
-}
+    Parameters
+    ----------
+    ampliconDropoutThreshold : int
+        The amplicon dropout threshold used
+    sample : string
+        The samplename
+    data : dict
+        The amplicon and count pairs
+    
+    Returns
+    -------
+    dict
+        A JSON object of plot data
+    """
+    return {
+        "id": "custom_data_lineplot",
+        "section_name": "ARTIC: Amplicon Coverage",
+        "description": "This plot summarises the number of reads that were assigned to each amplicon in the primer scheme.\nWe use the align_trim report file from the ARTIC pipeline and group each read by its assigned amplicon.\nIf the length of alignment between read and reference is <{}% of the amplicon length, the read discarded from the coverage plot.\nIf the total number of reads assigned to an amplicon is below {} (red dashed line),\nthe amplicon is marked as dropped out." .format(Alignment_Length_Threshold, ampliconDropoutThreshold),
+        "plot_type": "linegraph",
+        "pconfig": {
+            "id": "custom_data_linegraph",
+            "title": "",
+            "categories": "True",
+            "yDecimals": "False",
+            "xDecimals": "False",
+            "ylab": "# reads",
+            "xlab": "amplicon",
+            "yPlotLines": [{
+                "value": ampliconDropoutThreshold,
+                "color": "#FF0000",
+                "width": 2,
+                "dashStyle": "LongDash",
+                "label": "Amplicon dropout"
+            }]
+        },
+        "data": {
+            sample: data
+        }
+    }
 
-# Template for the stats table data
-amplicon_stats_template = {
-    "id": "custom_data_json_table",
-    "section_name": "ARTIC: General Stats",
-    "description": "A summary of stats from the consensus genome pipeline.",
-    "plot_type": "table",
-    "pconfig": {
-        "id": "custom_data_json_table_table",
-        "title": "",
-        "min": 0,
-        "scale": "RdYlGn-rev",
-        "format": "{:,.0f}"
-    },
-    "data": {}
-}
+def GetStatsTemplate(sample, data):
+    """Get the amplicon plot data into JSON format for multiqc.
+
+    Parameters
+    ----------
+    sample : string
+        The samplename
+    data : dict
+        The stat descriptor and value pair
+    
+    Returns
+    -------
+    dict
+        A JSON object of stats
+    """
+    return {
+        "id": "custom_data_json_table",
+        "section_name": "ARTIC: General Stats",
+        "description": "A summary of stats from the consensus genome pipeline.",
+        "plot_type": "table",
+        "pconfig": {
+            "id": "custom_data_json_table_table",
+            "title": "",
+            "min": 0,
+            "scale": "RdYlGn-rev",
+            "format": "{:,.0f}"
+        },
+        "data": {
+            sample: data
+        }
+    }
 
 def getSchemeAmplicons(schemeFile):
     """Get the expected amplicon names from the provided scheme.
@@ -143,17 +176,16 @@ def getVCFreportInfo(vcf_report):
     """
     # Read vcfcheck report and get important stuff out (NOTE: more to be added in next release)
     stats = dict()
-    total_vars = 0
-    passed_vars = 0
-    with open(vcf_report, "r") as fh:
-        for l in fh:
-            match = re.search(r'.*\t(\d+)\svariant\srecords\sprocessed', l)
-            if match:
-                total_vars = int(match.group(1))
-            match = re.search(r'.*\t(\d+)\svariant\srecords\spassed\schecks', l)
-            if match:
-                passed_vars = int(match.group(1))
-        stats["# overlap var. fails"] = total_vars - passed_vars
+    vcf_report_data = csv.DictReader(open(vcf_report), delimiter='\t')
+
+    # just read the first entry in the TSV and ignore the input VCF filename entry as it's not needed
+    # NOTE: artic-tools check_vcf provides a TSV with header line, meaning we can munge straight into
+    # our dict and not need any parsing here - allowing future stats to be incorporated easily with
+    # artic-tools updates
+    firstline = next(vcf_report_data)
+    for key, value in firstline.items():
+        if key != "input VCF file":
+            stats[key] = value
     return stats
 
 def run(args):
@@ -166,29 +198,31 @@ def run(args):
     amplicon_counts = getAmpliconCounts(amplicons, args.align_report)
 
     # replace amplicon names with ints and count number of dropouts
+    readCount = 0
     dropouts = 0
     amplicon_renamed_counts = dict()
     for amplicon, count in amplicon_counts.items():
+        readCount += count
         amplicon_renamed_counts[int(amplicon.split('_')[1])] = count
-        if count < Amplicon_Dropout_Val:
+        if count < args.min_depth:
             dropouts += 1
     
     # add counts to multiqc amplicon plot template
-    amplicon_plot_template["data"][args.sample] = amplicon_renamed_counts
+    amplicon_plot_template = GetPlotDataTemplate(args.min_depth, args.sample, amplicon_renamed_counts)
 
     # write the amplicon plot output
     with open("{}.amplicon_plot_data_mqc.json" .format(args.sample), "w") as amplicon_plot_mqc_file:
         json.dump(amplicon_plot_template, amplicon_plot_mqc_file, indent=4, sort_keys=False)
     amplicon_plot_mqc_file.close()
 
-    # add counts to multiqc stats template
-    amplicon_stats_template["data"][args.sample] = dict()
-    amplicon_stats_template["data"][args.sample]["# low cov. amplicons"] = dropouts
-
-    # parse VCF report if provided and add to the stats template
+    # populate stats from mapped reads and the vcf report
+    statsData = dict()
+    statsData["# mapped reads"] = readCount
+    statsData["# low cov. amplicons"] = dropouts
     if args.vcf_report:
         for stat, value in getVCFreportInfo(args.vcf_report).items():
-            amplicon_stats_template["data"][args.sample][stat] = value
+            statsData[stat] = value
+    amplicon_stats_template = GetStatsTemplate(args.sample, statsData)
 
     # write the stats output
     with open("{}.amplicon_stats_data_mqc.json" .format(args.sample), "w") as amplicon_stats_mqc_file:
@@ -201,6 +235,7 @@ def main():
     parser.add_argument('--scheme', required=True, type=str, help='the amplicon scheme used')
     parser.add_argument('--align-report', required=True, type=str, help='the report file from align_trim (*.alignreport.txt')
     parser.add_argument('--vcf-report', required=False, type=str, help='the report file from vcf_check (*.vcfreport.txt')
+    parser.add_argument('--min-depth', required=False, type=int, default=20, help='the minimum read depth per amplicon')
     parser.add_argument('sample', type=str, help='the sample name')
     args = parser.parse_args()
     run(args)

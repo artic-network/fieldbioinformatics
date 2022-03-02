@@ -193,8 +193,12 @@ def run(parser, args):
         normalise_string = '--normalise %d' % (args.normalise)
     else:
         normalise_string = ''
-    cmds.append("align_trim %s %s --start --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.trimmed.rg.sorted.bam" % (normalise_string, bed, args.sample, args.sample, args.sample, args.sample, args.sample))
-    cmds.append("align_trim %s %s --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.primertrimmed.rg.sorted.bam" % (normalise_string, bed, args.sample, args.sample, args.sample, args.sample, args.sample))
+    if args.strict:
+        strict_string = '--enforce-amplicon-span'
+    else:
+        strict_string = ''
+    cmds.append("align_trim %s %s %s --start --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.trimmed.rg.sorted.bam" % (strict_string, normalise_string, bed, args.sample, args.sample, args.sample, args.sample, args.sample))
+    cmds.append("align_trim %s %s %s --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.primertrimmed.rg.sorted.bam" % (strict_string, normalise_string, bed, args.sample, args.sample, args.sample, args.sample, args.sample))
     cmds.append("samtools index %s.trimmed.rg.sorted.bam" % (args.sample))
     cmds.append("samtools index %s.primertrimmed.rg.sorted.bam" % (args.sample))
 
@@ -208,11 +212,9 @@ def run(parser, args):
                 cmds.append("medaka snp %s %s.%s.hdf %s.%s.vcf" % (ref, args.sample, p, args.sample, p))
             else:
                 cmds.append("medaka variant %s %s.%s.hdf %s.%s.vcf" % (ref, args.sample, p, args.sample, p))
-            
-            ## if not using longshot, annotate VCF with read depth info etc. so we can filter it
-            if args.no_longshot:
-                cmds.append("medaka tools annotate --pad 25 --RG %s %s.%s.vcf %s %s.trimmed.rg.sorted.bam tmp.medaka-annotate.vcf" % (p, args.sample, p, ref, args.sample))
-                cmds.append("mv tmp.medaka-annotate.vcf %s.%s.vcf" % (args.sample, p))
+            # note: medaka annotate can't overwrite files so we need to write to a tmp file and then overwrite it ourselves
+            cmds.append("medaka tools annotate --pad 25 --RG %s %s.%s.vcf %s %s.trimmed.rg.sorted.bam %s.medaka-annotate.vcf" % (p, args.sample, p, ref, args.sample, args.sample))
+            cmds.append("mv %s.medaka-annotate.vcf %s.%s.vcf" % (args.sample, args.sample, p))
 
     else:
         if not args.skip_nanopolish:
@@ -224,25 +226,23 @@ def run(parser, args):
             for p in pools:
                 cmds.append("nanopolish variants --min-flanking-sequence 10 -x %s --progress -t %s --reads %s -o %s.%s.vcf -b %s.trimmed.rg.sorted.bam -g %s -w \"%s\" --ploidy 1 -m 0.15 --read-group %s %s" % (args.max_haplotypes, args.threads, indexed_nanopolish_file, args.sample, p, args.sample, ref, nanopolish_header, p, nanopolish_extra_args))
 
-    # 7) merge the called variants for each read group
+    # 7) merge the called variants for each read group and index the file
     merge_vcf_cmd = "artic_vcf_merge %s %s 2> %s.primersitereport.txt" % (args.sample, bed, args.sample)
     for p in pools:
         merge_vcf_cmd += " %s:%s.%s.vcf" % (p, args.sample, p)
     cmds.append(merge_vcf_cmd)
+    cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
+    cmds.append("tabix -p vcf %s.merged.vcf.gz" % (args.sample))
 
     # 8) check and filter the VCFs
     ## if using strict, run the vcf checker to remove vars present only once in overlap regions (this replaces the original merged vcf from the previous step)
     if args.strict:
-        cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
-        cmds.append("tabix -p vcf %s.merged.vcf.gz" % (args.sample))
-        cmds.append("artic-tools check_vcf --dropPrimerVars --dropOverlapFails --vcfOut %s.merged.filtered.vcf %s.merged.vcf.gz %s 2> %s.vcfreport.txt" % (args.sample, args.sample, bed, args.sample))
+        cmds.append("artic-tools check_vcf --summaryOut {}.vcfreport.txt --vcfOut {}.merged.filtered.vcf {}.merged.vcf.gz {} 2> {}.vcfcheck.log" .format(args.sample, args.sample, args.sample, bed, args.sample))
         cmds.append("mv %s.merged.filtered.vcf %s.merged.vcf" % (args.sample, args.sample))
-
-    ## if doing the medaka workflow and longshot required, do it on the merged VCF
-    if args.medaka and not args.no_longshot:
         cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
         cmds.append("tabix -f -p vcf %s.merged.vcf.gz" % (args.sample))
-        cmds.append("longshot -P 0 -F -A --no_haps --bam %s.primertrimmed.rg.sorted.bam --ref %s --out %s.merged.vcf --potential_variants %s.merged.vcf.gz" % (args.sample, ref, args.sample, args.sample))
+    else:
+        cmds.append("artic-tools check_vcf --summaryOut {}.vcfreport.txt {}.merged.vcf.gz {} 2> {}.vcfcheck.log" .format(args.sample, args.sample, bed, args.sample))
 
     ## set up some name holder vars for ease
     if args.medaka:
@@ -253,17 +253,17 @@ def run(parser, args):
 
     ## filter the variants to produce PASS and FAIL lists, then index them
     if args.no_frameshifts and not args.no_indels:
-        cmds.append("artic_vcf_filter --%s --no-frameshifts %s.merged.vcf %s.pass.vcf %s.fail.vcf" % (method, args.sample, args.sample, args.sample))
+        cmds.append("artic_vcf_filter --%s --min-depth %s --min-qual %s --nanopolish-qual-cov-ratio %s --no-frameshifts %s.merged.vcf.gz %s.pass.vcf %s.fail.vcf" % (method, args.min_depth, args.min_qual, args.nanopolish_qual_cov_ratio, args.sample, args.sample, args.sample))
     else:
-        cmds.append("artic_vcf_filter --%s %s.merged.vcf %s.pass.vcf %s.fail.vcf" % (method, args.sample, args.sample, args.sample))
-    cmds.append("bgzip -f %s" % (vcf_file))
-    cmds.append("tabix -p vcf %s.gz" % (vcf_file))
+        cmds.append("artic_vcf_filter --%s --min-depth %s --min-qual %s --nanopolish-qual-cov-ratio %s %s.merged.vcf.gz %s.pass.vcf %s.fail.vcf" % (method, args.min_depth, args.min_qual, args.nanopolish_qual_cov_ratio, args.sample, args.sample, args.sample))
 
     # 9) get the depth of coverage for each readgroup, create a coverage mask and plots, and add failed variants to the coverage mask (artic_mask must be run before bcftools consensus)
-    cmds.append("artic_make_depth_mask --store-rg-depths %s %s.primertrimmed.rg.sorted.bam %s.coverage_mask.txt" % (ref, args.sample, args.sample))
+    cmds.append("artic_make_depth_mask --depth %s %s %s.primertrimmed.rg.sorted.bam %s.coverage_mask.txt" % (args.min_depth, ref, args.sample, args.sample))
     cmds.append("artic_mask %s %s.coverage_mask.txt %s.fail.vcf %s.preconsensus.fasta" % (ref, args.sample, args.sample, args.sample))
 
     # 10) generate the consensus sequence
+    cmds.append("bcftools norm --check-ref x --fasta-ref %s.preconsensus.fasta -O z -o %s.gz %s" %(args.sample, vcf_file, vcf_file))
+    cmds.append("tabix -p vcf %s.gz" % (vcf_file))
     cmds.append("bcftools consensus -f %s.preconsensus.fasta %s.gz -m %s.coverage_mask.txt -o %s.consensus.fasta" % (args.sample, vcf_file, args.sample, args.sample))
 
     # 11) apply the header to the consensus sequence and run alignment against the reference sequence
@@ -273,8 +273,7 @@ def run(parser, args):
     cmds.append("muscle -in %s.muscle.in.fasta -out %s.muscle.out.fasta" % (args.sample, args.sample))
 
     # 12) get some QC stats
-    if args.strict:
-        cmds.append("artic_get_stats --scheme {} --align-report {}.alignreport.txt --vcf-report {}.vcfreport.txt {}" .format(bed, args.sample, args.sample, args.sample))
+    cmds.append("artic_get_stats --min-depth {} --scheme {} --align-report {}.alignreport.txt --vcf-report {}.vcfreport.txt {}" .format(args.min_depth, bed, args.sample, args.sample, args.sample))
 
     # 13) setup the log file and run the pipeline commands
     log = "%s.minion.log.txt" % (args.sample)
