@@ -36,10 +36,10 @@ def find_primer(bed, pos, direction):
 
     if direction == '+':
         closest = min([(abs(p['start'] - pos), p['start'] - pos, p)
-                       for p in bed if p['direction'] == direction], key=itemgetter(0))
+                       for p in bed if (p['direction'] == direction) and (p['start'] - pos <= 0)], key=itemgetter(0))
     else:
         closest = min([(abs(p['end'] - pos), p['end'] - pos, p)
-                       for p in bed if p['direction'] == direction], key=itemgetter(0))
+                       for p in bed if (p['direction'] == direction) and (p['end'] - pos >= 0)], key=itemgetter(0))
     return closest
 
 
