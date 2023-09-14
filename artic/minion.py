@@ -264,6 +264,8 @@ def run(parser, args):
     cmds.append("artic_mask %s %s.coverage_mask.txt %s.fail.vcf %s.preconsensus.fasta" % (ref, args.sample, args.sample, args.sample))
 
     # 10) generate the consensus sequence
+    cmds.append("bcftools norm --check-ref x --fasta-ref %s.preconsensus.fasta -O z -o %s.gz %s" %(args.sample, vcf_file, vcf_file))
+    cmds.append("tabix -p vcf %s.gz" % (vcf_file))
     cmds.append("bcftools consensus -f %s.preconsensus.fasta %s.gz -m %s.coverage_mask.txt -o %s.consensus.fasta" % (args.sample, vcf_file, args.sample, args.sample))
 
     # 11) apply the header to the consensus sequence and run alignment against the reference sequence
