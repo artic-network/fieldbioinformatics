@@ -99,6 +99,7 @@ def init_pipeline_parser():
                                help='Use medaka instead of nanopolish for variants')
     parser_minion.add_argument('--medaka-model', metavar='medaka_model', help='The model to use for medaka (required if using --medaka)')
     parser_minion.add_argument('--no-longshot', dest='no_longshot', action='store_true', help='Do not use Longshot for variant filtering after medaka')
+    parser_minion.add_argument('--no-auto_max_cov', dest='no_auto_max_cov', action='store_true', help='When running Longshot, do not use its --auto_max_cov flag')
     parser_minion.add_argument('--minimap2', dest='minimap2', default=True,
                                action='store_true', help='Use minimap2 (default)')
     parser_minion.add_argument(

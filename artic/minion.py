@@ -242,7 +242,10 @@ def run(parser, args):
     if args.medaka and not args.no_longshot:
         cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
         cmds.append("tabix -f -p vcf %s.merged.vcf.gz" % (args.sample))
-        cmds.append("longshot -P 0 -F -A --no_haps --bam %s.primertrimmed.rg.sorted.bam --ref %s --out %s.merged.vcf --potential_variants %s.merged.vcf.gz" % (args.sample, ref, args.sample, args.sample))
+        if args.no_auto_max_cov:
+            cmds.append("longshot -P 0 -F --no_haps --bam %s.primertrimmed.rg.sorted.bam --ref %s --out %s.merged.vcf --potential_variants %s.merged.vcf.gz" % (args.sample, ref, args.sample, args.sample))
+        else:
+            cmds.append("longshot -P 0 -F -A --no_haps --bam %s.primertrimmed.rg.sorted.bam --ref %s --out %s.merged.vcf --potential_variants %s.merged.vcf.gz" % (args.sample, ref, args.sample, args.sample))
 
     ## set up some name holder vars for ease
     if args.medaka:
