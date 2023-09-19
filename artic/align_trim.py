@@ -101,7 +101,7 @@ def trim(segment, primer_pos, end, debug):
             break
 
     # calculate how many extra matches are needed in the CIGAR
-    extra = abs(pos - primer_pos)
+    extra = min(abs(pos - primer_pos),length)
     if debug:
         print("extra %s" % (extra), file=sys.stderr)
     if extra:

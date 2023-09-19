@@ -10,7 +10,8 @@ def vcf_merge(args):
    primer_map = defaultdict(dict)
 
    for p in bed:
-      for n in range(p['start'], p['end']+1):
+      #for n in range(p['start'], p['end']+1):
+      for n in range(p['start']+1, p['end']):
          primer_map[p['PoolName']][n] = p['Primer_ID']
 
    first_vcf = None
@@ -19,7 +20,7 @@ def vcf_merge(args):
    for param in args.vcflist:
       pool_name, file_name = param.split(":")
       pool_map[file_name] = pool_name
-      if not first_vcf: 
+      if not first_vcf:
          first_vcf = file_name
 
    vcf_reader = vcf.Reader(filename=first_vcf)
