@@ -242,11 +242,11 @@ def handle_segment(
 
     # get the primer positions
     if args.trim_primers:
-        p1_position = p1[2]["start"]
-        p2_position = p2[2]["end"]
-    else:
         p1_position = p1[2]["end"]
         p2_position = p2[2]["start"]
+    else:
+        p1_position = p1[2]["start"]
+        p2_position = p2[2]["end"]
 
     # softmask the alignment if left primer start/end inside alignment
     if segment.reference_start < p1_position:
