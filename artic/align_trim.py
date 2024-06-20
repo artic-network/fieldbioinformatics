@@ -461,7 +461,9 @@ def go(args):
     # iterate over the alignment segments in the input SAM file
     for segment in infile:
 
-        trimming_tuple = handle_segment(segment, bed, report_writer, args)
+        trimming_tuple = handle_segment(
+            segment=segment, bed=bed, args=args, report_writer=report_writer
+        )
         if not trimming_tuple:
             continue
 
