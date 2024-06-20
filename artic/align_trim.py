@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
-# Written by Nick Loman
-
 from copy import copy
 from collections import defaultdict
 import pysam
 import sys
+import numpy as np
+import random
+import typing
+import argparse
 from .vcftagprimersites import read_bed_file
 
 # consumesReference lookup for if a CIGAR operation consumes the reference sequence
@@ -39,7 +41,7 @@ def find_primer(bed, pos, direction):
             [
                 (abs(p["start"] - pos), p["start"] - pos, p)
                 for p in bed
-                if p["direction"] == direction
+                if (p["direction"] == direction and p["start"] > pos)
             ],
             key=itemgetter(0),
         )
@@ -48,7 +50,7 @@ def find_primer(bed, pos, direction):
             [
                 (abs(p["end"] - pos), p["end"] - pos, p)
                 for p in bed
-                if p["direction"] == direction
+                if (p["direction"] == direction and p["end"] < pos)
             ],
             key=itemgetter(0),
         )
@@ -162,6 +164,252 @@ def trim(segment, primer_pos, end, debug):
     return
 
 
+def handle_segment(
+    segment: pysam.AlignedSegment,
+    bed: dict,
+    reportfh: typing.IO,
+    args: argparse.Namespace,
+) -> tuple[int, pysam.AlignedSegment] | bool:
+    """Handle the alignment segment including
+
+    Args:
+        segment (pysam.AlignedSegment): The alignment segment to process
+        bed (dict): The primer scheme
+        reportfh (typing.IO): The report file handle
+        args (argparse.Namespace): The command line arguments
+
+    Returns:
+        tuple [int, pysam.AlignedSegment] | bool: A tuple containing the amplicon number and the alignment segment, or False if the segment is to be skipped
+    """
+
+    # filter out unmapped and supplementary alignment segments
+    if segment.is_unmapped:
+        print("%s skipped as unmapped" % (segment.query_name), file=sys.stderr)
+        return False
+    if segment.is_supplementary:
+        print("%s skipped as supplementary" % (segment.query_name), file=sys.stderr)
+        return False
+
+    # locate the nearest primers to this alignment segment
+    p1 = find_primer(bed, segment.reference_start, "+")
+    p2 = find_primer(bed, segment.reference_end, "-")
+
+    # check if primers are correctly paired and then assign read group
+    # NOTE: removed this as a function as only called once
+    # TODO: will try improving this / moving it to the primer scheme processing code
+    correctly_paired = p1[2]["Primer_ID"].replace("_LEFT", "") == p2[2][
+        "Primer_ID"
+    ].replace("_RIGHT", "")
+
+    if not args.no_read_groups:
+        if correctly_paired:
+            segment.set_tag("RG", p1[2]["PoolName"])
+        else:
+            segment.set_tag("RG", "unmatched")
+
+    if args.remove_incorrect_pairs and not correctly_paired:
+        print(
+            "%s skipped as not correctly paired" % (segment.query_name),
+            file=sys.stderr,
+        )
+        return False
+
+    # get the amplicon number
+    amplicon = p1[2]["Primer_ID"].split("_")[1]
+
+    # update the report with this alignment segment + primer details
+    report = "%s\t%s\t%s\t%s_%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d" % (
+        segment.query_name,
+        segment.reference_start,
+        segment.reference_end,
+        p1[2]["Primer_ID"],
+        p2[2]["Primer_ID"],
+        p1[2]["Primer_ID"],
+        abs(p1[1]),
+        p2[2]["Primer_ID"],
+        abs(p2[1]),
+        segment.is_secondary,
+        segment.is_supplementary,
+        p1[2]["start"],
+        p2[2]["end"],
+        correctly_paired,
+    )
+    if args.report:
+        print(report, file=reportfh)
+
+    if args.verbose:
+        print(report, file=sys.stderr)
+
+    # get the primer positions
+    if args.trim_primers:
+        p1_position = p1[2]["start"]
+        p2_position = p2[2]["end"]
+    else:
+        p1_position = p1[2]["end"]
+        p2_position = p2[2]["start"]
+
+    # softmask the alignment if left primer start/end inside alignment
+    if segment.reference_start < p1_position:
+        try:
+            trim(segment, p1_position, False, args.verbose)
+            if args.verbose:
+                print(
+                    "ref start %s >= primer_position %s"
+                    % (segment.reference_start, p1_position),
+                    file=sys.stderr,
+                )
+        except Exception as e:
+            print(
+                "problem soft masking left primer in {} (error: {}), skipping".format(
+                    segment.query_name, e
+                ),
+                file=sys.stderr,
+            )
+            return False
+
+    # softmask the alignment if right primer start/end inside alignment
+    if segment.reference_end > p2_position:
+        try:
+            trim(segment, p2_position, True, args.verbose)
+            if args.verbose:
+                print(
+                    "ref start %s >= primer_position %s"
+                    % (segment.reference_start, p2_position),
+                    file=sys.stderr,
+                )
+        except Exception as e:
+            print(
+                "problem soft masking right primer in {} (error: {}), skipping".format(
+                    segment.query_name, e
+                ),
+                file=sys.stderr,
+            )
+            return False
+
+    # check the the alignment still contains bases matching the reference
+    if "M" not in segment.cigarstring:
+        print(
+            "%s dropped as does not match reference post masking"
+            % (segment.query_name),
+            file=sys.stderr,
+        )
+        return False
+
+    return (amplicon, segment)
+
+
+def generate_amplicons(bed: list) -> dict:
+    """Generate a dictionary of amplicons from a primer scheme list (generated by vcftagprimersites/read_bed_file)
+
+    Args:
+        bed (list): A list of dictionaries, where each dictionary contains a row of bedfile data (generated by vcftagprimersites/read_bed_file), assumes that all redundant primers have been expanded
+
+    Raises:
+        ValueError: Primer direction not recognised
+
+    Returns:
+        dict: A dictionary of amplicons, where each key is the amplicon number and the value is a dictionary containing the primer start, primer end, insert start, insert end, length and circularity
+    """
+
+    amplicons = {}
+    for primer in bed:
+
+        amplicon = primer["Primer_ID"].split("_")[1]
+
+        amplicons.setdefault(amplicon, {})
+
+        if primer["direction"] == "+":
+            amplicons[amplicon]["p_start"] = primer["start"]
+            amplicons[amplicon]["start"] = primer["end"] + 1
+
+        elif primer["direction"] == "-":
+            amplicons[amplicon]["p_end"] = primer["end"]
+            amplicons[amplicon]["end"] = primer["start"] - 1
+
+        else:
+            raise ValueError("Primer direction not recognised")
+
+    for amplicon in amplicons:
+        if not all([x in amplicons[amplicon] for x in ["p_start", "p_end"]]):
+            raise ValueError(f"Primer scheme for amplicon {amplicon} is incomplete")
+
+        # Check if primer runs accross reference start / end -> circular virus
+        amplicons[amplicon]["circular"] = (
+            amplicons[amplicon]["p_start"] > amplicons[amplicon]["p+end"]
+        )
+
+        # Calculate amplicon length considering that the "length" may be negative if the genome is circular
+        amplicons[amplicon]["length"] = abs(
+            amplicons[amplicon]["p_end"] - amplicons[amplicon]["p_start"]
+        )
+
+    return amplicons
+
+
+def normalise(
+    trimmed_segments: dict, normalise: int, bed: list, trim_primers: bool
+) -> list:
+    """Normalise the depth of the trimmed segments to a given value. Perform per-amplicon normalisation using numpy vector maths to determine whether the segment in question would take the depth closer to the desired depth accross the amplicon.
+
+    Args:
+        trimmed_segments (dict): Dict containing amplicon number as key and list of pysam.AlignedSegment as value
+        normalise (int): Desired normalised depth
+        bed (list): Primer scheme list (generated by vcftagprimersites/read_bed_file)
+        trim_primers (bool): Whether to trim primers from the reads
+
+    Raises:
+        ValueError: Amplicon assigned to segment not found in primer scheme file
+
+    Returns:
+       list : List of pysam.AlignedSegment to output
+    """
+
+    amplicons = generate_amplicons(bed)
+
+    output_segments = []
+
+    for amplicon, segments in trimmed_segments.items():
+        if amplicon not in amplicons:
+            raise ValueError(f"Segment {amplicon} not found in primer scheme file")
+
+        desired_depth = np.full_like(
+            amplicons[amplicon]["length"], normalise, dtype=np.int8
+        )
+
+        if trim_primers:
+            # Trim primers from the amplicon depth
+            desired_depth[
+                amplicons[amplicon]["p_start"] : amplicons[amplicon]["start"] - 1
+            ] = 0
+            desired_depth[
+                amplicons[amplicon]["end"] + 1 : amplicons[amplicon]["p_end"]
+            ] = 0
+
+        amplicon_depth = np.zeros(amplicons[amplicon]["length"], dtype=np.int8)
+
+        randomised_segments = random.shuffle(segments)
+
+        distance = np.mean(np.abs(amplicon_depth - desired_depth))
+
+        for segment in randomised_segments:
+            test_depths = np.copy(amplicon_depth)
+
+            relative_start = segment.reference_start - amplicons[amplicon]["start"]
+
+            relative_end = segment.reference_end - amplicons[amplicon]["start"]
+
+            test_depths[relative_start:relative_end] += 1
+
+            test_distance = np.mean(np.abs(test_depths - desired_depth))
+
+            if test_distance < distance:
+                amplicon_depth = test_depths
+                distance = test_distance
+                output_segments.append(segment)
+
+    return output_segments
+
+
 def go(args):
     """Filter and soft mask an alignment file so that the alignment boundaries match the primer start and end sites.
 
@@ -196,133 +444,34 @@ def go(args):
     # prepare the alignment outfile
     outfile = pysam.AlignmentFile("-", "wh", header=bam_header)
 
+    trimmed_segments = {}
+
     # iterate over the alignment segments in the input SAM file
     for segment in infile:
 
-        # filter out unmapped and supplementary alignment segments
-        if segment.is_unmapped:
-            print("%s skipped as unmapped" % (segment.query_name), file=sys.stderr)
-            continue
-        if segment.is_supplementary:
-            print("%s skipped as supplementary" % (segment.query_name), file=sys.stderr)
+        trimming_tuple = handle_segment(segment, bed, reportfh, args)
+        if not trimming_tuple:
             continue
 
-        # locate the nearest primers to this alignment segment
-        p1 = find_primer(bed, segment.reference_start, "+")
-        p2 = find_primer(bed, segment.reference_end, "-")
+        # unpack the trimming tuple since segment passed trimming
+        amplicon, trimmed_segment = trimming_tuple
+        trimmed_segments.setdefault(amplicon, [])
 
-        # check if primers are correctly paired and then assign read group
-        # NOTE: removed this as a function as only called once
-        # TODO: will try improving this / moving it to the primer scheme processing code
-        correctly_paired = p1[2]["Primer_ID"].replace("_LEFT", "") == p2[2][
-            "Primer_ID"
-        ].replace("_RIGHT", "")
-        if not args.no_read_groups:
-            if correctly_paired:
-                segment.set_tag("RG", p1[2]["PoolName"])
-            else:
-                segment.set_tag("RG", "unmatched")
-        if args.remove_incorrect_pairs and not correctly_paired:
-            print(
-                "%s skipped as not correctly paired" % (segment.query_name),
-                file=sys.stderr,
-            )
-            continue
+        if trimmed_segment:
+            trimmed_segments[amplicon].append(trimmed_segment)
 
-        # update the report with this alignment segment + primer details
-        report = "%s\t%s\t%s\t%s_%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d" % (
-            segment.query_name,
-            segment.reference_start,
-            segment.reference_end,
-            p1[2]["Primer_ID"],
-            p2[2]["Primer_ID"],
-            p1[2]["Primer_ID"],
-            abs(p1[1]),
-            p2[2]["Primer_ID"],
-            abs(p2[1]),
-            segment.is_secondary,
-            segment.is_supplementary,
-            p1[2]["start"],
-            p2[2]["end"],
-            correctly_paired,
+    # normalise if requested
+    if args.normalise:
+        output_segments = normalise(
+            trimmed_segments, args.normalise, bed, args.trim_primers
         )
-        if args.report:
-            print(report, file=reportfh)
-        if args.verbose:
-            print(report, file=sys.stderr)
 
-        # get the primer positions
-        if args.start:
-            p1_position = p1[2]["start"]
-            p2_position = p2[2]["end"]
-        else:
-            p1_position = p1[2]["end"]
-            p2_position = p2[2]["start"]
-
-        # softmask the alignment if left primer start/end inside alignment
-        if segment.reference_start < p1_position:
-            try:
-                trim(segment, p1_position, False, args.verbose)
-                if args.verbose:
-                    print(
-                        "ref start %s >= primer_position %s"
-                        % (segment.reference_start, p1_position),
-                        file=sys.stderr,
-                    )
-            except Exception as e:
-                print(
-                    "problem soft masking left primer in {} (error: {}), skipping".format(
-                        segment.query_name, e
-                    ),
-                    file=sys.stderr,
-                )
-                continue
-
-        # softmask the alignment if right primer start/end inside alignment
-        if segment.reference_end > p2_position:
-            try:
-                trim(segment, p2_position, True, args.verbose)
-                if args.verbose:
-                    print(
-                        "ref start %s >= primer_position %s"
-                        % (segment.reference_start, p2_position),
-                        file=sys.stderr,
-                    )
-            except Exception as e:
-                print(
-                    "problem soft masking right primer in {} (error: {}), skipping".format(
-                        segment.query_name, e
-                    ),
-                    file=sys.stderr,
-                )
-                continue
-
-        # normalise if requested
-        if args.normalise:
-            pair = "%s-%s-%d" % (
-                p1[2]["Primer_ID"],
-                p2[2]["Primer_ID"],
-                segment.is_reverse,
-            )
-            counter[pair] += 1
-            if counter[pair] > args.normalise:
-                print(
-                    "%s dropped as abundance theshold reached" % (segment.query_name),
-                    file=sys.stderr,
-                )
-                continue
-
-        # check the the alignment still contains bases matching the reference
-        if "M" not in segment.cigarstring:
-            print(
-                "%s dropped as does not match reference post masking"
-                % (segment.query_name),
-                file=sys.stderr,
-            )
-            continue
-
-        # current alignment segment has passed filters, send it to the outfile
-        outfile.write(segment)
+        for output_segment in output_segments:
+            outfile.write(output_segment)
+    else:
+        for amplicon, segments in trimmed_segments.items():
+            for segment in segments:
+                outfile.write(segment)
 
     # close up the file handles
     infile.close()
@@ -332,8 +481,6 @@ def go(args):
 
 
 def main():
-    import argparse
-
     parser = argparse.ArgumentParser(
         description="Trim alignments from an amplicon scheme."
     )
@@ -343,7 +490,9 @@ def main():
     )
     parser.add_argument("--report", type=str, help="Output report to file")
     parser.add_argument(
-        "--start", action="store_true", help="Trim to start of primers instead of ends"
+        "--trim-primers",
+        action="store_true",
+        help="Trims primers from reads",
     )
     parser.add_argument(
         "--no-read-groups",
