@@ -41,7 +41,7 @@ def find_primer(bed, pos, direction):
             [
                 (abs(p["start"] - pos), p["start"] - pos, p)
                 for p in bed
-                if (p["direction"] == direction and p["start"] > pos)
+                if (p["direction"] == direction and p["start"] < pos)
             ],
             key=itemgetter(0),
         )
@@ -50,7 +50,7 @@ def find_primer(bed, pos, direction):
             [
                 (abs(p["end"] - pos), p["end"] - pos, p)
                 for p in bed
-                if (p["direction"] == direction and p["end"] < pos)
+                if (p["direction"] == direction and p["end"] > pos)
             ],
             key=itemgetter(0),
         )
