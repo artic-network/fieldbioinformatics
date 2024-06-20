@@ -17,7 +17,7 @@ consumesReference = [True, False, True, True, False, False, False, True]
 consumesQuery = [True, True, False, False, True, False, False, True]
 
 
-def find_primer(bed, pos, direction):
+def find_primer(bed, pos, direction) -> tuple[int, int, dict] | bool:
     """Given a reference position and a direction of travel, walk out and find the nearest primer site.
 
     Parameters
@@ -31,35 +31,40 @@ def find_primer(bed, pos, direction):
 
     Returns
     -------
-    tuple
-        The offset, distance and bed entry for the closest primer to the query position
+    tuple[int, int, dict] | bool
+        A tuple containing the distance to the primer, the relative position of the primer, and the primer site, or False if no primer found
     """
     from operator import itemgetter
 
-    try:
-        if direction == "+":
-            closest = min(
-                [
-                    (abs(p["start"] - pos), p["start"] - pos, p)
-                    for p in bed
-                    if (p["direction"] == direction and p["start"] < pos)
-                ],
-                key=itemgetter(0),
-            )
-        else:
-            closest = min(
-                [
-                    (abs(p["end"] - pos), p["end"] - pos, p)
-                    for p in bed
-                    if (p["direction"] == direction and p["end"] > pos)
-                ],
-                key=itemgetter(0),
-            )
-    except Exception as e:
-        print(bed, file=sys.stderr)
-        print(pos, file=sys.stderr)
-        print(direction, file=sys.stderr)
-        raise e
+    if direction == "+":
+        primer_distances = [
+            (abs(p["start"] - pos), p["start"] - pos, p)
+            for p in bed
+            if (p["direction"] == direction and p["start"] < pos)
+        ]
+
+        if not primer_distances:
+            return False
+
+        closest = min(
+            primer_distances,
+            key=itemgetter(0),
+        )
+    else:
+        primer_distances = [
+            (abs(p["end"] - pos), p["end"] - pos, p)
+            for p in bed
+            if (p["direction"] == direction and p["end"] > pos)
+        ]
+
+        if not primer_distances:
+            return False
+
+        closest = min(
+            primer_distances,
+            key=itemgetter(0),
+        )
+
     return closest
 
 
@@ -199,6 +204,13 @@ def handle_segment(
     # locate the nearest primers to this alignment segment
     p1 = find_primer(bed, segment.reference_start, "+")
     p2 = find_primer(bed, segment.reference_end, "-")
+
+    if not p1 or not p2:
+        print(
+            "%s skipped as no primer found for segment" % (segment.query_name),
+            file=sys.stderr,
+        )
+        return False
 
     # check if primers are correctly paired and then assign read group
     # NOTE: removed this as a function as only called once
