@@ -2,22 +2,16 @@
 import argparse
 import pytest
 
-from . import pipeline
+from ..artic import pipeline
 
 
 def test_pipeline_parser():
-    """basic test for the pipeline parser
-    """
+    """basic test for the pipeline parser"""
     # setup a parser
     parser = pipeline.init_pipeline_parser()
 
     # set up a valid command
-    dummyCLI = [
-        "minion",
-        "--medaka",
-        "some-scheme.bed",
-        "some-prefix"
-    ]
+    dummyCLI = ["minion", "--medaka", "some-scheme.bed", "some-prefix"]
 
     # try with required arguments missing
     with pytest.raises(SystemExit):

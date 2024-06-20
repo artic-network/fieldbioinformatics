@@ -16,10 +16,10 @@ def getPrimerDirection(primerID):
     primerID : string
         The primer ID from the 4th field of the primer scheme
     """
-    if 'LEFT' in primerID:
-        return '+'
-    elif 'RIGHT' in primerID:
-        return '-'
+    if "LEFT" in primerID:
+        return "+"
+    elif "RIGHT" in primerID:
+        return "-"
     else:
         print("LEFT/RIGHT must be specified in Primer ID", file=sys.stderr)
         raise SystemExit(1)
@@ -44,16 +44,18 @@ def merge_sites(canonical, alt):
     mergedSite = canonical
 
     # check the both the canonical and alt are the same direction
-    if canonical['direction'] != alt['direction']:
+    if canonical["direction"] != alt["direction"]:
         print(
-            "could not merge alt with different orientation to canonical", file=sys.stderr)
+            "could not merge alt with different orientation to canonical",
+            file=sys.stderr,
+        )
         raise SystemExit(1)
 
     # merge the start/ends of the alt with the canonical to get the largest window possible
-    if alt['start'] < canonical['start']:
-        mergedSite['start'] = alt['start']
-    if alt['end'] > canonical['end']:
-        mergedSite['end'] = alt['end']
+    if alt["start"] < canonical["start"]:
+        mergedSite["start"] = alt["start"]
+    if alt["end"] > canonical["end"]:
+        mergedSite["end"] = alt["end"]
     return mergedSite
 
 
@@ -73,13 +75,21 @@ def read_bed_file(fn):
     """
 
     # read the primer scheme into a pandas dataframe and run type, length and null checks
-    primers = pd.read_csv(fn, sep='\t', header=None,
-                          names=['chrom', 'start', 'end',
-                                 'Primer_ID', 'PoolName'],
-                          dtype={'chrom': str, 'start': int, 'end': int,
-                                 'Primer_ID': str, 'PoolName': str},
-                          usecols=(0, 1, 2, 3, 4),
-                          skiprows=0)
+    primers = pd.read_csv(
+        fn,
+        sep="\t",
+        header=None,
+        names=["chrom", "start", "end", "Primer_ID", "PoolName"],
+        dtype={
+            "chrom": str,
+            "start": int,
+            "end": int,
+            "Primer_ID": str,
+            "PoolName": str,
+        },
+        usecols=(0, 1, 2, 3, 4),
+        skiprows=0,
+    )
     if len(primers.index) < 1:
         print("primer scheme file is empty", file=sys.stderr)
         raise SystemExit(1)
@@ -88,20 +98,23 @@ def read_bed_file(fn):
         raise SystemExit(1)
 
     # compute the direction
-    primers['direction'] = primers.apply(
-        lambda row: getPrimerDirection(row.Primer_ID), axis=1)
+    primers["direction"] = primers.apply(
+        lambda row: getPrimerDirection(row.Primer_ID), axis=1
+    )
 
     # separate alt primers into a new dataframe
-    altFilter = primers['Primer_ID'].str.contains('_alt')
+    altFilter = primers["Primer_ID"].str.contains("_alt")
     alts = pd.DataFrame(
-        columns=('chrom', 'start', 'end', 'Primer_ID', 'PoolName', 'direction'))
+        columns=("chrom", "start", "end", "Primer_ID", "PoolName", "direction")
+    )
     alts = pd.concat([alts, primers[altFilter]])
     primers = primers.drop(primers[altFilter].index.values)
 
     # convert the primers dataframe to dictionary, indexed by Primer_ID
     #  - verify_integrity is used to prevent duplicate Primer_IDs being processed
-    bedFile = primers.set_index('Primer_ID', drop=False,
-                                verify_integrity=True).T.to_dict()
+    bedFile = primers.set_index(
+        "Primer_ID", drop=False, verify_integrity=True
+    ).T.to_dict()
 
     # if there were no alts, return the bedfile as a list of dicts
     if len(alts.index) == 0:
@@ -109,7 +122,7 @@ def read_bed_file(fn):
 
     # merge alts
     for _, row in alts.iterrows():
-        primerID = row['Primer_ID'].split('_alt')[0]
+        primerID = row["Primer_ID"].split("_alt")[0]
 
         # check the bedFile if another version of this primer exists
         if primerID not in bedFile:
@@ -130,7 +143,7 @@ def read_bed_file(fn):
 
 def overlaps(coords, pos):
     for v in coords:
-        if pos >= v['start'] and pos <= v['end']:
+        if pos >= v["start"] and pos <= v["end"]:
             return v
     return False
 
@@ -147,11 +160,11 @@ if __name__ == "__main__":
     for record in vcf_reader:
         v = overlaps(bedfile, record.POS)
         if v:
-            record.INFO['PRIMER'] = v["Sequence_(5-3')"]
+            record.INFO["PRIMER"] = v["Sequence_(5-3')"]
 
-#	PP = list(record.INFO)
-#	record.INFO = {}
-#	record.INFO['PP'] = PP
-#	record.INFO['DEPTH'] = depths[record.CHROM][record.POS]
+        # 	PP = list(record.INFO)
+        # 	record.INFO = {}
+        # 	record.INFO['PP'] = PP
+        # 	record.INFO['DEPTH'] = depths[record.CHROM][record.POS]
 
         vcf_writer.write_record(record)
