@@ -246,7 +246,7 @@ def run(parser, args):
     else:
         normalise_string = ""
     cmds.append(
-        "align_trim %s %s --start --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.trimmed.rg.sorted.bam"
+        "align_trim %s %s --trim-primers --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.trimmed.rg.sorted.bam"
         % (
             normalise_string,
             bed,
