@@ -355,7 +355,7 @@ def generate_amplicons(bed: list) -> dict:
 
         # Check if primer runs accross reference start / end -> circular virus
         amplicons[amplicon]["circular"] = (
-            amplicons[amplicon]["p_start"] > amplicons[amplicon]["p+end"]
+            amplicons[amplicon]["p_start"] > amplicons[amplicon]["p_end"]
         )
 
         # Calculate amplicon length considering that the "length" may be negative if the genome is circular
