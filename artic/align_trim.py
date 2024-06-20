@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from copy import copy
-from collections import defaultdict
+import csv
 import pysam
 import sys
 import numpy as np
@@ -167,8 +167,8 @@ def trim(segment, primer_pos, end, debug):
 def handle_segment(
     segment: pysam.AlignedSegment,
     bed: dict,
-    reportfh: typing.IO,
     args: argparse.Namespace,
+    report_writer: csv.DictWriter = False,
 ) -> tuple[int, pysam.AlignedSegment] | bool:
     """Handle the alignment segment including
 
@@ -218,27 +218,29 @@ def handle_segment(
     amplicon = p1[2]["Primer_ID"].split("_")[1]
 
     # update the report with this alignment segment + primer details
-    report = "%s\t%s\t%s\t%s_%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d" % (
-        segment.query_name,
-        segment.reference_start,
-        segment.reference_end,
-        p1[2]["Primer_ID"],
-        p2[2]["Primer_ID"],
-        p1[2]["Primer_ID"],
-        abs(p1[1]),
-        p2[2]["Primer_ID"],
-        abs(p2[1]),
-        segment.is_secondary,
-        segment.is_supplementary,
-        p1[2]["start"],
-        p2[2]["end"],
-        correctly_paired,
-    )
+    report = {
+        "QueryName": segment.query_name,
+        "ReferenceStart": segment.reference_start,
+        "ReferenceEnd": segment.reference_end,
+        "PrimerPair": f"{p1[2]['Primer_ID']}_{p2[2]['Primer_ID']}",
+        "Primer1": p1[2]["Primer_ID"],
+        "Primer1Start": abs(p1[1]),
+        "Primer2": p2[2]["Primer_ID"],
+        "Primer2Start": abs(p2[1]),
+        "IsSecondary": segment.is_secondary,
+        "IsSupplementary": segment.is_supplementary,
+        "Start": p1[2]["start"],
+        "End": p2[2]["end"],
+        "CorrectlyPaired": correctly_paired,
+    }
+
     if args.report:
-        print(report, file=reportfh)
+        report_writer.writerow(report)
 
     if args.verbose:
-        print(report, file=sys.stderr)
+        # Dont screw with the order of the dict
+        report_str = "\t".join(str(x) for x in report.values())
+        print(report_str, file=sys.stderr)
 
     # get the primer positions
     if args.trim_primers:
@@ -418,13 +420,23 @@ def go(args):
     # prepare the report outfile
     if args.report:
         reportfh = open(args.report, "w")
-        print(
-            "QueryName\tReferenceStart\tReferenceEnd\tPrimerPair\tPrimer1\tPrimer1Start\tPrimer2\tPrimer2Start\tIsSecondary\tIsSupplementary\tStart\tEnd\tCorrectlyPaired",
-            file=reportfh,
-        )
-
-    # set up a counter to track amplicon abundance
-    counter = defaultdict(int)
+        report_headers = [
+            "QueryName",
+            "ReferenceStart",
+            "ReferenceEnd",
+            "PrimerPair",
+            "Primer1",
+            "Primer1Start",
+            "Primer2",
+            "Primer2Start",
+            "IsSecondary",
+            "IsSupplementary",
+            "Start",
+            "End",
+            "CorrectlyPaired",
+        ]
+        report_writer = csv.DictWriter(reportfh, fieldnames=report_headers)
+        report_writer.writeheader()
 
     # open the primer scheme and get the pools
     bed = read_bed_file(args.bedfile)
@@ -449,7 +461,7 @@ def go(args):
     # iterate over the alignment segments in the input SAM file
     for segment in infile:
 
-        trimming_tuple = handle_segment(segment, bed, reportfh, args)
+        trimming_tuple = handle_segment(segment, bed, report_writer, args)
         if not trimming_tuple:
             continue
 
