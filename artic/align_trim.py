@@ -36,24 +36,30 @@ def find_primer(bed, pos, direction):
     """
     from operator import itemgetter
 
-    if direction == "+":
-        closest = min(
-            [
-                (abs(p["start"] - pos), p["start"] - pos, p)
-                for p in bed
-                if (p["direction"] == direction and p["start"] < pos)
-            ],
-            key=itemgetter(0),
-        )
-    else:
-        closest = min(
-            [
-                (abs(p["end"] - pos), p["end"] - pos, p)
-                for p in bed
-                if (p["direction"] == direction and p["end"] > pos)
-            ],
-            key=itemgetter(0),
-        )
+    try:
+        if direction == "+":
+            closest = min(
+                [
+                    (abs(p["start"] - pos), p["start"] - pos, p)
+                    for p in bed
+                    if (p["direction"] == direction and p["start"] < pos)
+                ],
+                key=itemgetter(0),
+            )
+        else:
+            closest = min(
+                [
+                    (abs(p["end"] - pos), p["end"] - pos, p)
+                    for p in bed
+                    if (p["direction"] == direction and p["end"] > pos)
+                ],
+                key=itemgetter(0),
+            )
+    except Exception as e:
+        print(bed, file=sys.stderr)
+        print(pos, file=sys.stderr)
+        print(direction, file=sys.stderr)
+        raise e
     return closest
 
 
