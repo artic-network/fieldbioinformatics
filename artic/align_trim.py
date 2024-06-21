@@ -225,35 +225,35 @@ def handle_segment(
         else:
             segment.set_tag("RG", "unmatched")
 
+    # get the amplicon number
+    amplicon = p1[2]["Primer_ID"].split("_")[1]
+
+    if args.report:
+        # update the report with this alignment segment + primer details
+        report = {
+            "QueryName": segment.query_name,
+            "ReferenceStart": segment.reference_start,
+            "ReferenceEnd": segment.reference_end,
+            "PrimerPair": f"{p1[2]['Primer_ID']}_{p2[2]['Primer_ID']}",
+            "Primer1": p1[2]["Primer_ID"],
+            "Primer1Start": abs(p1[1]),
+            "Primer2": p2[2]["Primer_ID"],
+            "Primer2Start": abs(p2[1]),
+            "IsSecondary": segment.is_secondary,
+            "IsSupplementary": segment.is_supplementary,
+            "Start": p1[2]["start"],
+            "End": p2[2]["end"],
+            "CorrectlyPaired": correctly_paired,
+        }
+
+        report_writer.writerow(report)    
+
     if args.remove_incorrect_pairs and not correctly_paired:
         print(
             "%s skipped as not correctly paired" % (segment.query_name),
             file=sys.stderr,
         )
-        return False
-
-    # get the amplicon number
-    amplicon = p1[2]["Primer_ID"].split("_")[1]
-
-    # update the report with this alignment segment + primer details
-    report = {
-        "QueryName": segment.query_name,
-        "ReferenceStart": segment.reference_start,
-        "ReferenceEnd": segment.reference_end,
-        "PrimerPair": f"{p1[2]['Primer_ID']}_{p2[2]['Primer_ID']}",
-        "Primer1": p1[2]["Primer_ID"],
-        "Primer1Start": abs(p1[1]),
-        "Primer2": p2[2]["Primer_ID"],
-        "Primer2Start": abs(p2[1]),
-        "IsSecondary": segment.is_secondary,
-        "IsSupplementary": segment.is_supplementary,
-        "Start": p1[2]["start"],
-        "End": p2[2]["end"],
-        "CorrectlyPaired": correctly_paired,
-    }
-
-    if args.report:
-        report_writer.writerow(report)
+        return False    
 
     if args.verbose:
         # Dont screw with the order of the dict
@@ -391,27 +391,31 @@ def normalise(
     for amplicon, segments in trimmed_segments.items():
         if amplicon not in amplicons:
             raise ValueError(f"Segment {amplicon} not found in primer scheme file")
-
+        
         desired_depth = np.full_like(
-            amplicons[amplicon]["length"], normalise, dtype=np.int8
+            (amplicons[amplicon]["length"],), normalise, dtype=np.int8
         )
 
         if trim_primers:
-            # Trim primers from the amplicon depth
+            # We don't want to cover the primers in the normalisation
             desired_depth[
                 amplicons[amplicon]["p_start"] : amplicons[amplicon]["start"] - 1
             ] = 0
             desired_depth[
-                amplicons[amplicon]["end"] + 1 : amplicons[amplicon]["p_end"]
+                amplicons[amplicon]["end"] : amplicons[amplicon]["p_end"]
             ] = 0
 
-        amplicon_depth = np.zeros(amplicons[amplicon]["length"], dtype=np.int8)
+        amplicon_depth = np.zeros((amplicons[amplicon]["length"],), dtype=np.int8)
 
-        randomised_segments = random.shuffle(segments)
+        if not segments:
+            print(f"No segments assigned to amplicon {amplicon}, skipping", file=sys.stderr)
+            continue
+
+        random.shuffle(segments)
 
         distance = np.mean(np.abs(amplicon_depth - desired_depth))
 
-        for segment in randomised_segments:
+        for segment in segments:
             test_depths = np.copy(amplicon_depth)
 
             relative_start = segment.reference_start - amplicons[amplicon]["start"]

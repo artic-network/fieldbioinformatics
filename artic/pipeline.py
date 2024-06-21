@@ -176,9 +176,14 @@ def init_pipeline_parser():
         help="Do not report InDels (uses SNP-only mode of nanopolish/medaka)",
     )
     parser_minion.add_argument(
-        "--no-frameshifts",
+        "--allow-frameshifts",
         action="store_true",
         help="Remove variants which induce frameshifts (ignored when --no-indels set)",
+    )
+    parser_minion.add_argument(
+        "--use-muscle",
+        action="store_true",
+        help="Run muscle alignment of consensus to reference",
     )
     parser_minion.add_argument("--dry-run", action="store_true")
     parser_minion.add_argument(

@@ -181,13 +181,13 @@ def run(parser, args):
     ## find the primer scheme, reference sequence and confirm scheme version
     bed, ref, _ = get_scheme(args.scheme, args.scheme_directory, args.scheme_version)
 
-    ## if in strict mode, validate the primer scheme
-    if args.strict:
-        checkScheme = "artic-tools validate_scheme %s" % (bed)
-        print(colored.green("Running: "), checkScheme, file=sys.stderr)
-        if os.system(checkScheme) != 0:
-            print(colored.red("primer scheme failed strict checking"), file=sys.stderr)
-            raise SystemExit(1)
+    # ## if in strict mode, validate the primer scheme
+    # if args.strict:
+    #     checkScheme = "artic-tools validate_scheme %s" % (bed)
+    #     print(colored.green("Running: "), checkScheme, file=sys.stderr)
+    #     if os.system(checkScheme) != 0:
+    #         print(colored.red("primer scheme failed strict checking"), file=sys.stderr)
+    #         raise SystemExit(1)
 
     ## set up the read file
     if args.read_file:
@@ -246,7 +246,7 @@ def run(parser, args):
     else:
         normalise_string = ""
     cmds.append(
-        "align_trim %s %s --trim-primers --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.trimmed.rg.sorted.bam"
+        "align_trim %s %s --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.trimmed.rg.sorted.bam"
         % (
             normalise_string,
             bed,
@@ -258,7 +258,7 @@ def run(parser, args):
         )
     )
     cmds.append(
-        "align_trim %s %s --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.primertrimmed.rg.sorted.bam"
+        "align_trim %s %s --trim-primers --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.primertrimmed.rg.sorted.bam"
         % (
             normalise_string,
             bed,
@@ -336,16 +336,16 @@ def run(parser, args):
 
     # 8) check and filter the VCFs
     ## if using strict, run the vcf checker to remove vars present only once in overlap regions (this replaces the original merged vcf from the previous step)
-    if args.strict:
-        cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
-        cmds.append("tabix -p vcf %s.merged.vcf.gz" % (args.sample))
-        cmds.append(
-            "artic-tools check_vcf --dropPrimerVars --dropOverlapFails --vcfOut %s.merged.filtered.vcf %s.merged.vcf.gz %s 2> %s.vcfreport.txt"
-            % (args.sample, args.sample, bed, args.sample)
-        )
-        cmds.append(
-            "mv %s.merged.filtered.vcf %s.merged.vcf" % (args.sample, args.sample)
-        )
+    # if args.strict:
+    #     cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
+    #     cmds.append("tabix -p vcf %s.merged.vcf.gz" % (args.sample))
+    #     cmds.append(
+    #         "artic-tools check_vcf --dropPrimerVars --dropOverlapFails --vcfOut %s.merged.filtered.vcf %s.merged.vcf.gz %s 2> %s.vcfreport.txt"
+    #         % (args.sample, args.sample, bed, args.sample)
+    #     )
+    #     cmds.append(
+    #         "mv %s.merged.filtered.vcf %s.merged.vcf" % (args.sample, args.sample)
+    #     )
 
     ## if doing the medaka workflow and longshot required, do it on the merged VCF
     if args.medaka and not args.no_longshot:
@@ -364,18 +364,22 @@ def run(parser, args):
     vcf_file = "%s.pass.vcf" % (args.sample)
 
     ## filter the variants to produce PASS and FAIL lists, then index them
-    if args.no_frameshifts and not args.no_indels:
+    if args.no_indels:
         cmds.append(
-            "artic_vcf_filter --%s --no-frameshifts %s.merged.vcf %s.pass.vcf %s.fail.vcf"
-            % (method, args.sample, args.sample, args.sample)
+            "artic_vcf_filter --%s --no-indels %s.merged.vcf %s.pass.vcf %s.fail.vcf %s.coverage_mask.txt" % (method, args.sample, args.sample, args.sample)
         )
+
+    elif args.allow_frameshifts:
+        cmds.append(
+            "artic_vcf_filter --%s %s.merged.vcf %s.pass.vcf %s.fail.vcf %s.coverage_mask.txt"
+            % (method, args.sample, args.sample, args.sample, args.sample)
+        )
+
     else:
         cmds.append(
-            "artic_vcf_filter --%s %s.merged.vcf %s.pass.vcf %s.fail.vcf"
+            "artic_vcf_filter --no-frameshifts --%s %s.merged.vcf %s.pass.vcf %s.fail.vcf"
             % (method, args.sample, args.sample, args.sample)
         )
-    cmds.append("bgzip -f %s" % (vcf_file))
-    cmds.append("tabix -p vcf %s.gz" % (vcf_file))
 
     # 9) get the depth of coverage for each readgroup, create a coverage mask and plots, and add failed variants to the coverage mask (artic_mask must be run before bcftools consensus)
     cmds.append(
@@ -385,9 +389,14 @@ def run(parser, args):
     cmds.append(
         "artic_mask %s %s.coverage_mask.txt %s.fail.vcf %s.preconsensus.fasta"
         % (ref, args.sample, args.sample, args.sample)
-    )
+    )        
 
     # 10) generate the consensus sequence
+    cmds.append("bgzip -f %s" % (vcf_file))
+    cmds.append("tabix -p vcf %s.gz" % (vcf_file))
+    cmds.append("bcftools norm --check-ref x --fasta-ref %s.preconsensus.fasta -O z -o %s %s.gz" %(args.sample, vcf_file, vcf_file))
+    cmds.append("bgzip -f %s" % (vcf_file))
+    cmds.append("tabix -f -p vcf %s.gz" % (vcf_file))
     cmds.append(
         "bcftools consensus -f %s.preconsensus.fasta %s.gz -m %s.coverage_mask.txt -o %s.consensus.fasta"
         % (args.sample, vcf_file, args.sample, args.sample)
@@ -398,14 +407,16 @@ def run(parser, args):
     cmds.append(
         'artic_fasta_header %s.consensus.fasta "%s"' % (args.sample, fasta_header)
     )
-    cmds.append(
-        "cat %s.consensus.fasta %s > %s.muscle.in.fasta"
-        % (args.sample, ref, args.sample)
-    )
-    cmds.append(
-        "muscle -in %s.muscle.in.fasta -out %s.muscle.out.fasta"
-        % (args.sample, args.sample)
-    )
+
+    if args.use_muscle:
+        cmds.append(
+            "cat %s.consensus.fasta %s > %s.muscle.in.fasta"
+            % (args.sample, ref, args.sample)
+        )
+        cmds.append(
+            "muscle -in %s.muscle.in.fasta -out %s.muscle.out.fasta"
+            % (args.sample, args.sample)
+        )
 
     # 12) get some QC stats
     if args.strict:
