@@ -246,29 +246,36 @@ def run(parser, args):
     else:
         normalise_string = ""
     cmds.append(
-        "align_trim %s %s --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.trimmed.rg.sorted.bam"
-        % (
-            normalise_string,
-            bed,
-            args.sample,
-            args.sample,
-            args.sample,
-            args.sample,
-            args.sample,
-        )
+        f"align_trim {normalise_string} {bed} --min-mapq {args.min_mapq} --report {args.sample}.alignreport.txt < {args.sample}.sorted.bam 2> {args.sample}.alignreport.er | samtools sort -T {args.sample} - -o {args.sample}.trimmed.rg.sorted.bam"
     )
+    # cmds.append(
+    #     "align_trim %s %s --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.trimmed.rg.sorted.bam"
+    #     % (
+    #         normalise_string,
+    #         bed,
+    #         args.sample,
+    #         args.sample,
+    #         args.sample,
+    #         args.sample,
+    #         args.sample,
+    #     )
+    # )
+
     cmds.append(
-        "align_trim %s %s --trim-primers --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.primertrimmed.rg.sorted.bam"
-        % (
-            normalise_string,
-            bed,
-            args.sample,
-            args.sample,
-            args.sample,
-            args.sample,
-            args.sample,
-        )
+        f"align_trim {normalise_string} {bed} --min-mapq {args.min_mapq} --trim-primers --report {args.sample}.alignreport.txt < {args.sample}.sorted.bam 2> {args.sample}.alignreport.er | samtools sort -T {args.sample} - -o {args.sample}.primertrimmed.rg.sorted.bam"
     )
+    # cmds.append(
+    #     "align_trim %s %s --trim-primers --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.primertrimmed.rg.sorted.bam"
+    #     % (
+    #         normalise_string,
+    #         bed,
+    #         args.sample,
+    #         args.sample,
+    #         args.sample,
+    #         args.sample,
+    #         args.sample,
+    #     )
+    # )
     cmds.append("samtools index %s.trimmed.rg.sorted.bam" % (args.sample))
     cmds.append("samtools index %s.primertrimmed.rg.sorted.bam" % (args.sample))
 
@@ -352,8 +359,8 @@ def run(parser, args):
         cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
         cmds.append("tabix -f -p vcf %s.merged.vcf.gz" % (args.sample))
         cmds.append(
-            "longshot -P 0 -F -A --no_haps --bam %s.primertrimmed.rg.sorted.bam --ref %s --out %s.merged.vcf --potential_variants %s.merged.vcf.gz"
-            % (args.sample, ref, args.sample, args.sample)
+            "longshot --min_mapq %s -P 0 -F -A --no_haps --bam %s.primertrimmed.rg.sorted.bam --ref %s --out %s.merged.vcf --potential_variants %s.merged.vcf.gz"
+            % (args.min_mapq, args.sample, ref, args.sample, args.sample)
         )
 
     ## set up some name holder vars for ease
@@ -366,7 +373,8 @@ def run(parser, args):
     ## filter the variants to produce PASS and FAIL lists, then index them
     if args.no_indels:
         cmds.append(
-            "artic_vcf_filter --%s --no-indels %s.merged.vcf %s.pass.vcf %s.fail.vcf %s.coverage_mask.txt" % (method, args.sample, args.sample, args.sample)
+            "artic_vcf_filter --%s --no-indels %s.merged.vcf %s.pass.vcf %s.fail.vcf %s.coverage_mask.txt"
+            % (method, args.sample, args.sample, args.sample)
         )
 
     elif args.allow_frameshifts:
@@ -389,12 +397,15 @@ def run(parser, args):
     cmds.append(
         "artic_mask %s %s.coverage_mask.txt %s.fail.vcf %s.preconsensus.fasta"
         % (ref, args.sample, args.sample, args.sample)
-    )        
+    )
 
     # 10) generate the consensus sequence
     cmds.append("bgzip -f %s" % (vcf_file))
     cmds.append("tabix -p vcf %s.gz" % (vcf_file))
-    cmds.append("bcftools norm --check-ref x --fasta-ref %s.preconsensus.fasta -O z -o %s %s.gz" %(args.sample, vcf_file, vcf_file))
+    cmds.append(
+        "bcftools norm --check-ref x --fasta-ref %s.preconsensus.fasta -O z -o %s %s.gz"
+        % (args.sample, vcf_file, vcf_file)
+    )
     cmds.append("bgzip -f %s" % (vcf_file))
     cmds.append("tabix -f -p vcf %s.gz" % (vcf_file))
     cmds.append(

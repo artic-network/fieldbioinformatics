@@ -179,6 +179,7 @@ def handle_segment(
     segment: pysam.AlignedSegment,
     bed: dict,
     args: argparse.Namespace,
+    min_mapq: int,
     report_writer: csv.DictWriter = False,
 ) -> tuple[int, pysam.AlignedSegment] | bool:
     """Handle the alignment segment including
@@ -199,6 +200,12 @@ def handle_segment(
         return False
     if segment.is_supplementary:
         print("%s skipped as supplementary" % (segment.query_name), file=sys.stderr)
+        return False
+    if segment.mapping_quality < min_mapq:
+        print(
+            "%s skipped as mapping quality below threshold" % (segment.query_name),
+            file=sys.stderr,
+        )
         return False
 
     # locate the nearest primers to this alignment segment
@@ -246,14 +253,14 @@ def handle_segment(
             "CorrectlyPaired": correctly_paired,
         }
 
-        report_writer.writerow(report)    
+        report_writer.writerow(report)
 
     if args.remove_incorrect_pairs and not correctly_paired:
         print(
             "%s skipped as not correctly paired" % (segment.query_name),
             file=sys.stderr,
         )
-        return False    
+        return False
 
     if args.verbose:
         # Dont screw with the order of the dict
@@ -391,7 +398,7 @@ def normalise(
     for amplicon, segments in trimmed_segments.items():
         if amplicon not in amplicons:
             raise ValueError(f"Segment {amplicon} not found in primer scheme file")
-        
+
         desired_depth = np.full_like(
             (amplicons[amplicon]["length"],), normalise, dtype=np.int8
         )
@@ -401,14 +408,15 @@ def normalise(
             desired_depth[
                 amplicons[amplicon]["p_start"] : amplicons[amplicon]["start"] - 1
             ] = 0
-            desired_depth[
-                amplicons[amplicon]["end"] : amplicons[amplicon]["p_end"]
-            ] = 0
+            desired_depth[amplicons[amplicon]["end"] : amplicons[amplicon]["p_end"]] = 0
 
         amplicon_depth = np.zeros((amplicons[amplicon]["length"],), dtype=np.int8)
 
         if not segments:
-            print(f"No segments assigned to amplicon {amplicon}, skipping", file=sys.stderr)
+            print(
+                f"No segments assigned to amplicon {amplicon}, skipping",
+                file=sys.stderr,
+            )
             continue
 
         random.shuffle(segments)
@@ -484,7 +492,7 @@ def go(args):
     for segment in infile:
 
         trimming_tuple = handle_segment(
-            segment=segment, bed=bed, args=args, report_writer=report_writer
+            segment=segment, bed=bed, args=args, report_writer=report_writer, min_mapq=
         )
         if not trimming_tuple:
             continue
@@ -523,6 +531,9 @@ def main():
     parser.add_argument("bedfile", help="BED file containing the amplicon scheme")
     parser.add_argument(
         "--normalise", type=int, help="Subsample to n coverage per strand"
+    )
+    parser.add_argument(
+        "--min-mapq", type=int, default=20, help="Minimum mapping quality to keep"
     )
     parser.add_argument("--report", type=str, help="Output report to file")
     parser.add_argument(

@@ -119,6 +119,12 @@ def init_pipeline_parser():
         help="Do not use Longshot for variant filtering after medaka",
     )
     parser_minion.add_argument(
+        "--min-mapq",
+        type=int,
+        default=20,
+        help="Minimum mapping quality to consider (default: %(default)d)",
+    )
+    parser_minion.add_argument(
         "--minimap2",
         dest="minimap2",
         default=True,
