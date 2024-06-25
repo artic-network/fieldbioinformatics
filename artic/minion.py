@@ -246,7 +246,7 @@ def run(parser, args):
     else:
         normalise_string = ""
     cmds.append(
-        f"align_trim {normalise_string} {bed} --min-mapq {args.min_mapq} --report {args.sample}.alignreport.txt < {args.sample}.sorted.bam 2> {args.sample}.alignreport.er | samtools sort -T {args.sample} - -o {args.sample}.trimmed.rg.sorted.bam"
+        f"align_trim {normalise_string} {bed} --remove-incorrect-pairs --min-mapq {args.min_mapq} --report {args.sample}.alignreport.txt < {args.sample}.sorted.bam 2> {args.sample}.alignreport.er | samtools sort -T {args.sample} - -o {args.sample}.trimmed.rg.sorted.bam"
     )
     # cmds.append(
     #     "align_trim %s %s --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.trimmed.rg.sorted.bam"
@@ -262,7 +262,7 @@ def run(parser, args):
     # )
 
     cmds.append(
-        f"align_trim {normalise_string} {bed} --min-mapq {args.min_mapq} --trim-primers --report {args.sample}.alignreport.txt < {args.sample}.sorted.bam 2> {args.sample}.alignreport.er | samtools sort -T {args.sample} - -o {args.sample}.primertrimmed.rg.sorted.bam"
+        f"align_trim {normalise_string} {bed} --min-mapq {args.min_mapq} --remove-incorrect-pairs --trim-primers --report {args.sample}.alignreport.txt < {args.sample}.sorted.bam 2> {args.sample}.alignreport.er | samtools sort -T {args.sample} - -o {args.sample}.primertrimmed.rg.sorted.bam"
     )
     # cmds.append(
     #     "align_trim %s %s --trim-primers --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.primertrimmed.rg.sorted.bam"
