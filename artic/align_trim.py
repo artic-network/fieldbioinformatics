@@ -492,7 +492,11 @@ def go(args):
     for segment in infile:
 
         trimming_tuple = handle_segment(
-            segment=segment, bed=bed, args=args, report_writer=report_writer, min_mapq=
+            segment=segment,
+            bed=bed,
+            args=args,
+            report_writer=report_writer,
+            min_mapq=args.min_mapq,
         )
         if not trimming_tuple:
             continue
