@@ -400,7 +400,7 @@ def normalise(
             raise ValueError(f"Segment {amplicon} not found in primer scheme file")
 
         desired_depth = np.full_like(
-            (amplicons[amplicon]["length"],), normalise, dtype=np.int8
+            (amplicons[amplicon]["length"],), normalise, dtype=int
         )
 
         if trim_primers:
@@ -410,7 +410,7 @@ def normalise(
             ] = 0
             desired_depth[amplicons[amplicon]["end"] : amplicons[amplicon]["p_end"]] = 0
 
-        amplicon_depth = np.zeros((amplicons[amplicon]["length"],), dtype=np.int8)
+        amplicon_depth = np.zeros((amplicons[amplicon]["length"],), dtype=int)
 
         if not segments:
             print(
