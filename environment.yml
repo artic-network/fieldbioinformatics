@@ -13,15 +13,15 @@ dependencies:
   - minimap2
   - clair3
   - multiqc
-  - muscle <5.1
+  - muscle<5.1
   - pandas
   - pip
   - pysam
   - pytest 
-  - python <3.11
+  - python=3.6
   - pyvcf 
-  - pyfaidx =0.6.0
+  - pyfaidx=0.6.0
   - requests
   - samtools
   - tqdm
-  - medaka >=1.8.0
+  - medaka>=1.8.0
