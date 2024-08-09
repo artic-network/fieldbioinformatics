@@ -18,7 +18,7 @@ dependencies:
   - pip
   - pysam
   - pytest 
-  - python=3.6.15
+  - python
   - pyvcf 
   - pyfaidx=0.6.0
   - requests
