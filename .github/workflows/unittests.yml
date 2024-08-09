@@ -10,12 +10,18 @@ jobs:
       matrix:
         python-version: ["3.6"]
     steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
       - uses: mamba-org/setup-micromamba@v1
         name: Setup dependencies
         with:
           environment-file: environment.yml
           environment-name: artic
       - run: |
+          python3 -m pip install -e .
           pytest -s artic/*_unit_test.py
           ./test-runner.sh medaka
           ./test-runner.sh clair3
