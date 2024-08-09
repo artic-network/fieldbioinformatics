@@ -24,4 +24,5 @@ dependencies:
   - requests
   - samtools
   - tqdm
-  - medaka>=1.8.0
+  - pip:
+    - medaka
