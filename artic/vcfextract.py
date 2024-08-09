@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 
-import vcf
 import sys
 import subprocess
-import csv
 import os
 from collections import defaultdict
-from operator import attrgetter
+from cyvcf2 import VCF
 
 
 def read_vcf(fn):
     vcfinfo = {}
-    vcf_reader = vcf.Reader(open(fn, "r"))
+    vcf_reader = VCF(fn)
     for record in vcf_reader:
         vcfinfo[record.POS] = record
     return vcfinfo
@@ -42,7 +40,7 @@ def main():
 
             print(vcffn, file=sys.stderr)
 
-            vcf_reader = vcf.Reader(filename=vcffn)
+            vcf_reader = VCF(vcffn)
             for record in vcf_reader:
                 if len(record.ALT[0]) == 1 and len(record.REF) == 1:
                     positions[record.POS] = "snp"

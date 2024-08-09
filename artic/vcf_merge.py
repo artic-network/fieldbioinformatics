@@ -1,8 +1,8 @@
-import vcf
+from cyvcf2 import VCF, Writer
 import sys
 from operator import attrgetter
 from collections import defaultdict
-from .vcftagprimersites import read_bed_file
+from artic.vcftagprimersites import read_bed_file
 
 
 def vcf_merge(args):
@@ -23,14 +23,17 @@ def vcf_merge(args):
         if not first_vcf:
             first_vcf = file_name
 
-    vcf_reader = vcf.Reader(filename=first_vcf)
-    vcf_reader.infos["Pool"] = vcf.parser._Format("Pool", 1, "String", "The pool name")
-    vcf_writer = vcf.Writer(open(args.prefix + ".merged.vcf", "w"), vcf_reader)
-    vcf_writer_primers = vcf.Writer(open(args.prefix + ".primers.vcf", "w"), vcf_reader)
+    vcf_reader = VCF(first_vcf)
+    # vcf_reader.infos["Pool"] = vcf.parser._Format("Pool", 1, "String", "The pool name")
+    vcf_reader.add_info_to_header(
+        {"ID": "Pool", "Number": 1, "Type": "String", "Description": "The pool name"}
+    )
+    vcf_writer = Writer(f"{args.prefix}.merged.vcf", vcf_reader)
+    vcf_writer_primers = Writer(f"{args.prefix}.primers.vcf", vcf_reader)
 
     variants = []
     for file_name, pool_name in pool_map.items():
-        vcf_reader = vcf.Reader(filename=file_name)
+        vcf_reader = VCF(file_name)
         for v in vcf_reader:
             v.INFO["Pool"] = pool_name
             variants.append(v)

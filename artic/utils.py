@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 
 import pandas as pd
-import vcf
 import sys
-import subprocess
-import csv
-from collections import defaultdict
 
 
 def getPrimerDirection(primerID):

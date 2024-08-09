@@ -24,7 +24,7 @@ import pytest
 import requests
 import sys
 import tarfile
-import vcf
+from cyvcf2 import VCF
 
 
 from artic import pipeline
@@ -293,7 +293,7 @@ def runner(workflow, numValidations):
         assert os.path.exists(vcfFile), "no VCF produced for {}".format(sampleID)
 
         # open the VCF and check the reported variants match the expected
-        for record in vcf.Reader(filename=vcfFile):
+        for record in VCF(vcfFile):
             if record.POS in expVariants:
                 assert (
                     record.REF == expVariants[record.POS][0]

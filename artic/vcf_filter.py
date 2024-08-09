@@ -1,8 +1,5 @@
-import vcf
-import sys
-from operator import attrgetter
+from cyvcf2 import VCF, Writer
 from collections import defaultdict
-from .vcftagprimersites import read_bed_file
 
 
 def in_frame(v):
@@ -27,7 +24,7 @@ class NanoporeFilter:
     def check_filter(self, v):
         total_reads = float(v.INFO["TotalReads"])
         qual = v.QUAL
-        strandbias = float(v.INFO["StrandFisherTest"])
+        # strandbias = float(v.INFO["StrandFisherTest"])
 
         if qual / total_reads < 3:
             return False
@@ -67,9 +64,9 @@ class MedakaFilter:
 
 
 def go(args):
-    vcf_reader = vcf.Reader(filename=args.inputvcf)
-    vcf_writer = vcf.Writer(open(args.output_pass_vcf, "w"), vcf_reader)
-    vcf_writer_filtered = vcf.Writer(open(args.output_fail_vcf, "w"), vcf_reader)
+    vcf_reader = VCF(args.inputvcf)
+    vcf_writer = Writer(args.output_pass_vcf, vcf_reader)
+    vcf_writer_filtered = Writer(args.output_fail_vcf, vcf_reader)
     if args.nanopolish:
         filter = NanoporeFilter(args.no_frameshifts)
     elif args.medaka:

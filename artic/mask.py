@@ -1,13 +1,7 @@
 #!/usr/bin/env python
 
 from Bio import SeqIO
-import sys
-import vcf
-import subprocess
-from collections import defaultdict
-import os.path
-import operator
-from .vcftagprimersites import read_bed_file
+from cyvcf2 import VCF
 import argparse
 import pandas as pd
 
@@ -37,8 +31,7 @@ def go(args):
         for n in range(region["start"], region["end"]):
             cons[region["chrom"]][n] = "N"
 
-    sett = set()
-    vcf_reader = vcf.Reader(open(args.maskvcf, "r"))
+    vcf_reader = VCF(args.maskvcf)
     for record in vcf_reader:
         for n in range(0, len(record.REF)):
             cons[record.CHROM][record.POS - 1 + n] = "N"

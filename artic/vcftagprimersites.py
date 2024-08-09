@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 
 import pandas as pd
-import vcf
 import sys
-import subprocess
-import csv
-from collections import defaultdict
 
 
 def getPrimerDirection(primerID):
@@ -146,25 +142,3 @@ def overlaps(coords, pos):
         if pos >= v["start"] and pos <= v["end"]:
             return v
     return False
-
-
-if __name__ == "__main__":
-    if sys.argv[1] not in sets:
-        print("Invalid set")
-        raise SystemExit(1)
-
-    bedfile = read_bed_file(sys.argv[1])
-
-    vcf_reader = vcf.Reader(filename=sys.argv[2])
-    vcf_writer = vcf.Writer(sys.stdout, vcf_reader)
-    for record in vcf_reader:
-        v = overlaps(bedfile, record.POS)
-        if v:
-            record.INFO["PRIMER"] = v["Sequence_(5-3')"]
-
-        # 	PP = list(record.INFO)
-        # 	record.INFO = {}
-        # 	record.INFO['PP'] = PP
-        # 	record.INFO['DEPTH'] = depths[record.CHROM][record.POS]
-
-        vcf_writer.write_record(record)

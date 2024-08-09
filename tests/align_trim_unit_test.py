@@ -66,6 +66,11 @@ def test_find_primer():
             result = align_trim.find_primer(
                 dummyPrimerScheme, primer["end"], primer["direction"]
             )
+        print(dummyPrimerScheme)
+        print(primer)
+        print(result)
+
+        assert result
         assert (
             result[2]["primerID"] == primer["primerID"]
         ), "find_primer did not produce the query primer, which should be nearest"
@@ -73,8 +78,9 @@ def test_find_primer():
     # test against other ref positions
     result = align_trim.find_primer(dummyPrimerScheme, 8, "+")
     assert (
-        result[2]["primerID"] == "primer2_LEFT"
+        result[2]["primerID"] == "primer1_LEFT"
     ), "find_primer returned incorrect primer"
+
     result = align_trim.find_primer(dummyPrimerScheme, 25, "-")
     assert (
         result[2]["primerID"] == "primer1_RIGHT"

@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 from Bio import SeqIO
 import sys
-import vcf
+from cyvcf2 import VCF
 import subprocess
 from collections import defaultdict
 import os.path
 import operator
-from .vcftagprimersites import read_bed_file
+from artic.vcftagprimersites import read_bed_file
 import argparse
 
 # MASKED_POSITIONS = [2282]
@@ -78,7 +78,7 @@ def go(args):
         cons[mask - 1] = "N"
 
     sett = set()
-    vcf_reader = vcf.Reader(open(args.vcffile, "r"))
+    vcf_reader = VCF(args.vcffile)
     for record in vcf_reader:
         if record.ALT[0] != ".":
             # variant call
