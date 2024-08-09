@@ -11,7 +11,13 @@ def test_pipeline_parser():
     parser = pipeline.init_pipeline_parser()
 
     # set up a valid command
-    dummyCLI = ["minion", "--medaka", "some-scheme.bed", "some-prefix"]
+    dummyCLI = [
+        "minion",
+        "--model",
+        "some_nonsense_model",
+        "nonsensevirus/V1",
+        "some-prefix",
+    ]
 
     # try with required arguments missing
     with pytest.raises(SystemExit):
@@ -23,6 +29,7 @@ def test_pipeline_parser():
     except SystemExit:
         print("failed to parse valid command")
         assert False
+
     assert args.command == dummyCLI[0], "incorrect subcommand registered"
 
     # for arg, val in vars(args).items():

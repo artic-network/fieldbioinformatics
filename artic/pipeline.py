@@ -103,13 +103,11 @@ def init_pipeline_parser():
     )
     parser_minion.add_argument(
         "--model",
-        metavar="model",
         help="The model to use for medaka or clair3 (must be the specific model for the variant caller in question)",
         required=True,
     )
     parser_minion.add_argument(
         "--clair3",
-        metavar="clair3",
         action="store_true",
         help="Use Clair3 for variant calling, currently experimental (default: medaka)",
     )
