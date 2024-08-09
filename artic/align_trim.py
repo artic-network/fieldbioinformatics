@@ -8,7 +8,7 @@ import numpy as np
 import random
 import typing
 import argparse
-from .vcftagprimersites import read_bed_file
+from artic.vcftagprimersites import read_bed_file
 
 # consumesReference lookup for if a CIGAR operation consumes the reference sequence
 consumesReference = [True, False, True, True, False, False, False, True]

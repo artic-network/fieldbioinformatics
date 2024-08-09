@@ -2,7 +2,7 @@
 import os
 import pytest
 
-from ..artic import vcftagprimersites
+from artic import vcftagprimersites
 
 
 # help pytest resolve where test data is kept
