@@ -17,6 +17,7 @@ jobs:
             bash
           cache-environment: true
           post-cleanup: "all"
+
       - name: Pip install artic
         run: |
           python3 -m pip install -e .
@@ -24,7 +25,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          pytest -s artic/*_unit_test.py
+          pytest -s tests/*_unit_test.py
         shell: micromamba-shell {0}
 
       - name: Run medaka test
