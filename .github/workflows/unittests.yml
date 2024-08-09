@@ -13,10 +13,36 @@ jobs:
         name: Setup dependencies
         with:
           environment-file: environment.yml
-      - run: |
+          init-shell: >-
+            bash
+          cache-environment: true
+          post-cleanup: "all"
+      - name: Pip install artic
+        run: |
           python3 -m pip install -e .
+        shell: micromamba-shell {0}
+
+      - name: Run unit tests
+        run: |
           pytest -s artic/*_unit_test.py
+        shell: micromamba-shell {0}
+
+      - name: Run medaka test
+        run: |
           ./test-runner.sh medaka
+        shell: micromamba-shell {0}
+
+      - name: Run clair3 test
+        run: |
           ./test-runner.sh clair3
+        shell: micromamba-shell {0}
+
+      - name: Run minion_validator medaka tests
+        run: |
           pytest -s artic/minion_validator.py --workFlow medaka --numValidations 2
+        shell: micromamba-shell {0}
+
+      - name: Run minion_validator clair3 tests
+        run: |
           pytest -s artic/minion_validator.py --workFlow clair3 --numValidations 2
+        shell: micromamba-shell {0}
