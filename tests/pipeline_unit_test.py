@@ -2,7 +2,7 @@
 import argparse
 import pytest
 
-from ..artic import pipeline
+from artic import pipeline
 
 
 def test_pipeline_parser():

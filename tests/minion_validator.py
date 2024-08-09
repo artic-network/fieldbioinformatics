@@ -17,8 +17,6 @@ NOTE:
 
 from Bio import SeqIO
 from tqdm import tqdm
-import argparse
-import errno
 import glob
 import os
 import pathlib
@@ -29,7 +27,7 @@ import tarfile
 import vcf
 
 
-from . import pipeline
+from artic import pipeline
 
 # help pytest resolve where test data is kept
 dataDir = str(pathlib.Path(__file__).parent.parent) + "/test-data/"
@@ -58,7 +56,7 @@ refMedakaConsensuses = {
 }
 
 # nanopolishTestVariants is a nested dict of sample IDs and their expected variants when using the nanopolish workflow
-nanopolishTestVariants = {
+clair3TestVariants = {
     "CVR1": {
         # pos: (ref, alt, type, count)
         241: ["C", "T", "snp", 1],
@@ -138,7 +136,7 @@ def dataChecker(numValidations):
     print("checking for validation datasets...")
     for sampleID, url in testData.items():
         targetPath = dataDir + sampleID
-        if os.path.exists(targetPath) == False:
+        if not os.path.exists(targetPath):
             print("\tno data for {}".format(sampleID))
             print("\tmaking dir at {}".format(targetPath))
             os.mkdir(targetPath)
@@ -183,15 +181,18 @@ def genCommand(sampleID, workflow):
         dataDir + sampleID + "/" + sampleID + ".fastq",
         "--scheme-directory",
         dataDir + "primer-schemes",
-        "--fast5-directory",
-        dataDir + sampleID + "/fast5",
         "--sequencing-summary",
         dataDir + sampleID + "/" + sampleID + "_sequencing_summary.txt",
     ]
     if workflow == "medaka":
-        cmd.append("--medaka")
-        cmd.append("--medaka-model")
+        cmd.append("--model")
         cmd.append("r941_min_high_g351")
+
+    if workflow == "clair3":
+        cmd.append("--clair3")
+        cmd.append("--model")
+        cmd.append("r941_prom_hac_g360+g422")
+
     if sampleID in extraFlags[workflow]:
         for flag in extraFlags[workflow][sampleID]:
             cmd.append(flag)
@@ -206,7 +207,7 @@ def cleanUp(sampleID):
     for filePath in fileList:
         try:
             os.remove(filePath)
-        except:
+        except Exception:
             print("Error while deleting file : ", filePath)
 
 
@@ -222,8 +223,8 @@ def checkConsensus(consensusFile, subSeq):
 def runner(workflow, numValidations):
 
     # get the workflow data
-    if workflow == "nanopolish":
-        data = nanopolishTestVariants
+    if workflow == "clair3":
+        data = clair3TestVariants
     elif workflow == "medaka":
         data = medakaTestVariants
     else:
@@ -269,9 +270,9 @@ def runner(workflow, numValidations):
 
         # check the ARTIC consensus was created
         consensusFile = "%s.consensus.fasta" % sampleID
-        assert (
-            os.path.exists(consensusFile) == True
-        ), "no consensus produced for {}".format(sampleID)
+        assert os.path.exists(consensusFile), "no consensus produced for {}".format(
+            sampleID
+        )
         testSeqs = SeqIO.parse(open(consensusFile, "r"), "fasta")
         testConsensus = next(testSeqs)
 
@@ -289,9 +290,7 @@ def runner(workflow, numValidations):
 
         # check the ARTIC VCF was created
         vcfFile = "%s.pass.vcf.gz" % sampleID
-        assert os.path.exists(vcfFile) == True, "no VCF produced for {}".format(
-            sampleID
-        )
+        assert os.path.exists(vcfFile), "no VCF produced for {}".format(sampleID)
 
         # open the VCF and check the reported variants match the expected
         for record in vcf.Reader(filename=vcfFile):
@@ -357,7 +356,7 @@ def runner(workflow, numValidations):
 
 
 # test_NanopolishMinion is the unit test runner to test the minion pipeline with the nanopolish workflow
-@pytest.mark.env("nanopolish")
+@pytest.mark.env("clair3")
 def test_NanopolishMinion(numValidations):
     runner("nanopolish", numValidations)
 

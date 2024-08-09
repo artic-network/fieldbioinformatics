@@ -102,15 +102,22 @@ def init_pipeline_parser():
         "sample", metavar="sample", help="The name of the sample"
     )
     parser_minion.add_argument(
-        "--medaka",
-        dest="medaka",
-        action="store_true",
-        help="Use medaka instead of nanopolish for variants",
+        "--model",
+        metavar="model",
+        help="The model to use for medaka or clair3 (must be the specific model for the variant caller in question)",
+        required=True,
     )
     parser_minion.add_argument(
-        "--medaka-model",
-        metavar="medaka_model",
-        help="The model to use for medaka (required if using --medaka)",
+        "--clair3",
+        metavar="clair3",
+        action="store_true",
+        help="Use Clair3 for variant calling, currently experimental (default: medaka)",
+    )
+    parser_minion.add_argument(
+        "--model-path",
+        metavar="model_path",
+        help="Path containing clair3 models, defaults to models packaged with conda installation by default",
+        type=str,
     )
     parser_minion.add_argument(
         "--no-longshot",
@@ -123,16 +130,6 @@ def init_pipeline_parser():
         type=int,
         default=20,
         help="Minimum mapping quality to consider (default: %(default)d)",
-    )
-    parser_minion.add_argument(
-        "--minimap2",
-        dest="minimap2",
-        default=True,
-        action="store_true",
-        help="Use minimap2 (default)",
-    )
-    parser_minion.add_argument(
-        "--bwa", dest="bwa", action="store_true", help="Use bwa instead of minimap2"
     )
     parser_minion.add_argument(
         "--normalise",
@@ -160,22 +157,10 @@ def init_pipeline_parser():
         help="Primer scheme version (default: %(default)d)",
     )
     parser_minion.add_argument(
-        "--max-haplotypes",
-        type=int,
-        default=1000000,
-        metavar="max_haplotypes",
-        help="max-haplotypes value for nanopolish",
-    )
-    parser_minion.add_argument(
         "--read-file",
         metavar="read_file",
         help="Use alternative FASTA/FASTQ file to <sample>.fasta",
     )
-    parser_minion.add_argument("--fast5-directory", help="FAST5 Directory")
-    parser_minion.add_argument(
-        "--sequencing-summary", help="Path to Guppy sequencing summary"
-    )
-    parser_minion.add_argument("--skip-nanopolish", action="store_true")
     parser_minion.add_argument(
         "--no-indels",
         action="store_true",

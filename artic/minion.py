@@ -2,32 +2,13 @@
 
 from clint.textui import colored, puts, indent
 from Bio import SeqIO
+from pathlib import Path
 import os
 import sys
 import time
 import requests
 import hashlib
-from .vcftagprimersites import read_bed_file
-
-
-def get_nanopolish_header(ref):
-    """Checks the reference sequence for a single fasta entry.
-
-    Parameters
-    ----------
-    ref : str
-        The fasta file containing the reference sequence
-
-    Returns
-    -------
-    str
-        A formatted header string for nanopolish
-    """
-    recs = list(SeqIO.parse(open(ref), "fasta"))
-    if len(recs) != 1:
-        print("FASTA has more than one sequence", file=sys.stderr)
-        raise SystemExit(1)
-    return "%s:%d-%d" % (recs[0].id, 1, len(recs[0]) + 1)
+from artic.utils import read_bed_file
 
 
 def check_scheme_hashes(filepath, manifest_hash):
@@ -40,6 +21,13 @@ def check_scheme_hashes(filepath, manifest_hash):
             file=sys.stderr,
         )
         raise SystemExit(1)
+
+
+# def scheme_fetcher(
+#     scheme_name: str, scheme_directory: Path, scheme_version: str, scheme_length: int
+# ):
+
+#     pass
 
 
 def get_scheme(scheme_name, scheme_directory, scheme_version="1"):
@@ -171,9 +159,9 @@ def get_scheme(scheme_name, scheme_directory, scheme_version="1"):
 def run(parser, args):
 
     # check for medaka-model
-    if args.medaka and (args.medaka_model is None):
+    if not args.model:
         print(
-            colored.red("Must specify --medaka-model if using the --medaka workflow.")
+            colored.red("Must specify --model for clair3 or medaka variant calling"),
         )
         raise SystemExit(1)
 
@@ -207,86 +195,67 @@ def run(parser, args):
     ## create a holder to keep the pipeline commands in
     cmds = []
 
-    # 2) if using nanopolish, set up the reference header and run the nanopolish indexing
-    nanopolish_header = get_nanopolish_header(ref)
-    if not args.medaka and not args.skip_nanopolish:
-        if not args.fast5_directory or not args.sequencing_summary:
-            print(
-                colored.red(
-                    "Must specify FAST5 directory and sequencing summary for nanopolish mode."
-                )
-            )
-            raise SystemExit(1)
-        cmds.append(
-            "nanopolish index -s %s -d %s %s"
-            % (
-                args.sequencing_summary,
-                args.fast5_directory,
-                args.read_file,
-            )
-        )
-
     # 3) index the ref & align with minimap or bwa
     if not args.bwa:
         cmds.append(
-            "minimap2 -a -x map-ont -t %s %s %s | samtools view -bS -F 4 - | samtools sort -o %s.sorted.bam -"
-            % (args.threads, ref, read_file, args.sample)
+            f"minimap2 -a -x map-ont -t {args.threads} {ref} {read_file} | samtools view -bS -F 4 - | samtools sort -o {args.sample}.sorted.bam -"
         )
     else:
-        cmds.append("bwa index %s" % (ref,))
+        cmds.append(f"bwa index {ref}")
         cmds.append(
-            "bwa mem -t %s -x ont2d %s %s | samtools view -bS -F 4 - | samtools sort -o %s.sorted.bam -"
-            % (args.threads, ref, read_file, args.sample)
+            f"bwa mem -t {args.threads} -x ont2d {ref} {read_file} | samtools view -bS -F 4 - | samtools sort -o {args.sample}.sorted.bam -"
         )
-    cmds.append("samtools index %s.sorted.bam" % (args.sample,))
+
+    cmds.append(f"samtools index {args.sample}.sorted.bam")
 
     # 4) trim the alignments to the primer start sites and normalise the coverage to save time
     if args.normalise:
-        normalise_string = "--normalise %d" % (args.normalise)
+        normalise_string = f"--normalise {args.normalise}"
     else:
         normalise_string = ""
+
     cmds.append(
         f"align_trim {normalise_string} {bed} --remove-incorrect-pairs --min-mapq {args.min_mapq} --report {args.sample}.alignreport.txt < {args.sample}.sorted.bam 2> {args.sample}.alignreport.er | samtools sort -T {args.sample} - -o {args.sample}.trimmed.rg.sorted.bam"
     )
-    # cmds.append(
-    #     "align_trim %s %s --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.trimmed.rg.sorted.bam"
-    #     % (
-    #         normalise_string,
-    #         bed,
-    #         args.sample,
-    #         args.sample,
-    #         args.sample,
-    #         args.sample,
-    #         args.sample,
-    #     )
-    # )
 
     cmds.append(
         f"align_trim {normalise_string} {bed} --min-mapq {args.min_mapq} --remove-incorrect-pairs --trim-primers --report {args.sample}.alignreport.txt < {args.sample}.sorted.bam 2> {args.sample}.alignreport.er | samtools sort -T {args.sample} - -o {args.sample}.primertrimmed.rg.sorted.bam"
     )
-    # cmds.append(
-    #     "align_trim %s %s --trim-primers --remove-incorrect-pairs --report %s.alignreport.txt < %s.sorted.bam 2> %s.alignreport.er | samtools sort -T %s - -o %s.primertrimmed.rg.sorted.bam"
-    #     % (
-    #         normalise_string,
-    #         bed,
-    #         args.sample,
-    #         args.sample,
-    #         args.sample,
-    #         args.sample,
-    #         args.sample,
-    #     )
-    # )
-    cmds.append("samtools index %s.trimmed.rg.sorted.bam" % (args.sample))
-    cmds.append("samtools index %s.primertrimmed.rg.sorted.bam" % (args.sample))
 
-    # 6) do variant calling on each read group, either using the medaka or nanopolish workflow
-    if args.medaka:
-        for p in pools:
-            if os.path.exists("%s.%s.hdf" % (args.sample, p)):
-                os.remove("%s.%s.hdf" % (args.sample, p))
+    cmds.append(f"samtools index {args.sample}.trimmed.rg.sorted.bam")
+    cmds.append(f"samtools index {args.sample}.primertrimmed.rg.sorted.bam")
+
+    # 6) do variant calling on each read group
+    for p in pools:
+        if os.path.exists("%s.%s.hdf" % (args.sample, p)):
+            os.remove("%s.%s.hdf" % (args.sample, p))
+
+        if args.clair3:
+            # Use a specific model path if provided else use the default conda path
+            if args.model_path:
+                model_path = f"'{args.model_path}/{args.model}'"
+            
+            else:
+                model_path = f"'{os.getenv("CONDA_PREFIX")}/bin/models/{args.model}'"
+
+            # Split the BAM by read group
+            for p in pools:
+                cmds.append(
+                    f"samtools view -b -r {p} {args.sample}.primertrimmed.rg.sorted.bam > {args.sample}.{p}.primertrimmed.rg.sorted.bam"
+                )
+
+                cmds.append(
+                    f"run_clair3.sh --bam_fn='{args.sample}.{p}.primertrimmed.rg.sorted.bam' --ref_fn='{ref}' --output='./rg_{p}' --threads='{args.threads}' --platform='ont' --model_path={model_path} --include_all_ctgs"
+                )
+
+                cmds.append(
+                    f"bgzip -dc ./rg_{p}/merge_output.vcf.gz > {args.sample}.{p}.vcf"
+                )
+
+        else:
             cmds.append(
                 "medaka consensus --model %s --threads %s --chunk_len 800 --chunk_ovlp 400 --RG %s %s.trimmed.rg.sorted.bam %s.%s.hdf"
-                % (args.medaka_model, args.threads, p, args.sample, args.sample, p)
+                % (args.model, args.threads, p, args.sample, args.sample, p)
             )
             if args.no_indels:
                 cmds.append(
@@ -299,38 +268,6 @@ def run(parser, args):
                     % (ref, args.sample, p, args.sample, p)
                 )
 
-            ## if not using longshot, annotate VCF with read depth info etc. so we can filter it
-            if args.no_longshot:
-                cmds.append(
-                    "medaka tools annotate --pad 25 --RG %s %s.%s.vcf %s %s.trimmed.rg.sorted.bam tmp.medaka-annotate.vcf"
-                    % (p, args.sample, p, ref, args.sample)
-                )
-                cmds.append("mv tmp.medaka-annotate.vcf %s.%s.vcf" % (args.sample, p))
-
-    else:
-        if not args.skip_nanopolish:
-            indexed_nanopolish_file = read_file
-            if args.no_indels:
-                nanopolish_extra_args = " --snps"
-            else:
-                nanopolish_extra_args = ""
-            for p in pools:
-                cmds.append(
-                    'nanopolish variants --min-flanking-sequence 10 -x %s --progress -t %s --reads %s -o %s.%s.vcf -b %s.trimmed.rg.sorted.bam -g %s -w "%s" --ploidy 1 -m 0.15 --read-group %s %s'
-                    % (
-                        args.max_haplotypes,
-                        args.threads,
-                        indexed_nanopolish_file,
-                        args.sample,
-                        p,
-                        args.sample,
-                        ref,
-                        nanopolish_header,
-                        p,
-                        nanopolish_extra_args,
-                    )
-                )
-
     # 7) merge the called variants for each read group
     merge_vcf_cmd = "artic_vcf_merge %s %s 2> %s.primersitereport.txt" % (
         args.sample,
@@ -339,6 +276,7 @@ def run(parser, args):
     )
     for p in pools:
         merge_vcf_cmd += " %s:%s.%s.vcf" % (p, args.sample, p)
+
     cmds.append(merge_vcf_cmd)
 
     # 8) check and filter the VCFs
@@ -355,38 +293,33 @@ def run(parser, args):
     #     )
 
     ## if doing the medaka workflow and longshot required, do it on the merged VCF
-    if args.medaka and not args.no_longshot:
-        cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
-        cmds.append("tabix -f -p vcf %s.merged.vcf.gz" % (args.sample))
-        cmds.append(
-            "longshot --min_mapq %s -P 0 -F -A --no_haps --bam %s.primertrimmed.rg.sorted.bam --ref %s --out %s.merged.vcf --potential_variants %s.merged.vcf.gz"
-            % (args.min_mapq, args.sample, ref, args.sample, args.sample)
-        )
+    # if args.medaka and not args.no_longshot:
+    #     cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
+    #     cmds.append("tabix -f -p vcf %s.merged.vcf.gz" % (args.sample))
+    #     cmds.append(
+    #         "longshot --min_mapq %s -P 0 -F -A --no_haps --bam %s.primertrimmed.rg.sorted.bam --ref %s --out %s.merged.vcf --potential_variants %s.merged.vcf.gz"
+    #         % (args.min_mapq, args.sample, ref, args.sample, args.sample)
+    #     )
 
-    ## set up some name holder vars for ease
-    if args.medaka:
-        method = "medaka"
-    else:
-        method = "nanopolish"
     vcf_file = "%s.pass.vcf" % (args.sample)
 
     ## filter the variants to produce PASS and FAIL lists, then index them
     if args.no_indels:
         cmds.append(
-            "artic_vcf_filter --%s --no-indels %s.merged.vcf %s.pass.vcf %s.fail.vcf %s.coverage_mask.txt"
-            % (method, args.sample, args.sample, args.sample)
+            "artic_vcf_filter --medaka --no-indels %s.merged.vcf %s.pass.vcf %s.fail.vcf"
+            % (args.sample, args.sample, args.sample)
         )
 
     elif args.allow_frameshifts:
         cmds.append(
-            "artic_vcf_filter --%s %s.merged.vcf %s.pass.vcf %s.fail.vcf %s.coverage_mask.txt"
-            % (method, args.sample, args.sample, args.sample, args.sample)
+            "artic_vcf_filter --medaka %s.merged.vcf %s.pass.vcf %s.fail.vcf"
+            % (args.sample, args.sample, args.sample)
         )
 
     else:
         cmds.append(
-            "artic_vcf_filter --no-frameshifts --%s %s.merged.vcf %s.pass.vcf %s.fail.vcf"
-            % (method, args.sample, args.sample, args.sample)
+            "artic_vcf_filter --no-frameshifts --medaka %s.merged.vcf %s.pass.vcf %s.fail.vcf"
+            % (args.sample, args.sample, args.sample)
         )
 
     # 9) get the depth of coverage for each readgroup, create a coverage mask and plots, and add failed variants to the coverage mask (artic_mask must be run before bcftools consensus)
@@ -414,7 +347,7 @@ def run(parser, args):
     )
 
     # 11) apply the header to the consensus sequence and run alignment against the reference sequence
-    fasta_header = "%s/ARTIC/%s" % (args.sample, method)
+    fasta_header = "%s/ARTIC/medaka" % (args.sample)
     cmds.append(
         'artic_fasta_header %s.consensus.fasta "%s"' % (args.sample, fasta_header)
     )

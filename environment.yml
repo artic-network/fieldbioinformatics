@@ -11,9 +11,9 @@ dependencies:
   - clint
   - htslib
   - minimap2
+  - clair3
   - multiqc
   - muscle <5.1
-  - nanopolish 
   - pandas
   - pip
   - pysam
@@ -24,5 +24,4 @@ dependencies:
   - requests
   - samtools
   - tqdm
-  - pip:
-    - medaka
+  - medaka >=1.8.0

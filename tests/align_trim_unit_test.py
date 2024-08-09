@@ -3,8 +3,8 @@ import os
 import pysam
 import pytest
 
-from ..artic import align_trim
-from ..artic import vcftagprimersites
+from artic import align_trim
+from artic import vcftagprimersites
 
 
 # help pytest resolve where test data is kept

@@ -15,64 +15,40 @@ set -e
 # Setup the data, commands and the testing function.
 
 # data
-inputData="./20190830_1509_MN22126_AAQ411_9efc5448"
+inputData="./20190830_1509_MN22126_AAQ411_9efc5448_barcoded"
 primerSchemes="../test-data/primer-schemes"
 primerScheme="IturiEBOV/V1"
 prefix="ebov-mayinga"
 barcode="03"
 threads=2
-downloadCmd="wget http://artic.s3.climb.ac.uk/run-folders/EBOV_Amplicons_flongle.tar.gz"
-extractCmd="tar -vxzf EBOV_Amplicons_flongle.tar.gz"
+downloadCmd="wget https://loman-labz-public-datasets.s3.climb.ac.uk/EBOV_Amplicons_flongle_barcoded.tar.gz"
+extractCmd="tar -vxzf EBOV_Amplicons_flongle_barcoded.tar.gz"
 
-# pipeline commands
-## nanopolish workflow specific
-gatherCmd_n="artic gather \
+
+guppyplexCmd="artic guppyplex \
         --min-length 400 \
         --max-length 800 \
         --prefix ${prefix} \
-        --directory ${inputData} \
-        --fast5-directory ${inputData}/fast5_pass"
-
-demuxCmd_n="artic demultiplex \
-            --threads ${threads} \
-            ${prefix}_fastq_pass.fastq"
-
-minionCmd_n="artic minion \
-                --normalise 200 \
-                --threads ${threads} \
-                --scheme-directory ${primerSchemes} \
-                --read-file ${prefix}_fastq_pass-NB${barcode}.fastq \
-                --fast5-directory ${inputData}/fast5_pass \
-                --sequencing-summary ${inputData}/lab-on-an-ssd_20190830_160932_AAQ411_minion_sequencing_run_EBOV_Amplicons_flongle_sequencing_summary.txt \
-                ${primerScheme} \
-                ${prefix}"
-
-## medaka workflow specific
-gatherCmd_m="artic gather \
-        --min-length 400 \
-        --max-length 800 \
-        --prefix ${prefix} \
-        --directory ${inputData} \
-        --no-fast5s"
-
-demuxCmd_m="artic demultiplex \
-            --threads ${threads} \
-            ${prefix}_fastq_pass.fastq"
-
-guppyplexCmd_m="artic guppyplex \
-        --min-length 400 \
-        --max-length 800 \
-        --prefix ${prefix} \
-        --directory ./ \
+        --directory ./${inputData}/fastq_pass/barcode${barcode} \
         --output ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq"
 
+## medaka workflow specific
 minionCmd_m="artic minion \
             --normalise 200 \
             --threads ${threads} \
             --scheme-directory ${primerSchemes} \
             --read-file ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq \
-            --medaka \
-            --medaka-model r941_min_high_g351 \
+            --model r941_min_high_g351 \
+            ${primerScheme} \
+            ${prefix}"
+
+# clair3 workflow specific
+minionCmd_c="artic minion \
+            --normalise 200 \
+            --threads ${threads} \
+            --scheme-directory ${primerSchemes} \
+            --read-file ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq \
+            --model r941_prom_hac_g360+g422 \
             ${primerScheme} \
             ${prefix}"
 
@@ -125,30 +101,20 @@ cmdTester $extractCmd
 
 # run the correct workflow
 echo "running the pipeline..."
-if [ "$1" == "nanopolish" ]
+if [ "$1" == "medaka" ]
 then
 
     # collect the reads
-    cmdTester $gatherCmd_n
-
-    # demultiplex
-    cmdTester $demuxCmd_n
-
-    # run the core pipeline with nanopolish
-    cmdTester $minionCmd_n
-else
-
-    # collect the reads
-    cmdTester $gatherCmd_m
-
-    # demultiplex
-    cmdTester $demuxCmd_m
-
-    # guppyplex
-    cmdTester $guppyplexCmd_m
+    cmdTester $gatherCmd
 
     # run the core pipeline with medaka
     cmdTester $minionCmd_m
+else
+    # guppyplex the reads
+    cmdTester $guppyplexCmd
+
+    # run the core pipeline with clair3
+    cmdTester $minionCmd_c
 fi
 
 ###########################################################################################
