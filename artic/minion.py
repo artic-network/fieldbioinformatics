@@ -234,9 +234,9 @@ def run(parser, args):
             # Use a specific model path if provided else use the default conda path
             if args.model_path:
                 model_path = f"'{args.model_path}/{args.model}'"
-            
+
             else:
-                model_path = f"'{os.getenv("CONDA_PREFIX")}/bin/models/{args.model}'"
+                model_path = f"'{os.getenv('CONDA_PREFIX')}/bin/models/{args.model}'"
 
             # Split the BAM by read group
             for p in pools:
