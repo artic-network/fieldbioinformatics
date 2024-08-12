@@ -337,7 +337,9 @@ def runner(workflow, numValidations):
 
         # check we've confirmed all the expected variants
         if len(expVariants) != 0:
-            sys.stderr.write(f"variants missed during test for {sampleID}")
+            sys.stderr.write(
+                f"variants missed during test for {sampleID} workflow: {workflow}"
+            )
             for key, val in expVariants.items():
                 sys.stderr.write(f"\t{key}: {val}")
             assert False
