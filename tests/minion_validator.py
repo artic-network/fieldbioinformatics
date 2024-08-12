@@ -237,13 +237,6 @@ def runner(workflow, sampleID):
     # if (numValidations < 0) or (numValidations > len(testData)):
     #     counter = len(testData)
 
-    # run the data through the requested workflow, then validate the output
-    print(
-        "running the {} workflow with {} of the validation datasets...\n".format(
-            workflow, counter
-        )
-    )
-
     # generate the command
     cmd = genCommand(sampleID, workflow)
 
@@ -347,7 +340,6 @@ def runner(workflow, sampleID):
 
     # clean up pipeline files
     cleanUp(sampleID)
-    counter -= 1
 
 
 class TestMinion(unittest.TestCase):
@@ -356,7 +348,7 @@ class TestMinion(unittest.TestCase):
 
     def test_Clair3_CVR1(self):
         runner("clair3", "CVR1")
-    
+
     def test_Clair3_NRW01(self):
         runner("clair3", "NRW01")
 
@@ -368,9 +360,9 @@ class TestMinion(unittest.TestCase):
 
     def test_Medaka_CVR1(self):
         runner("medaka", "CVR1")
-    
+
     def test_Medaka_NRW01(self):
         runner("medaka", "NRW01")
-    
+
     def test_Medaka_SP1(self):
         runner("medaka", "SP1")
