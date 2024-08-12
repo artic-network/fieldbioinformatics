@@ -215,7 +215,7 @@ def checkConsensus(consensusFile, subSeq):
 
 
 # runner is the test runner
-def runner(workflow, numValidations):
+def runner(workflow, sampleID):
 
     # get the workflow data
     if workflow == "clair3":
@@ -226,10 +226,16 @@ def runner(workflow, numValidations):
         sys.stderr.write("error setting up test runner")
         assert False
 
+    if sampleID not in data:
+        sys.stderr.write("no test data for {}".format(sampleID))
+        assert False
+
+    expVariants = data[sampleID]
+
     # check the number of validation datasets requested
-    counter = numValidations
-    if (numValidations < 0) or (numValidations > len(testData)):
-        counter = len(testData)
+    # counter = numValidations
+    # if (numValidations < 0) or (numValidations > len(testData)):
+    #     counter = len(testData)
 
     # run the data through the requested workflow, then validate the output
     print(
@@ -237,124 +243,134 @@ def runner(workflow, numValidations):
             workflow, counter
         )
     )
-    for sampleID, expVariants in data.items():
 
-        # break when the requested number of datasets have been run
-        if counter == 0:
-            break
+    # generate the command
+    cmd = genCommand(sampleID, workflow)
 
-        # generate the command
-        cmd = genCommand(sampleID, workflow)
+    # setup and run the minion parser
+    parser = pipeline.init_pipeline_parser()
 
-        # setup and run the minion parser
-        parser = pipeline.init_pipeline_parser()
+    # parse the arguments
+    try:
+        args = parser.parse_args(cmd)
+    except SystemExit:
+        sys.stderr.write("failed to parse valid command for `artic minion`")
 
-        # parse the arguments
-        try:
-            args = parser.parse_args(cmd)
-        except SystemExit:
-            sys.stderr.write("failed to parse valid command for `artic minion`")
+    # run the minion pipeline
+    try:
+        args.func(parser, args)
+    except SystemExit:
+        sys.stderr.write("artic minion exited early with an error")
+        assert False
 
-        # run the minion pipeline
-        try:
-            args.func(parser, args)
-        except SystemExit:
-            sys.stderr.write("artic minion exited early with an error")
-            assert False
+    # check the ARTIC consensus was created
+    consensusFile = "%s.consensus.fasta" % sampleID
+    assert os.path.exists(consensusFile), "no consensus produced for {}".format(
+        sampleID
+    )
+    testSeqs = SeqIO.parse(open(consensusFile, "r"), "fasta")
+    testConsensus = next(testSeqs)
 
-        # check the ARTIC consensus was created
-        consensusFile = "%s.consensus.fasta" % sampleID
-        assert os.path.exists(consensusFile), "no consensus produced for {}".format(
-            sampleID
-        )
-        testSeqs = SeqIO.parse(open(consensusFile, "r"), "fasta")
-        testConsensus = next(testSeqs)
+    # check the ARTIC consensus sequence matches the one on record
+    # if workflow == "medaka":
+    #     refSeqs = SeqIO.parse(open(refMedakaConsensuses[sampleID], "r"), "fasta")
+    # else:
+    #     refSeqs = SeqIO.parse(open(refConsensuses[sampleID], "r"), "fasta")
+    # refConsensus = next(refSeqs)
+    # assert (
+    #     testConsensus.seq == refConsensus.seq
+    # ), "produced ARTIC consensus does not match expected consensus for {}".format(
+    #     sampleID
+    # )
 
-        # check the ARTIC consensus sequence matches the one on record
-        # if workflow == "medaka":
-        #     refSeqs = SeqIO.parse(open(refMedakaConsensuses[sampleID], "r"), "fasta")
-        # else:
-        #     refSeqs = SeqIO.parse(open(refConsensuses[sampleID], "r"), "fasta")
-        # refConsensus = next(refSeqs)
-        # assert (
-        #     testConsensus.seq == refConsensus.seq
-        # ), "produced ARTIC consensus does not match expected consensus for {}".format(
-        #     sampleID
-        # )
+    # check the ARTIC VCF was created
+    vcfFile = "%s.normalised.vcf.gz" % sampleID
+    assert os.path.exists(vcfFile), "no VCF produced for {}".format(sampleID)
 
-        # check the ARTIC VCF was created
-        vcfFile = "%s.normalised.vcf.gz" % sampleID
-        assert os.path.exists(vcfFile), "no VCF produced for {}".format(sampleID)
-
-        # open the VCF and check the reported variants match the expected
-        for record in VCF(vcfFile):
-            if record.POS in expVariants:
-                assert (
-                    record.REF == expVariants[record.POS][0]
-                ), "incorrect REF reported in VCF for {} at position {}".format(
-                    sampleID, record.POS
-                )
-                assert (
-                    str(record.ALT[0]) == expVariants[record.POS][1]
-                ), "incorrect ALT reported in VCF for {} at position {}".format(
-                    sampleID, record.POS
-                )
-
-                # if this is an expected deletion, check the consensus sequence for it's absence
-                if expVariants[record.POS][2] == "del":
-                    assert (
-                        checkConsensus(consensusFile, record.REF) == 0
-                    ), "expected deletion for {} was reported but was left in consensus".format(
-                        sampleID
-                    )
-
-                    # also check that the VCF record is correctly labelled as DEL
-                    assert (
-                        record.is_deletion
-                    ), "deletion for {} not formatted correctly in VCF".format(sampleID)
-
-                # if this is an expected indel, check that the VCF record is correctly labelled as INDEL
-                if expVariants[record.POS][2] == "indel":
-                    assert (
-                        record.is_indel
-                    ), "indel for {} not formatted correctly in VCF".format(sampleID)
-
-                # else, check that the VCF record is correctly labelled as SNP
-                if expVariants[record.POS][2] == "snp":
-                    assert (
-                        record.is_snp
-                    ), "snp for {} not formatted correctly in VCF".format(sampleID)
-
-                # decrement/remove the variant from the expected list, so we can keep track of checked variants
-                expVariants[record.POS][3] -= 1
-                if expVariants[record.POS][3] == 0:
-                    del expVariants[record.POS]
-            else:
-                sys.stderr.write(
-                    f"unexpected variant found for {sampleID}: {str(record.ALT[0])} at {record.POS}"
-                )
-                assert False
-
-        # check we've confirmed all the expected variants
-        if len(expVariants) != 0:
-            sys.stderr.write(
-                f"variants missed during test for {sampleID} workflow: {workflow}"
+    # open the VCF and check the reported variants match the expected
+    for record in VCF(vcfFile):
+        if record.POS in expVariants:
+            assert (
+                record.REF == expVariants[record.POS][0]
+            ), "incorrect REF reported in VCF for {} at position {}".format(
+                sampleID, record.POS
             )
-            for key, val in expVariants.items():
-                sys.stderr.write(f"\t{key}: {val}")
+            assert (
+                str(record.ALT[0]) == expVariants[record.POS][1]
+            ), "incorrect ALT reported in VCF for {} at position {}".format(
+                sampleID, record.POS
+            )
+
+            # if this is an expected deletion, check the consensus sequence for it's absence
+            if expVariants[record.POS][2] == "del":
+                assert (
+                    checkConsensus(consensusFile, record.REF) == 0
+                ), "expected deletion for {} was reported but was left in consensus".format(
+                    sampleID
+                )
+
+                # also check that the VCF record is correctly labelled as DEL
+                assert (
+                    record.is_deletion
+                ), "deletion for {} not formatted correctly in VCF".format(sampleID)
+
+            # if this is an expected indel, check that the VCF record is correctly labelled as INDEL
+            if expVariants[record.POS][2] == "indel":
+                assert (
+                    record.is_indel
+                ), "indel for {} not formatted correctly in VCF".format(sampleID)
+
+            # else, check that the VCF record is correctly labelled as SNP
+            if expVariants[record.POS][2] == "snp":
+                assert (
+                    record.is_snp
+                ), "snp for {} not formatted correctly in VCF".format(sampleID)
+
+            # decrement/remove the variant from the expected list, so we can keep track of checked variants
+            expVariants[record.POS][3] -= 1
+            if expVariants[record.POS][3] == 0:
+                del expVariants[record.POS]
+        else:
+            sys.stderr.write(
+                f"unexpected variant found for {sampleID}: {str(record.ALT[0])} at {record.POS}"
+            )
             assert False
 
-        # clean up pipeline files
-        cleanUp(sampleID)
-        counter -= 1
+    # check we've confirmed all the expected variants
+    if len(expVariants) != 0:
+        sys.stderr.write(
+            f"variants missed during test for {sampleID} workflow: {workflow}"
+        )
+        for key, val in expVariants.items():
+            sys.stderr.write(f"\t{key}: {val}")
+        assert False
+
+    # clean up pipeline files
+    cleanUp(sampleID)
+    counter -= 1
 
 
 class TestMinion(unittest.TestCase):
     def setUp(self):
         dataChecker()
 
-    def test_Clair3Minion(self):
-        runner("clair3", 3)
+    def test_Clair3_CVR1(self):
+        runner("clair3", "CVR1")
+    
+    def test_Clair3_NRW01(self):
+        runner("clair3", "NRW01")
 
-    def test_MedakaMinion(self):
-        runner("medaka", 3)
+    def test_Clair3_SP1(self):
+        runner("clair3", "SP1")
+
+    def test_Medaka_MT007544(self):
+        runner("medaka", "MT007544")
+
+    def test_Medaka_CVR1(self):
+        runner("medaka", "CVR1")
+    
+    def test_Medaka_NRW01(self):
+        runner("medaka", "NRW01")
+    
+    def test_Medaka_SP1(self):
+        runner("medaka", "SP1")
