@@ -56,6 +56,7 @@ seg2expectedCIGAR = "67S69M5D1M1D40M2I12M1D41M1D117M1I3M1D4M2D11M2I2M1D18M1D18M1
 def test_find_primer():
     """test for the find primer function"""
 
+    print(dummyPrimerScheme)
     # test the primer finder on the primers themselves
     for primer in dummyPrimerScheme:
         if primer["direction"] == "+":
@@ -66,9 +67,6 @@ def test_find_primer():
             result = align_trim.find_primer(
                 dummyPrimerScheme, primer["end"], primer["direction"]
             )
-        print(dummyPrimerScheme)
-        print(primer)
-        print(result)
 
         assert result
         assert (
@@ -77,11 +75,13 @@ def test_find_primer():
 
     # test against other ref positions
     result = align_trim.find_primer(dummyPrimerScheme, 8, "+")
+    assert result
     assert (
-        result[2]["primerID"] == "primer1_LEFT"
+        result[2]["primerID"] == "primer2_LEFT"
     ), "find_primer returned incorrect primer"
 
     result = align_trim.find_primer(dummyPrimerScheme, 25, "-")
+    assert result
     assert (
         result[2]["primerID"] == "primer1_RIGHT"
     ), "find_primer returned incorrect primer"
