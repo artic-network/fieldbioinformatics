@@ -22,12 +22,13 @@ def vcf_merge(args):
         pool_map[file_name] = pool_name
 
         vcf_reader = VCF(file_name)
-        if not vcf_reader.seqnames:
-            print(
-                f"Not using {file_name} as VCF template since it has no variants",
-                file=sys.stderr,
-            )
-            continue
+        if vcf_reader.seqnames:
+            break
+
+        print(
+            f"Not using {file_name} as VCF template since it has no variants",
+            file=sys.stderr,
+        )
 
     # vcf_reader.infos["Pool"] = vcf.parser._Format("Pool", 1, "String", "The pool name")
     vcf_reader.add_info_to_header(
