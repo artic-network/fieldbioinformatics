@@ -38,12 +38,8 @@ jobs:
           ./test-runner.sh clair3
         shell: micromamba-shell {0}
 
-      - name: Run minion_validator medaka tests
+      - name: Run minion_validator tests
         run: |
-          pytest -s artic/minion_validator.py --workFlow medaka --numValidations 2
+          pytest -s artic/minion_validator.py
         shell: micromamba-shell {0}
 
-      - name: Run minion_validator clair3 tests
-        run: |
-          pytest -s artic/minion_validator.py --workFlow clair3 --numValidations 2
-        shell: micromamba-shell {0}

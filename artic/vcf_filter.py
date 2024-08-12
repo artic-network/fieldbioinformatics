@@ -65,15 +65,11 @@ class MedakaFilter:
 
 def go(args):
     vcf_reader = VCF(args.inputvcf)
-    vcf_writer = Writer(args.output_pass_vcf, vcf_reader)
-    vcf_writer_filtered = Writer(args.output_fail_vcf, vcf_reader)
-    if args.nanopolish:
-        filter = NanoporeFilter(args.no_frameshifts)
-    elif args.medaka:
-        filter = MedakaFilter(args.no_frameshifts)
-    else:
-        print("Please specify a VCF type, i.e. --nanopolish or --medaka\n")
-        raise SystemExit
+    vcf_writer = Writer(args.output_pass_vcf, vcf_reader, "w")
+    vcf_writer.write_header()
+    vcf_writer_filtered = Writer(args.output_fail_vcf, vcf_reader, "w")
+    vcf_writer_filtered.write_header()
+    filter = MedakaFilter(args.no_frameshifts)
 
     variants = [v for v in vcf_reader]
 
@@ -84,12 +80,12 @@ def go(args):
 
     for v in variants:
 
-        # if using medaka, we need to do a quick pre-filter to remove rubbish that we don't want adding to the mask
-        if args.medaka:
-            if v.INFO["DP"] <= 1:
-                continue
-            if v.QUAL < 20:
-                continue
+        # quick pre-filter to remove rubbish that we don't want adding to the mask
+        # if v.INFO["DP"] <= 1:
+        #     continue
+
+        if v.QUAL < 20:
+            continue
 
         # now apply the filter to send variants to PASS or FAIL file
         if filter.check_filter(v):
@@ -113,8 +109,6 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--nanopolish", action="store_true")
-    parser.add_argument("--medaka", action="store_true")
     parser.add_argument("--no-frameshifts", action="store_true")
     parser.add_argument("inputvcf")
     parser.add_argument("output_pass_vcf")

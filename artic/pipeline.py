@@ -137,6 +137,12 @@ def init_pipeline_parser():
         help="Normalise down to moderate coverage to save runtime (default: %(default)d, deactivate with `--normalise 0`)",
     )
     parser_minion.add_argument(
+        "--primer-match-threshold",
+        type=int,
+        default=5,
+        help="Allow fuzzy primer matching within this threshold (default: %(default)d)",
+    )
+    parser_minion.add_argument(
         "--threads",
         type=int,
         default=8,
@@ -165,7 +171,7 @@ def init_pipeline_parser():
         help="Do not report InDels (uses SNP-only mode of nanopolish/medaka)",
     )
     parser_minion.add_argument(
-        "--allow-frameshifts",
+        "--no-frameshifts",
         action="store_true",
         help="Remove variants which induce frameshifts (ignored when --no-indels set)",
     )

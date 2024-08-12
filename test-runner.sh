@@ -7,7 +7,7 @@ set -e
 # full data available: http://artic.s3.climb.ac.uk/run-folders/EBOV_Amplicons_flongle.tar.gz
 #
 # usage:
-#       ./test-runner.sh [medaka|nanopolish]
+#       ./test-runner.sh [medaka|clair3]
 #
 #   specify either medaka or nanopolish to run the respective workflow of the pipeline
 #
@@ -29,7 +29,7 @@ guppyplexCmd="artic guppyplex \
         --min-length 400 \
         --max-length 800 \
         --prefix ${prefix} \
-        --directory ./${inputData}/fastq_pass/barcode${barcode} \
+        --directory ./${inputData}/pass/barcode${barcode} \
         --output ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq"
 
 ## medaka workflow specific
@@ -38,7 +38,7 @@ minionCmd_m="artic minion \
             --threads ${threads} \
             --scheme-directory ${primerSchemes} \
             --read-file ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq \
-            --model r941_min_high_g351 \
+            --model r941_e81_hac_g514 \
             ${primerScheme} \
             ${prefix}"
 
@@ -48,6 +48,7 @@ minionCmd_c="artic minion \
             --threads ${threads} \
             --scheme-directory ${primerSchemes} \
             --read-file ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq \
+            --clair3 \
             --model r941_prom_hac_g360+g422 \
             ${primerScheme} \
             ${prefix}"
@@ -80,19 +81,20 @@ function cmdTester {
 ###########################################################################################
 # Run the tests.
 
-# check that nanopolish or medaka is specified
-if [ "$1" == "nanopolish" ] || [ "$1" == "medaka" ]; then
+# check that clair3 or medaka is specified
+if [ "$1" == "clair3" ] || [ "$1" == "medaka" ]; then
     echo -e "${BLUE}Starting tests...${NC}"
     echo -e "${BLUE} - using the $1 workflow${NC}"
     echo
 else
-    echo "please specify medaka or nanopolish"
-    echo "./test-runner.sh [medaka|nanopolish]"
+    echo "please specify medaka or clair3"
+    echo "./test-runner.sh [medaka|clair3]"
     exit 1
 fi
 
 # setup a tmp directory to work in
-mkdir tmp && cd tmp || exit
+mkdir tmp || true
+cd tmp || exit
 
 # download the data
 echo "downloading the test data..."
@@ -103,9 +105,8 @@ cmdTester $extractCmd
 echo "running the pipeline..."
 if [ "$1" == "medaka" ]
 then
-
     # collect the reads
-    cmdTester $gatherCmd
+    cmdTester $guppyplexCmd
 
     # run the core pipeline with medaka
     cmdTester $minionCmd_m

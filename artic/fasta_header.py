@@ -1,5 +1,4 @@
 from Bio import SeqIO
-import sys
 
 
 def fasta_header(fn, header):

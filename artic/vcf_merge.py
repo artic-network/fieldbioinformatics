@@ -28,12 +28,20 @@ def vcf_merge(args):
     vcf_reader.add_info_to_header(
         {"ID": "Pool", "Number": 1, "Type": "String", "Description": "The pool name"}
     )
-    vcf_writer = Writer(f"{args.prefix}.merged.vcf", vcf_reader)
-    vcf_writer_primers = Writer(f"{args.prefix}.primers.vcf", vcf_reader)
+    vcf_writer = Writer(f"{args.prefix}.merged.vcf", vcf_reader, "w")
+    vcf_writer_primers = Writer(f"{args.prefix}.primers.vcf", vcf_reader, "w")
 
     variants = []
     for file_name, pool_name in pool_map.items():
         vcf_reader = VCF(file_name)
+        vcf_reader.add_info_to_header(
+            {
+                "ID": "Pool",
+                "Number": 1,
+                "Type": "String",
+                "Description": "The pool name",
+            }
+        )
         for v in vcf_reader:
             v.INFO["Pool"] = pool_name
             variants.append(v)

@@ -17,7 +17,7 @@ consumesReference = [True, False, True, True, False, False, False, True]
 consumesQuery = [True, True, False, False, True, False, False, True]
 
 
-def find_primer(bed, pos, direction):
+def find_primer(bed, pos, direction, threshold=5):
     """Given a reference position and a direction of travel, walk out and find the nearest primer site.
 
     Parameters
@@ -40,30 +40,23 @@ def find_primer(bed, pos, direction):
         primer_distances = [
             (abs(p["start"] - pos), p["start"] - pos, p)
             for p in bed
-            if (p["direction"] == direction and p["start"] <= pos)
+            if (p["direction"] == direction) and ((p["start"] - pos) >= -threshold)
         ]
 
-        if not primer_distances:
-            return False
-
-        closest = min(
-            primer_distances,
-            key=itemgetter(0),
-        )
     else:
         primer_distances = [
             (abs(p["end"] - pos), p["end"] - pos, p)
             for p in bed
-            if (p["direction"] == direction and p["end"] >= pos)
+            if ((p["direction"] == direction) and ((p["end"] - pos) <= threshold))
         ]
 
-        if not primer_distances:
-            return False
+    if not primer_distances:
+        return False
 
-        closest = min(
-            primer_distances,
-            key=itemgetter(0),
-        )
+    closest = min(
+        primer_distances,
+        key=itemgetter(0),
+    )
 
     return closest
 
@@ -209,8 +202,8 @@ def handle_segment(
         return False
 
     # locate the nearest primers to this alignment segment
-    p1 = find_primer(bed, segment.reference_start, "+")
-    p2 = find_primer(bed, segment.reference_end, "-")
+    p1 = find_primer(bed, segment.reference_start, "+", args.primer_match_threshold)
+    p2 = find_primer(bed, segment.reference_end, "-", args.primer_match_threshold)
 
     if not p1 or not p2:
         print(
@@ -373,7 +366,7 @@ def generate_amplicons(bed: list):
     return amplicons
 
 
-def normalise(trimmed_segments: dict, normalise: int, bed: list, trim_primers: bool):
+def normalise(trimmed_segments: dict, normalise: int, bed: list):
     """Normalise the depth of the trimmed segments to a given value. Perform per-amplicon normalisation using numpy vector maths to determine whether the segment in question would take the depth closer to the desired depth accross the amplicon.
 
     Args:
@@ -401,13 +394,6 @@ def normalise(trimmed_segments: dict, normalise: int, bed: list, trim_primers: b
             (amplicons[amplicon]["length"],), normalise, dtype=int
         )
 
-        if trim_primers:
-            # We don't want to cover the primers in the normalisation
-            desired_depth[
-                amplicons[amplicon]["p_start"] : amplicons[amplicon]["start"] - 1
-            ] = 0
-            desired_depth[amplicons[amplicon]["end"] : amplicons[amplicon]["p_end"]] = 0
-
         amplicon_depth = np.zeros((amplicons[amplicon]["length"],), dtype=int)
 
         if not segments:
@@ -424,9 +410,12 @@ def normalise(trimmed_segments: dict, normalise: int, bed: list, trim_primers: b
         for segment in segments:
             test_depths = np.copy(amplicon_depth)
 
-            relative_start = segment.reference_start - amplicons[amplicon]["start"]
+            relative_start = segment.reference_start - amplicons[amplicon]["p_start"]
 
-            relative_end = segment.reference_end - amplicons[amplicon]["start"]
+            if relative_start < 0:
+                relative_start = 0
+
+            relative_end = segment.reference_end - amplicons[amplicon]["p_start"]
 
             test_depths[relative_start:relative_end] += 1
 
@@ -508,9 +497,7 @@ def go(args):
 
     # normalise if requested
     if args.normalise:
-        output_segments = normalise(
-            trimmed_segments, args.normalise, bed, args.trim_primers
-        )
+        output_segments = normalise(trimmed_segments, args.normalise, bed)
 
         for output_segment in output_segments:
             outfile.write(output_segment)
@@ -536,6 +523,12 @@ def main():
     )
     parser.add_argument(
         "--min-mapq", type=int, default=20, help="Minimum mapping quality to keep"
+    )
+    parser.add_argument(
+        "--primer-match-threshold",
+        type=int,
+        default=5,
+        help="Fuzzy match primer positions within this threshold",
     )
     parser.add_argument("--report", type=str, help="Output report to file")
     parser.add_argument(

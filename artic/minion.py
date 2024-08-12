@@ -1,8 +1,6 @@
 # Written by Nick Loman (@pathogenomenick)
 
-from clint.textui import colored, puts, indent
-from Bio import SeqIO
-from pathlib import Path
+from clint.textui import colored
 import os
 import sys
 import time
@@ -195,16 +193,10 @@ def run(parser, args):
     ## create a holder to keep the pipeline commands in
     cmds = []
 
-    # 3) index the ref & align with minimap or bwa
-    if not args.bwa:
-        cmds.append(
-            f"minimap2 -a -x map-ont -t {args.threads} {ref} {read_file} | samtools view -bS -F 4 - | samtools sort -o {args.sample}.sorted.bam -"
-        )
-    else:
-        cmds.append(f"bwa index {ref}")
-        cmds.append(
-            f"bwa mem -t {args.threads} -x ont2d {ref} {read_file} | samtools view -bS -F 4 - | samtools sort -o {args.sample}.sorted.bam -"
-        )
+    # 3) index the ref & align with minimap
+    cmds.append(
+        f"minimap2 -a -x map-ont -t {args.threads} {ref} {read_file} | samtools view -bS -F 4 - | samtools sort -o {args.sample}.sorted.bam -"
+    )
 
     cmds.append(f"samtools index {args.sample}.sorted.bam")
 
@@ -215,11 +207,11 @@ def run(parser, args):
         normalise_string = ""
 
     cmds.append(
-        f"align_trim {normalise_string} {bed} --remove-incorrect-pairs --min-mapq {args.min_mapq} --report {args.sample}.alignreport.txt < {args.sample}.sorted.bam 2> {args.sample}.alignreport.er | samtools sort -T {args.sample} - -o {args.sample}.trimmed.rg.sorted.bam"
+        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --remove-incorrect-pairs --min-mapq {args.min_mapq} --report {args.sample}.alignreport.csv < {args.sample}.sorted.bam 2> {args.sample}.alignreport.er | samtools sort -T {args.sample} - -o {args.sample}.trimmed.rg.sorted.bam"
     )
 
     cmds.append(
-        f"align_trim {normalise_string} {bed} --min-mapq {args.min_mapq} --remove-incorrect-pairs --trim-primers --report {args.sample}.alignreport.txt < {args.sample}.sorted.bam 2> {args.sample}.alignreport.er | samtools sort -T {args.sample} - -o {args.sample}.primertrimmed.rg.sorted.bam"
+        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --min-mapq {args.min_mapq} --remove-incorrect-pairs --trim-primers --report {args.sample}.alignreport.csv < {args.sample}.sorted.bam 2> {args.sample}.alignreport.er | samtools sort -T {args.sample} - -o {args.sample}.primertrimmed.rg.sorted.bam"
     )
 
     cmds.append(f"samtools index {args.sample}.trimmed.rg.sorted.bam")
@@ -241,11 +233,15 @@ def run(parser, args):
             # Split the BAM by read group
             for p in pools:
                 cmds.append(
-                    f"samtools view -b -r {p} {args.sample}.primertrimmed.rg.sorted.bam > {args.sample}.{p}.primertrimmed.rg.sorted.bam"
+                    f"samtools view -b -r {p} {args.sample}.primertrimmed.rg.sorted.bam -o {args.sample}.{p}.primertrimmed.rg.sorted.bam"
                 )
 
                 cmds.append(
-                    f"run_clair3.sh --bam_fn='{args.sample}.{p}.primertrimmed.rg.sorted.bam' --ref_fn='{ref}' --output='./rg_{p}' --threads='{args.threads}' --platform='ont' --model_path={model_path} --include_all_ctgs"
+                    f"samtools index {args.sample}.{p}.primertrimmed.rg.sorted.bam"
+                )
+
+                cmds.append(
+                    f"run_clair3.sh --chunk_size=10000 --no_phasing_for_fa --bam_fn='{args.sample}.{p}.primertrimmed.rg.sorted.bam' --ref_fn='{ref}' --output='./rg_{p}' --threads='{args.threads}' --platform='ont' --model_path={model_path} --include_all_ctgs"
                 )
 
                 cmds.append(
@@ -291,59 +287,50 @@ def run(parser, args):
     #     cmds.append(
     #         "mv %s.merged.filtered.vcf %s.merged.vcf" % (args.sample, args.sample)
     #     )
+    pre_filter_vcf = f"{args.sample}.merged.vcf"
+    cmds.append(f"bgzip -kf {pre_filter_vcf}")
+    cmds.append(f"tabix -f -p vcf {pre_filter_vcf}.gz")
 
-    ## if doing the medaka workflow and longshot required, do it on the merged VCF
-    # if args.medaka and not args.no_longshot:
-    #     cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
-    #     cmds.append("tabix -f -p vcf %s.merged.vcf.gz" % (args.sample))
-    #     cmds.append(
-    #         "longshot --min_mapq %s -P 0 -F -A --no_haps --bam %s.primertrimmed.rg.sorted.bam --ref %s --out %s.merged.vcf --potential_variants %s.merged.vcf.gz"
-    #         % (args.min_mapq, args.sample, ref, args.sample, args.sample)
-    #     )
-
-    vcf_file = "%s.pass.vcf" % (args.sample)
+    # if doing the medaka workflow and longshot required, do it on the merged VCF
+    if not args.no_longshot:
+        pre_filter_vcf = f"{args.sample}.longshot.vcf"
+        cmds.append(
+            f"longshot --min_mapq {args.min_mapq} -P 0 -F --max_cov 500 --no_haps --bam {args.sample}.primertrimmed.rg.sorted.bam --ref {ref} --out {pre_filter_vcf} --potential_variants {args.sample}.merged.vcf.gz"
+        )
+        cmds.append(f"bgzip -kf {pre_filter_vcf}")
+        cmds.append(f"tabix -f -p vcf {pre_filter_vcf}.gz")
 
     ## filter the variants to produce PASS and FAIL lists, then index them
-    if args.no_indels:
-        cmds.append(
-            "artic_vcf_filter --medaka --no-indels %s.merged.vcf %s.pass.vcf %s.fail.vcf"
-            % (args.sample, args.sample, args.sample)
-        )
-
-    elif args.allow_frameshifts:
-        cmds.append(
-            "artic_vcf_filter --medaka %s.merged.vcf %s.pass.vcf %s.fail.vcf"
-            % (args.sample, args.sample, args.sample)
-        )
-
-    else:
-        cmds.append(
-            "artic_vcf_filter --no-frameshifts --medaka %s.merged.vcf %s.pass.vcf %s.fail.vcf"
-            % (args.sample, args.sample, args.sample)
-        )
+    fs_str = "--no-frameshifts" if args.no_frameshifts else ""
+    indel_str = "--no-indels" if args.no_indels else ""
+    cmds.append(
+        f"artic_vcf_filter {fs_str} {indel_str} {pre_filter_vcf}.gz {args.sample}.pass.vcf {args.sample}.fail.vcf"
+    )
 
     # 9) get the depth of coverage for each readgroup, create a coverage mask and plots, and add failed variants to the coverage mask (artic_mask must be run before bcftools consensus)
     cmds.append(
-        "artic_make_depth_mask --store-rg-depths %s %s.primertrimmed.rg.sorted.bam %s.coverage_mask.txt"
-        % (ref, args.sample, args.sample)
-    )
-    cmds.append(
-        "artic_mask %s %s.coverage_mask.txt %s.fail.vcf %s.preconsensus.fasta"
-        % (ref, args.sample, args.sample, args.sample)
+        f"artic_make_depth_mask --store-rg-depths {ref} {args.sample}.primertrimmed.rg.sorted.bam {args.sample}.coverage_mask.txt"
     )
 
-    # 10) generate the consensus sequence
-    cmds.append("bgzip -f %s" % (vcf_file))
-    cmds.append("tabix -p vcf %s.gz" % (vcf_file))
     cmds.append(
-        "bcftools norm --check-ref x --fasta-ref %s.preconsensus.fasta -O z -o %s %s.gz"
-        % (args.sample, vcf_file, vcf_file)
+        f"artic_mask {ref} {args.sample}.coverage_mask.txt {args.sample}.fail.vcf {args.sample}.preconsensus.fasta"
     )
-    cmds.append("bgzip -f %s" % (vcf_file))
-    cmds.append("tabix -f -p vcf %s.gz" % (vcf_file))
+
+    post_filter_vcf_file = f"{args.sample}.pass.vcf"
+
+    # 10) generate the consensus sequence
+    cmds.append(f"bgzip -kf {post_filter_vcf_file}")
+    cmds.append(f"tabix -f -p vcf {post_filter_vcf_file}.gz")
+
+    # Normalise variants in the pass/fail VCF files
+    post_normalisation_vcf_file = f"{args.sample}.normalised.vcf"
     cmds.append(
-        "bcftools consensus -f %s.preconsensus.fasta %s.gz -m %s.coverage_mask.txt -o %s.consensus.fasta"
-        % (args.sample, vcf_file, args.sample, args.sample)
+        f"bcftools norm --check-ref x --fasta-ref {args.sample}.preconsensus.fasta -O z -o {post_normalisation_vcf_file} {post_filter_vcf_file}.gz"
+    )
+    cmds.append(f"bgzip -kf {post_normalisation_vcf_file}")
+    cmds.append(f"tabix -f -p vcf {post_normalisation_vcf_file}.gz")
+    cmds.append(
+        f"bcftools consensus -f {args.sample}.preconsensus.fasta {post_normalisation_vcf_file}.gz -m {args.sample}.coverage_mask.txt -o {args.sample}.consensus.fasta"
     )
 
     # 11) apply the header to the consensus sequence and run alignment against the reference sequence

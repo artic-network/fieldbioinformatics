@@ -1,9 +1,5 @@
 import sys
 from Bio import SeqIO
-import tempfile
-import os
-import glob
-import shutil
 
 # extract with constraints:
 #   -- only one group ever

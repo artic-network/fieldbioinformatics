@@ -2,9 +2,8 @@
 import json
 import re
 import sys
-from collections import OrderedDict
 
-from .vcftagprimersites import read_bed_file
+from artic.vcftagprimersites import read_bed_file
 
 # Alignment_Length_Threshold drops binned reads that are <X% of amplicon length)
 Alignment_Length_Threshold = 0.95
