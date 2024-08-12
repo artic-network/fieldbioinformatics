@@ -17,7 +17,7 @@ consumesReference = [True, False, True, True, False, False, False, True]
 consumesQuery = [True, True, False, False, True, False, False, True]
 
 
-def find_primer(bed, pos, direction, threshold=5):
+def find_primer(bed, pos, direction, threshold=20):
     """Given a reference position and a direction of travel, walk out and find the nearest primer site.
 
     Parameters
