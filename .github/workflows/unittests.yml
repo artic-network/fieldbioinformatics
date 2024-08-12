@@ -40,6 +40,6 @@ jobs:
 
       - name: Run minion_validator tests
         run: |
-          pytest -s artic/minion_validator.py
+          pytest -s tests/minion_validator.py
         shell: micromamba-shell {0}
 
