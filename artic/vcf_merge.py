@@ -14,28 +14,28 @@ def vcf_merge(args):
         for n in range(p["start"], p["end"] + 1):
             primer_map[p["PoolName"]][n] = p["Primer_ID"]
 
-    first_vcf = None
+    template_vcf = None
 
     pool_map = {}
     for param in args.vcflist:
         pool_name, file_name = param.split(":")
         pool_map[file_name] = pool_name
-
-        vcf_reader = VCF(file_name)
-        if vcf_reader.seqnames:
-            break
-
-        print(
-            f"Not using {file_name} as VCF template since it has no variants",
-            file=sys.stderr,
-        )
+        if not template_vcf:
+            vcf_reader = VCF(file_name)
+            if vcf_reader.seqnames:
+                template_vcf = vcf_reader
+            else:
+                print(
+                    f"Not using {file_name} as VCF template since it has no variants",
+                    file=sys.stderr,
+                )
 
     # vcf_reader.infos["Pool"] = vcf.parser._Format("Pool", 1, "String", "The pool name")
     vcf_reader.add_info_to_header(
         {"ID": "Pool", "Number": 1, "Type": "String", "Description": "The pool name"}
     )
-    vcf_writer = Writer(f"{args.prefix}.merged.vcf", vcf_reader, "w")
-    vcf_writer_primers = Writer(f"{args.prefix}.primers.vcf", vcf_reader, "w")
+    vcf_writer = Writer(f"{args.prefix}.merged.vcf", template_vcf, "w")
+    vcf_writer_primers = Writer(f"{args.prefix}.primers.vcf", template_vcf, "w")
 
     variants = []
     for file_name, pool_name in pool_map.items():
@@ -43,6 +43,7 @@ def vcf_merge(args):
         if not vcf_reader.seqnames:
             print(f"Skipping {file_name} as it has no variants", file=sys.stderr)
             continue
+
         vcf_reader.add_info_to_header(
             {
                 "ID": "Pool",
@@ -54,6 +55,8 @@ def vcf_merge(args):
         for v in vcf_reader:
             v.INFO["Pool"] = pool_name
             variants.append(v)
+
+    print(variants)
 
     variants.sort(key=attrgetter("CHROM", "POS"))
 
