@@ -20,10 +20,15 @@ def vcf_merge(args):
     for param in args.vcflist:
         pool_name, file_name = param.split(":")
         pool_map[file_name] = pool_name
-        if not first_vcf:
-            first_vcf = file_name
 
-    vcf_reader = VCF(first_vcf)
+        vcf_reader = VCF(file_name)
+        if not vcf_reader.seqnames:
+            print(
+                f"Not using {file_name} as VCF template since it has no variants",
+                file=sys.stderr,
+            )
+            continue
+
     # vcf_reader.infos["Pool"] = vcf.parser._Format("Pool", 1, "String", "The pool name")
     vcf_reader.add_info_to_header(
         {"ID": "Pool", "Number": 1, "Type": "String", "Description": "The pool name"}
@@ -34,6 +39,9 @@ def vcf_merge(args):
     variants = []
     for file_name, pool_name in pool_map.items():
         vcf_reader = VCF(file_name)
+        if not vcf_reader.seqnames:
+            print(f"Skipping {file_name} as it has no variants", file=sys.stderr)
+            continue
         vcf_reader.add_info_to_header(
             {
                 "ID": "Pool",
