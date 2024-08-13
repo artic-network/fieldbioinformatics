@@ -65,7 +65,7 @@ def collect_depths(bamfile, refName, minDepth, ignoreDeletions, warnRGcov):
 
     # generate the pileup
     for pileupcolumn in bamFile.pileup(
-        refName, max_depth=10000, truncate=False, min_base_quality=0
+        refName, start=0, stop=bamFile.get_reference_length(refName), max_depth=10000, truncate=False, min_base_quality=0
     ):
 
         # process the pileup column
