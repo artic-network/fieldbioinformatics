@@ -56,42 +56,46 @@ refMedakaConsensuses = {
 }
 
 # nanopolishTestVariants is a nested dict of sample IDs and their expected variants when using the nanopolish workflow
-# clair3TestVariants = {
-#     "CVR1": {
-#         # pos: (ref, alt, type, count)
-#         241: ["C", "T", "snp", 1],
-#         3037: ["C", "T", "snp", 1],
-#         12733: [
-#             "C",
-#             "T",
-#             "snp",
-#             1,
-#         ],
-#         14408: ["C", "T", "snp", 1],
-#         23403: ["A", "G", "snp", 1],
-#         27752: ["C", "T", "snp", 1],
-#         28881: ["G", "A", "snp", 1],
-#         28882: ["G", "A", "snp", 1],
-#         28883: ["G", "C", "snp", 1],
-#     },
-#     "NRW01": {
-#         1440: ["G", "A", "snp", 1],
-#         2891: ["G", "A", "snp", 1],
-#         4655: ["C", "T", "snp", 1],
-#         8422: ["G", "A", "snp", 1],
-#         22323: ["C", "T", "snp", 1],
-#         29546: ["C", "A", "snp", 2],
-#     },
-#     "SP1": {
-#         241: ["C", "T", "snp", 1],
-#         3037: ["C", "T", "snp", 1],
-#         14408: ["C", "T", "snp", 1],
-#         23403: ["A", "G", "snp", 1],
-#     },
-# }
+clair3TestVariants = {
+    "MT007544": {
+        # pos: (ref, alt, type, count)
+        29749: ["ACGATCGAGTG", "A", "del", 1],
+    },
+    "CVR1": {
+        # pos: (ref, alt, type, count)
+        241: ["C", "T", "snp", 1],
+        3037: ["C", "T", "snp", 1],
+        12733: [
+            "C",
+            "T",
+            "snp",
+            1,
+        ],
+        14408: ["C", "T", "snp", 1],
+        23403: ["A", "G", "snp", 1],
+        27752: ["C", "T", "snp", 1],
+        28881: ["G", "A", "snp", 1],
+        28882: ["G", "A", "snp", 1],
+        28883: ["G", "C", "snp", 1],
+    },
+    "NRW01": {
+        1440: ["G", "A", "snp", 1],
+        2891: ["G", "A", "snp", 1],
+        4655: ["C", "T", "snp", 1],
+        8422: ["G", "A", "snp", 1],
+        22323: ["C", "T", "snp", 1],
+        29546: ["C", "A", "snp", 2],
+    },
+    "SP1": {
+        241: ["C", "T", "snp", 1],
+        3037: ["C", "T", "snp", 1],
+        14408: ["C", "T", "snp", 1],
+        23403: ["A", "G", "snp", 1],
+    },
+}
 
 # medakaTestVariants is a nested dict of sample IDs and their expected variants when using the medaka workflow
-TestVariants = {
+medakaTestVariants = {
     "MT007544": {
         # pos: (ref, alt, type, count)
         29749: ["ACGATCGAGTG", "A", "del", 1],
@@ -219,7 +223,14 @@ def checkConsensus(consensusFile, subSeq):
 # runner is the test runner
 def runner(workflow, sampleID):
 
-    data = TestVariants
+    if workflow == "clair3":
+        data = clair3TestVariants
+    elif workflow == "medaka":
+        data = medakaTestVariants
+    else:
+        sys.stderr.write("invalid workflow specified")
+        assert False
+    
     if sampleID not in data:
         sys.stderr.write("no test data for {}".format(sampleID))
         assert False
