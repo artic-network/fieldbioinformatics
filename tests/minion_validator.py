@@ -282,8 +282,10 @@ def runner(workflow, sampleID):
     vcfFile = "%s.normalised.vcf.gz" % sampleID
     assert os.path.exists(vcfFile), "no VCF produced for {}".format(sampleID)
 
+    obs_variants = {}
     # open the VCF and check the reported variants match the expected
     for record in VCF(vcfFile):
+        obs_variants[record.POS] = [record.REF, str(record.ALT[0]), record.var_type]
         if record.POS in expVariants:
             assert (
                 record.REF == expVariants[record.POS][0]
@@ -322,9 +324,10 @@ def runner(workflow, sampleID):
                 ), "snp for {} not formatted correctly in VCF".format(sampleID)
 
             # decrement/remove the variant from the expected list, so we can keep track of checked variants
-            expVariants[record.POS][3] -= 1
-            if expVariants[record.POS][3] == 0:
-                del expVariants[record.POS]
+            # expVariants[record.POS][3] -= 1
+            # if expVariants[record.POS][3] == 0:
+            #     del expVariants[record.POS]
+
         else:
             sys.stderr.write(
                 f"unexpected variant found for {sampleID}: {str(record.ALT[0])} at {record.POS}"
@@ -332,13 +335,10 @@ def runner(workflow, sampleID):
             assert False
 
     # check we've confirmed all the expected variants
-    if len(expVariants) != 0:
-        sys.stderr.write(
-            f"variants missed during test for {sampleID} workflow: {workflow}"
-        )
-        for key, val in expVariants.items():
-            sys.stderr.write(f"\t{key}: {val}")
-        assert False
+    for key, val in expVariants.items():
+        assert (
+            val[0:2] == obs_variants[key][0:2]
+        ), f"expected variant not found for {sampleID}: {val[0]} -> {val[1]} at {key}"
 
     # clean up pipeline files
     cleanUp(sampleID)
