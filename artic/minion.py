@@ -193,6 +193,10 @@ def run(parser, args):
     ## create a holder to keep the pipeline commands in
     cmds = []
 
+    # 2) check the reference fasta has and index and create one if not
+    if not os.path.exists("%s.fai" % (ref)) and args.clair3:
+        cmds.append("samtools faidx %s" % (ref))
+
     # 3) index the ref & align with minimap
     cmds.append(
         f"minimap2 -a -x map-ont -t {args.threads} {ref} {read_file} | samtools view -bS -F 4 - | samtools sort -o {args.sample}.sorted.bam -"
