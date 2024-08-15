@@ -6,7 +6,6 @@ import pysam
 import sys
 import numpy as np
 import random
-import typing
 import argparse
 from artic.vcftagprimersites import read_bed_file
 
@@ -386,6 +385,8 @@ def normalise(trimmed_segments: dict, normalise: int, bed: list):
 
     output_segments = []
 
+    mean_depths = {x: 0 for x in amplicons}
+
     for amplicon, segments in trimmed_segments.items():
         if amplicon not in amplicons:
             raise ValueError(f"Segment {amplicon} not found in primer scheme file")
@@ -426,7 +427,9 @@ def normalise(trimmed_segments: dict, normalise: int, bed: list):
                 distance = test_distance
                 output_segments.append(segment)
 
-    return output_segments
+        mean_depths[amplicon] = np.mean(amplicon_depth)
+
+    return output_segments, mean_depths
 
 
 def go(args):
@@ -477,14 +480,21 @@ def go(args):
 
     # iterate over the alignment segments in the input SAM file
     for segment in infile:
-
-        trimming_tuple = handle_segment(
-            segment=segment,
-            bed=bed,
-            args=args,
-            report_writer=report_writer,
-            min_mapq=args.min_mapq,
-        )
+        if args.report:
+            trimming_tuple = handle_segment(
+                segment=segment,
+                bed=bed,
+                args=args,
+                report_writer=report_writer,
+                min_mapq=args.min_mapq,
+            )
+        else:
+            trimming_tuple = handle_segment(
+                segment=segment,
+                bed=bed,
+                args=args,
+                min_mapq=args.min_mapq,
+            )
         if not trimming_tuple:
             continue
 
@@ -497,7 +507,15 @@ def go(args):
 
     # normalise if requested
     if args.normalise:
-        output_segments = normalise(trimmed_segments, args.normalise, bed)
+        output_segments, mean_amp_depths = normalise(
+            trimmed_segments, args.normalise, bed
+        )
+
+        # write mean amplicon depths to file
+        with open(args.amp_depth_report, "w") as amp_depth_report_fh:
+            amp_depth_report_fh.write("amplicon\tmean_depth\n")
+            for amplicon, depth in mean_amp_depths.items():
+                amp_depth_report_fh.write(f"{amplicon}\t{depth}\n")
 
         for output_segment in output_segments:
             outfile.write(output_segment)
@@ -531,6 +549,9 @@ def main():
         help="Fuzzy match primer positions within this threshold",
     )
     parser.add_argument("--report", type=str, help="Output report to file")
+    parser.add_argument(
+        "--amp-depth-report", type=str, help="Output amplicon depth tsv to path"
+    )
     parser.add_argument(
         "--trim-primers",
         action="store_true",
