@@ -138,15 +138,13 @@ def run(parser, args):
             # Split the BAM by read group
             for p in pools:
                 cmds.append(
-                    f"samtools view -b -r {p} {args.sample}.primertrimmed.rg.sorted.bam -o {args.sample}.{p}.primertrimmed.rg.sorted.bam"
+                    f"samtools view -b -r {p} {args.sample}.trimmed.rg.sorted.bam -o {args.sample}.{p}.trimmed.rg.sorted.bam"
                 )
 
-                cmds.append(
-                    f"samtools index {args.sample}.{p}.primertrimmed.rg.sorted.bam"
-                )
+                cmds.append(f"samtools index {args.sample}.{p}.trimmed.rg.sorted.bam")
 
                 cmds.append(
-                    f"run_clair3.sh --chunk_size=10000 --no_phasing_for_fa --bam_fn='{args.sample}.{p}.primertrimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path={model_path} --include_all_ctgs"
+                    f"run_clair3.sh --chunk_size=10000 --no_phasing_for_fa --bam_fn='{args.sample}.{p}.trimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path={model_path} --include_all_ctgs"
                 )
 
                 cmds.append(
@@ -155,7 +153,7 @@ def run(parser, args):
 
         else:
             cmds.append(
-                f"medaka consensus --model {args.model} --threads {args.threads} --chunk_len 800 --chunk_ovlp 400 --RG {p} {args.sample}.primertrimmed.rg.sorted.bam {args.sample}.{p}.hdf"
+                f"medaka consensus --model {args.model} --threads {args.threads} --chunk_len 800 --chunk_ovlp 400 --RG {p} {args.sample}.trimmed.rg.sorted.bam {args.sample}.{p}.hdf"
             )
             if args.no_indels:
                 cmds.append(
