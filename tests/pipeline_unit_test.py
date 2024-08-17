@@ -15,7 +15,8 @@ def test_pipeline_parser():
         "minion",
         "--model",
         "some_nonsense_model",
-        "nonsensevirus/V1",
+        "--read-file",
+        "some_reads.fastq",
         "some-prefix",
     ]
 
