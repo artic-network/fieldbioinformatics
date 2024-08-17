@@ -512,10 +512,11 @@ def go(args):
         )
 
         # write mean amplicon depths to file
-        with open(args.amp_depth_report, "w") as amp_depth_report_fh:
-            amp_depth_report_fh.write("amplicon\tmean_depth\n")
-            for amplicon, depth in mean_amp_depths.items():
-                amp_depth_report_fh.write(f"{amplicon}\t{depth}\n")
+        if args.amp_depth_report:
+            with open(args.amp_depth_report, "w") as amp_depth_report_fh:
+                amp_depth_report_fh.write("amplicon\tmean_depth\n")
+                for amplicon, depth in mean_amp_depths.items():
+                    amp_depth_report_fh.write(f"{amplicon}\t{depth}\n")
 
         for output_segment in output_segments:
             outfile.write(output_segment)

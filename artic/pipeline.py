@@ -110,7 +110,7 @@ def init_pipeline_parser():
     parser_minion.add_argument(
         "--primer-match-threshold",
         type=int,
-        default=20,
+        default=35,
         help="Allow fuzzy primer matching within this threshold (default: %(default)d)",
     )
     parser_minion.add_argument(

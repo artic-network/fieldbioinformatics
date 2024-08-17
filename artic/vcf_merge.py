@@ -35,7 +35,9 @@ def vcf_merge(args):
         {"ID": "Pool", "Number": 1, "Type": "String", "Description": "The pool name"}
     )
     vcf_writer = Writer(f"{args.prefix}.merged.vcf", template_vcf, "w")
+    vcf_writer.write_header()
     vcf_writer_primers = Writer(f"{args.prefix}.primers.vcf", template_vcf, "w")
+    vcf_writer_primers.write_header()
 
     variants = []
     for file_name, pool_name in pool_map.items():
