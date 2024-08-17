@@ -4,7 +4,7 @@ COPY . ./fieldbioinformatics/
 
 USER root
 
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential wget
 
 USER $MAMBA_USER
 
@@ -20,8 +20,6 @@ ARG MAMBA_DOCKERFILE_ACTIVATE=1
 USER root
 
 RUN python3 -m pip install ./fieldbioinformatics
-
-RUN rm -rf ./fieldbioinformatics
 
 USER $MAMBA_USER
 
