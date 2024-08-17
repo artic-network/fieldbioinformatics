@@ -165,11 +165,12 @@ def run(parser, args):
                     "medaka variant %s %s.%s.hdf %s.%s.vcf"
                     % (ref, args.sample, p, args.sample, p)
                 )
-            if args.no_longshot:
-                cmds.append(
-                    f"medaka tools annotate --pad 25 --RG {p} {args.sample}.{p}.vcf {ref} {args.sample}.primertrimmed.rg.sorted.bam tmp.medaka-annotate.vcf"
-                )
-                cmds.append(f"mv tmp.medaka-annotate.vcf {args.sample}.{p}.vcf")
+
+        if args.no_longshot:
+            cmds.append(
+                f"medaka tools annotate --pad 25 --RG {p} {args.sample}.{p}.vcf {ref} {args.sample}.primertrimmed.rg.sorted.bam tmp.medaka-annotate.vcf"
+            )
+            cmds.append(f"mv tmp.medaka-annotate.vcf {args.sample}.{p}.vcf")
 
     # 7) merge the called variants for each read group
     merge_vcf_cmd = "artic_vcf_merge %s %s 2> %s.primersitereport.txt" % (
