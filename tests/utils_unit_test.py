@@ -13,7 +13,7 @@ def test_read_bed_file():
 
     # process the nCoV-2019 V3 primer scheme
     primerScheme = utils.read_bed_file(
-        TEST_DIR + "/../test-data/primer-schemes/nCoV-2019/V3/nCoV-2019.scheme.bed"
+        TEST_DIR + "/../test-data/primer-schemes/nCoV-2019/V3/nCoV-2019.bed"
     )
 
     # check the the alts have been collapsed into a canonical primer site
