@@ -4,176 +4,77 @@ from clint.textui import colored
 import os
 import sys
 import time
-import requests
-import hashlib
-from artic.utils import read_bed_file
-
-
-def check_scheme_hashes(filepath, manifest_hash):
-    with open(filepath, "rb") as fh:
-        data = fh.read()
-        hash_sha256 = hashlib.sha256(data).hexdigest()
-    if hash_sha256 != manifest_hash:
-        print(
-            colored.yellow(f"sha256 hash for {str(filepath)} does not match manifest"),
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-
-# def scheme_fetcher(
-#     scheme_name: str, scheme_directory: Path, scheme_version: str, scheme_length: int
-# ):
-
-#     pass
-
-
-def get_scheme(scheme_name, scheme_directory, scheme_version="1"):
-    """Get and check the ARTIC primer scheme.
-    When determining a version, the original behaviour (parsing the scheme_name and
-    separating on /V ) is used over a specified scheme_version. If neither are
-    provided, the version defaults to 1.
-    If 0 is provided as version, the latest scheme will be downloaded.
-
-    Parameters
-    ----------
-    scheme_name : str
-        The primer scheme name
-    scheme_directory : str
-        The directory containing the primer scheme and reference sequence
-    scheme_version : str
-        The primer scheme version (optional)
-    Returns
-    -------
-    str
-        The location of the checked primer scheme
-    str
-        The location of the checked reference sequence
-    str
-        The version being used
-    """
-    # try getting the version from the scheme name (old behaviour)
-    if scheme_name.find("/V") != -1:
-        scheme_name, scheme_version = scheme_name.split("/V")
-
-    # create the filenames and check they exist
-    bed = "%s/%s/V%s/%s.scheme.bed" % (
-        scheme_directory,
-        scheme_name,
-        scheme_version,
-        scheme_name,
-    )
-    ref = "%s/%s/V%s/%s.reference.fasta" % (
-        scheme_directory,
-        scheme_name,
-        scheme_version,
-        scheme_name,
-    )
-    if os.path.exists(bed) and os.path.exists(ref):
-        return bed, ref, scheme_version
-
-    # if they don't exist, try downloading them to the current directory
-    print(
-        colored.yellow(
-            "could not find primer scheme and reference sequence, downloading"
-        ),
-        file=sys.stderr,
-    )
-
-    try:
-        manifest = requests.get(
-            "https://raw.githubusercontent.com/artic-network/primer-schemes/master/schemes_manifest.json"
-        ).json()
-    except requests.exceptions.RequestException as error:
-        print("Manifest Exception:", error)
-        raise SystemExit(2)
-
-    for scheme, scheme_contents in dict(manifest["schemes"]).items():
-        if (
-            scheme == scheme_name.lower()
-            or scheme_name.lower() in scheme_contents["aliases"]
-        ):
-            print(
-                colored.yellow(
-                    f"\tfound requested scheme:\t{scheme} (using alias {scheme_name})"
-                ),
-                file=sys.stderr,
-            )
-            if scheme_version == 0:
-                print(
-                    colored.yellow(
-                        f"Latest version for scheme {scheme} is -> {scheme_contents['latest_version']}"
-                    ),
-                    file=sys.stderr,
-                )
-                scheme_version = scheme_contents["latest_version"]
-            elif scheme_version not in dict(scheme_contents["primer_urls"]).keys():
-                print(
-                    colored.yellow(
-                        f"Requested scheme version {scheme_version} not found; using latest version ({scheme_contents['latest_version']}) instead"
-                    ),
-                    file=sys.stderr,
-                )
-                scheme_version = scheme_contents["latest_version"]
-                bed = "%s/%s/V%s/%s.scheme.bed" % (
-                    scheme_directory,
-                    scheme_name,
-                    scheme_version,
-                    scheme_name,
-                )
-                ref = "%s/%s/V%s/%s.reference.fasta" % (
-                    scheme_directory,
-                    scheme_name,
-                    scheme_version,
-                    scheme_name,
-                )
-
-            os.makedirs(os.path.dirname(bed), exist_ok=True)
-            with requests.get(scheme_contents["primer_urls"][scheme_version]) as fh:
-                open(bed, "wt").write(fh.text)
-
-            os.makedirs(os.path.dirname(ref), exist_ok=True)
-            with requests.get(scheme_contents["reference_urls"][scheme_version]) as fh:
-                open(ref, "wt").write(fh.text)
-
-            check_scheme_hashes(
-                bed, scheme_contents["primer_sha256_checksums"][scheme_version]
-            )
-            check_scheme_hashes(
-                ref, scheme_contents["reference_sha256_checksums"][scheme_version]
-            )
-
-            return bed, ref, scheme_version
-
-    print(
-        colored.yellow(
-            f"\tRequested scheme:\t{scheme_name} could not be found, exiting"
-        ),
-        file=sys.stderr,
-    )
-    raise SystemExit(1)
+from artic.utils import read_bed_file, get_scheme
 
 
 def run(parser, args):
 
-    # check for medaka-model
+    if any([args.bed, args.ref]) and any(
+        [
+            args.scheme_name,
+            args.scheme_version,
+            args.scheme_length,
+        ]
+    ):
+        print(
+            colored.red(
+                "You cannot mix 'Remote Scheme Options' with 'Local Scheme Options', for more information run 'artic minion --help'"
+            ),
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    if any([args.bed, args.ref]) and not all([args.bed, args.ref]):
+        print(
+            colored.red(
+                "You must provide both a BED file and a reference sequence for local scheme options"
+            ),
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    if any([args.scheme_name, args.scheme_version, args.scheme_length]) and not all(
+        [args.scheme_name, args.scheme_version]
+    ):
+        print(
+            colored.red(
+                "You must provide a scheme name and a scheme version at minimum for remote scheme options"
+            ),
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    # check for model
     if not args.model:
         print(
             colored.red("Must specify --model for clair3 or medaka variant calling"),
         )
         raise SystemExit(1)
 
-    # 1) check the parameters and set up the filenames
+    # check the parameters and set up the filenames
     ## find the primer scheme, reference sequence and confirm scheme version
-    bed, ref, _ = get_scheme(args.scheme, args.scheme_directory, args.scheme_version)
 
-    # ## if in strict mode, validate the primer scheme
-    # if args.strict:
-    #     checkScheme = "artic-tools validate_scheme %s" % (bed)
-    #     print(colored.green("Running: "), checkScheme, file=sys.stderr)
-    #     if os.system(checkScheme) != 0:
-    #         print(colored.red("primer scheme failed strict checking"), file=sys.stderr)
-    #         raise SystemExit(1)
+    if args.bed and args.ref:
+        bed = args.bed
+        ref = args.ref
+    else:
+        bed, ref, _ = get_scheme(
+            scheme_name=args.scheme_name,
+            scheme_version=args.scheme_version,
+            scheme_directory=args.scheme_directory,
+            scheme_length=args.scheme_length,
+        )
+
+    if not os.path.exists(bed) or not os.path.exists(ref):
+        print(
+            colored.red(
+                "Failed to find primer scheme or reference sequence: {} {}".format(
+                    bed, ref
+                )
+            ),
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
     ## set up the read file
     if args.read_file:
@@ -299,7 +200,7 @@ def run(parser, args):
     if not args.no_longshot:
         pre_filter_vcf = f"{args.sample}.longshot.vcf"
         cmds.append(
-            f"longshot --min_mapq {args.min_mapq} -P 0 -F --max_cov 500 --no_haps --bam {args.sample}.primertrimmed.rg.sorted.bam --ref {ref} --out {pre_filter_vcf} --potential_variants {args.sample}.merged.vcf.gz"
+            f"longshot --min_mapq {args.min_mapq} -P 0 -F --max_cov 200000 --no_haps --bam {args.sample}.primertrimmed.rg.sorted.bam --ref {ref} --out {pre_filter_vcf} --potential_variants {args.sample}.merged.vcf.gz"
         )
         cmds.append(f"bgzip -kf {pre_filter_vcf}")
         cmds.append(f"tabix -f -p vcf {pre_filter_vcf}.gz")
@@ -351,14 +252,6 @@ def run(parser, args):
         cmds.append(
             "muscle -in %s.muscle.in.fasta -out %s.muscle.out.fasta"
             % (args.sample, args.sample)
-        )
-
-    # 12) get some QC stats
-    if args.strict:
-        cmds.append(
-            "artic_get_stats --scheme {} --align-report {}.alignreport.txt --vcf-report {}.vcfreport.txt {}".format(
-                bed, args.sample, args.sample, args.sample
-            )
         )
 
     # 13) setup the log file and run the pipeline commands

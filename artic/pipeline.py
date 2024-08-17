@@ -5,6 +5,7 @@
 
 import argparse
 import sys
+import os
 
 from . import version
 
@@ -61,43 +62,13 @@ def init_pipeline_parser():
         title="[sub-commands]", dest="command", parser_class=ArgumentParserWithDefaults
     )
 
-    # # extract
-    # parser_extract = subparsers.add_parser('extract',
-    #                                        help='Create an empty poredb database')
-    # parser_extract.add_argument('directory', metavar='directory',
-    #                             help='The name of the database.')
-    # parser_extract.add_argument('--basecaller', metavar='basecaller',
-    #                             default='ONT Albacore Sequencing Software',
-    #                             help='The name of the basecaller')
-    # parser_extract.set_defaults(func=run_subtool)
-
-    # # callers
-    # parser_extract = subparsers.add_parser(
-    #     'basecaller', help='Display basecallers in files')
-    # parser_extract.add_argument(
-    #     'directory', metavar='directory', help='Directory of FAST5 files.')
-    # parser_extract.set_defaults(func=run_subtool)
-
-    # # demultiplex
-    # parser_demultiplex = subparsers.add_parser(
-    #     'demultiplex', help='Run demultiplex')
-    # parser_demultiplex.add_argument(
-    #     'fasta', metavar='fasta', help='Undemultiplexed FASTA file.')
-    # parser_demultiplex.add_argument(
-    #     '--threads', type=int, default=8, help='Number of threads')
-    # parser_demultiplex.add_argument(
-    #     '--prefix', help='Prefix for demultiplexed files')
-    # parser_demultiplex.add_argument(
-    #     '--no-remove-directory', dest='no_remove_directory', action='store_true')
-    # parser_demultiplex.set_defaults(func=run_subtool)
-
     # minion
     parser_minion = subparsers.add_parser(
         "minion", help="Run the alignment/variant-call/consensus pipeline"
     )
-    parser_minion.add_argument(
-        "scheme", metavar="scheme", help="The name of the scheme"
-    )
+    # parser_minion.add_argument(
+    #     "scheme", metavar="scheme", help="The name of the scheme"
+    # )
     parser_minion.add_argument(
         "sample", metavar="sample", help="The name of the sample"
     )
@@ -148,22 +119,56 @@ def init_pipeline_parser():
         default=8,
         help="Number of threads (default: %(default)d)",
     )
-    parser_minion.add_argument(
+
+    remote_scheme_options = parser_minion.add_argument_group(
+        "Remote Scheme Options",
+        "Options for automagically fetching primer schemes from the scheme repository (https://github.com/quick-lab/primerschemes)",
+    )
+    remote_scheme_options.add_argument(
         "--scheme-directory",
         metavar="scheme_directory",
-        default="./primer-schemes",
-        help="Default scheme directory",
+        default=f"{os.getcwd()}/primer-schemes",
+        help="Default scheme directory (default: %(default)s)",
     )
-    parser_minion.add_argument(
+    remote_scheme_options.add_argument(
+        "--scheme-name",
+        metavar="scheme_name",
+        type=str,
+        help="Name of the scheme, e.g. sars-cov-2, mpxv to fetch from the scheme repository (https://github.com/quick-lab/primerschemes)",
+    )
+    remote_scheme_options.add_argument(
+        "--scheme-length",
+        type=int,
+        metavar="scheme_length",
+        default=False,
+        help="Length of the scheme to fetch from the scheme repository (https://github.com/quick-lab/primerschemes). This is only required if the --scheme-name has multiple possible lengths.",
+    )
+    remote_scheme_options.add_argument(
         "--scheme-version",
-        metavar="scheme_version",
-        default=1,
-        help="Primer scheme version (default: %(default)d)",
+        metavar="vX.X.X",
+        type=str,
+        help="Primer scheme version",
     )
+
+    local_scheme_options = parser_minion.add_argument_group(
+        "Local Scheme Options",
+        "Options for providing a local primer scheme and reference sequence (BED file and FASTA file) directly to the pipeline",
+    )
+    local_scheme_options.add_argument(
+        "--bed",
+        metavar="bed",
+        help="BED file containing primer scheme",
+    )
+    local_scheme_options.add_argument(
+        "--ref",
+        help="Reference sequence for the scheme",
+    )
+
     parser_minion.add_argument(
         "--read-file",
         metavar="read_file",
-        help="Use alternative FASTA/FASTQ file to <sample>.fasta",
+        help="FASTQ file containing reads",
+        required=True,
     )
     parser_minion.add_argument(
         "--no-indels",
@@ -181,55 +186,7 @@ def init_pipeline_parser():
         help="Run muscle alignment of consensus to reference",
     )
     parser_minion.add_argument("--dry-run", action="store_true")
-    parser_minion.add_argument(
-        "--strict",
-        action="store_true",
-        help="Run with strict filtering of variants against primer scheme",
-    )
     parser_minion.set_defaults(func=run_subtool)
-
-    # # gather
-    # parser_gather = subparsers.add_parser(
-    #     "gather", help="Gather up demultiplexed files"
-    # )
-    # parser_gather.add_argument(
-    #     "--directory",
-    #     nargs="+",
-    #     metavar="directory",
-    #     help="Basecalled (guppy) results directory or directories.",
-    # )
-    # parser_gather.add_argument(
-    #     "--max-length",
-    #     type=int,
-    #     metavar="max_length",
-    #     help="remove reads greater than read length",
-    # )
-    # parser_gather.add_argument(
-    #     "--min-length",
-    #     type=int,
-    #     metavar="min_length",
-    #     help="remove reads less than read length",
-    # )
-    # parser_gather.add_argument("--prefix", help="Prefix for gathered files")
-    # parser_gather.add_argument(
-    #     "--prompt-directory",
-    #     metavar="run_directory",
-    #     help="The run directory for interactive prompts",
-    #     default="/var/lib/minknown/data",
-    # )
-    # parser_gather.add_argument(
-    #     "--fast5-directory",
-    #     metavar="fast5_directory",
-    #     help="The directory with fast5 files",
-    # )
-    # parser_gather.add_argument(
-    #     "--no-fast5s",
-    #     action="store_true",
-    #     help="Do not use fast5s and nanopolish",
-    #     default=0,
-    # )
-    # parser_gather.add_argument("--limit", type=int, help="Only gather n reads")
-    # parser_gather.set_defaults(func=run_subtool)
 
     # guppyplex
     # This is a workflow that aggregates the previous gather and demultiplex steps into a single task.
@@ -342,7 +299,7 @@ def main():
     parser = init_pipeline_parser()
 
     # collect the args
-    args = parser.parse_args(sys.argv[1:])
+    args = parser.parse_args()
 
     # if args.quiet:
     #    logger.setLevel(logging.ERROR)

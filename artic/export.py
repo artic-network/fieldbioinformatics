@@ -1,7 +1,6 @@
 # Written by Nick Loman (@pathogenomenick)
 
 import os
-import sys
 import pandas as pd
 from Bio import SeqIO
 

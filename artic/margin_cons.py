@@ -5,8 +5,6 @@ from cyvcf2 import VCF
 import subprocess
 from collections import defaultdict
 import os.path
-import operator
-from artic.vcftagprimersites import read_bed_file
 import argparse
 
 # MASKED_POSITIONS = [2282]

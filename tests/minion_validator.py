@@ -197,7 +197,11 @@ def genCommand(sampleID, workflow):
     if sampleID in extraFlags[workflow]:
         for flag in extraFlags[workflow][sampleID]:
             cmd.append(flag)
-    cmd.append("nCoV-2019/V1")
+
+    cmd.append("--scheme-name")
+    cmd.append("SARS-CoV-2")
+    cmd.append("--scheme-version")
+    cmd.append("v1.0.0")
     cmd.append(sampleID)
     return cmd
 
@@ -230,7 +234,7 @@ def runner(workflow, sampleID):
     else:
         sys.stderr.write("invalid workflow specified")
         assert False
-    
+
     if sampleID not in data:
         sys.stderr.write("no test data for {}".format(sampleID))
         assert False

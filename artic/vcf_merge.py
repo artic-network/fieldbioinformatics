@@ -2,7 +2,7 @@ from cyvcf2 import VCF, Writer
 import sys
 from operator import attrgetter
 from collections import defaultdict
-from artic.vcftagprimersites import read_bed_file
+from artic.utils import read_bed_file
 
 
 def vcf_merge(args):

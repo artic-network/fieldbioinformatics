@@ -2,7 +2,7 @@
 import os
 import pytest
 
-from artic import vcftagprimersites
+from artic import utils
 
 
 # help pytest resolve where test data is kept
@@ -12,7 +12,7 @@ TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 def test_read_bed_file():
 
     # process the nCoV-2019 V3 primer scheme
-    primerScheme = vcftagprimersites.read_bed_file(
+    primerScheme = utils.read_bed_file(
         TEST_DIR + "/../test-data/primer-schemes/nCoV-2019/V3/nCoV-2019.scheme.bed"
     )
 
@@ -43,7 +43,7 @@ def test_read_bed_file():
 
     # process the nCoV-2019 V2 primer scheme
     # this scheme has a single alt that has replaced the original primer so no alts should be collapsed
-    primerScheme2 = vcftagprimersites.read_bed_file(
+    primerScheme2 = utils.read_bed_file(
         TEST_DIR + "/../test-data/primer-schemes/nCoV-2019/V2/nCoV-2019.bed"
     )
     assert len(primerScheme2) == 196, "no alts should have been collapsed"

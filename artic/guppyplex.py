@@ -1,13 +1,9 @@
 import sys
 from Bio import SeqIO
-import tempfile
 import os
-import glob
 import gzip
 import fnmatch
-import shutil
 import pandas as pd
-from collections import defaultdict
 from mimetypes import guess_type
 from functools import partial
 from math import log10

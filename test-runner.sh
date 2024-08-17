@@ -19,6 +19,8 @@ inputData="./20190830_1509_MN22126_AAQ411_9efc5448_barcoded"
 primerSchemes="../test-data/primer-schemes"
 primerScheme="IturiEBOV/V1"
 prefix="ebov-mayinga"
+bed="../test-data/primer-schemes/IturiEBOV/V1/IturiEBOV.scheme.bed"
+ref="../test-data/primer-schemes/IturiEBOV/V1/IturiEBOV.reference.fasta"
 barcode="03"
 threads=2
 downloadCmd="wget https://loman-labz-public-datasets.s3.climb.ac.uk/EBOV_Amplicons_flongle_barcoded.tar.gz"
@@ -36,21 +38,21 @@ guppyplexCmd="artic guppyplex \
 minionCmd_m="artic minion \
             --normalise 200 \
             --threads ${threads} \
-            --scheme-directory ${primerSchemes} \
             --read-file ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq \
             --model r941_e81_hac_g514 \
-            ${primerScheme} \
+            --bed ${bed} \
+            --ref ${ref} \
             ${prefix}"
 
 # clair3 workflow specific
 minionCmd_c="artic minion \
             --normalise 200 \
             --threads ${threads} \
-            --scheme-directory ${primerSchemes} \
             --read-file ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq \
             --clair3 \
             --model r941_prom_hac_g360+g422 \
-            ${primerScheme} \
+            --bed ${bed} \
+            --ref ${ref} \
             ${prefix}"
 
 # colours
