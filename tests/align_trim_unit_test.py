@@ -4,7 +4,7 @@ import pysam
 import pytest
 
 from artic import align_trim
-from artic import vcftagprimersites
+from artic import utils
 
 
 # help pytest resolve where test data is kept
@@ -20,7 +20,7 @@ p4 = {"start": 40, "end": 50, "direction": "-", "primerID": "primer2_RIGHT"}
 dummyPrimerScheme = [p1, p2, p3, p4]
 
 # actual the primer scheme for nCov
-primerScheme = vcftagprimersites.read_bed_file(
+primerScheme = utils.read_bed_file(
     TEST_DIR + "/../test-data/primer-schemes/nCoV-2019/V1/nCoV-2019.scheme.bed"
 )
 
