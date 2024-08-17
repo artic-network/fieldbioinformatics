@@ -357,26 +357,23 @@ class TestMinion(unittest.TestCase):
     def setUp(self):
         dataChecker()
 
-    # def test_Clair3_CVR1(self):
-    #     runner("clair3", "CVR1")
+    def test_Clair3_CVR1(self):
+        runner("clair3", "CVR1")
 
-    # def test_Clair3_NRW01(self):
-    #     runner("clair3", "NRW01")
+    def test_Clair3_NRW01(self):
+        runner("clair3", "NRW01")
 
-    # def test_Clair3_SP1(self):
-    #     runner("clair3", "SP1")
+    def test_Clair3_SP1(self):
+        runner("clair3", "SP1")
 
-    def test_Clair3_MT007544(self):
-        runner("clair3", "MT007544")
+    def test_Medaka_MT007544(self):
+        runner("medaka", "MT007544")
 
-    # def test_Medaka_MT007544(self):
-    #     runner("medaka", "MT007544")
+    def test_Medaka_CVR1(self):
+        runner("medaka", "CVR1")
 
-    # def test_Medaka_CVR1(self):
-    #     runner("medaka", "CVR1")
+    def test_Medaka_NRW01(self):
+        runner("medaka", "NRW01")
 
-    # def test_Medaka_NRW01(self):
-    #     runner("medaka", "NRW01")
-
-    # def test_Medaka_SP1(self):
-    #     runner("medaka", "SP1")
+    def test_Medaka_SP1(self):
+        runner("medaka", "SP1")
