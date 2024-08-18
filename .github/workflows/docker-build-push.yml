@@ -3,7 +3,6 @@ name: quay_build_push
 on:
   release:
     types: [published]
-  branches: [main]
 
 jobs:
   docker:
