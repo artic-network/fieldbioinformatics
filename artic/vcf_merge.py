@@ -58,8 +58,6 @@ def vcf_merge(args):
             v.INFO["Pool"] = pool_name
             variants.append(v)
 
-    print(variants)
-
     variants.sort(key=attrgetter("CHROM", "POS"))
 
     for v in variants:
