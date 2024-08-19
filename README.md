@@ -27,7 +27,7 @@ Features include:
 
 There are **2 workflows** baked into this pipeline, one which uses signal data (via [nanopolish](https://github.com/jts/nanopolish)) and one that does not (via [medaka](https://github.com/nanoporetech/medaka)).
 
-## Installation
+<!-- ## Installation
 
 ### Via conda
 
@@ -35,26 +35,26 @@ There are **2 workflows** baked into this pipeline, one which uses signal data (
 conda install -c bioconda -c conda-forge artic
 ```
 
-If conda reports that nothing provides particular packages when running the above command ensure your `channel_priority` is set to `flexible` using the following command:
-
-```sh
-conda config --set channel_priority false
-```
+Please make sure you are using either mamba or conda version >= 23.10.0 where libmamba solver was made the default conda solver. -->
 
 ### Via source
 
 #### 1. downloading the source:
 
-Download a [release](https://github.com/artic-network/fieldbioinformatics/releases) or use the latest master (which tracks the current release):
+<!-- Download a [release](https://github.com/artic-network/fieldbioinformatics/releases) or use the latest master (which tracks the current release): -->
+
+Clone the repository then checkout the 1.4.0-dev branch to test the 1.4.0 pre-release.
 
 ```sh
 git clone https://github.com/artic-network/fieldbioinformatics
 cd fieldbioinformatics
+git checkout 1.4.0-dev
 ```
 
 #### 2. installing dependencies:
 
-The `artic pipeline` has several [software dependencies](https://github.com/artic-network/fieldbioinformatics/blob/master/environment.yml). You can solve these dependencies using the minimal conda environment we have provided:
+The `artic pipeline` has several [software dependencies](https://github.com/artic-network/fieldbioinformatics/blob/master/environment.yml). You can solve these dependencies using the minimal conda environment we have provided, Please make sure you are using either mamba or conda version >= 23.10.0 where libmamba solver was made the default conda solver.
+:
 
 ```sh
 conda env create -f environment.yml
@@ -64,7 +64,7 @@ conda activate artic
 #### 3. installing the pipeline:
 
 ```sh
-python setup.py install
+pip install .
 ```
 
 #### 4. testing the pipeline:

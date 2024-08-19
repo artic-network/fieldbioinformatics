@@ -4,27 +4,25 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - artic-porechop =0.3.2pre
-  - artic-tools =0.2.6
-  - longshot =0.4.5
-  - bcftools =1.17
-  - biopython =1.81
-  - bwa = 0.7.17
-  - clint =0.5.1
-  - htslib =1.17
-  - medaka >=1.8.0
-  - minimap2 =2.26
-  - multiqc =1.15
-  - muscle =3.8
-  - nanopolish =0.14.0
-  - pandas =2.0.3
+  - longshot
+  - bcftools
+  - biopython
+  - bwa
+  - clint
+  - htslib
+  - minimap2
+  - clair3
+  - multiqc
+  - muscle<5.1
+  - pandas
   - pip
-  - pysam =0.21.0
+  - pysam
   - pytest 
-  - python =3.9.15
-  - pyvcf =0.6.8
-  - pyfaidx =0.6.0
-  - requests =2.31.0
-  - samtools =1.17
-  - tqdm =4.66.1
-  - keras-preprocessing =1.1.2
+  - python
+  - cyvcf2
+  - pyfaidx
+  - requests
+  - samtools
+  - tqdm
+  - pip:
+    - medaka

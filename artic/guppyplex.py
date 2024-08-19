@@ -1,13 +1,9 @@
 import sys
 from Bio import SeqIO
-import tempfile
 import os
-import glob
 import gzip
 import fnmatch
-import shutil
 import pandas as pd
-from collections import defaultdict
 from mimetypes import guess_type
 from functools import partial
 from math import log10
@@ -24,21 +20,33 @@ from random import random
 
 
 def get_read_mean_quality(record):
-    return -10 * log10((10 ** (pd.Series(record.letter_annotations["phred_quality"]) / -10)).mean())
+    return -10 * log10(
+        (10 ** (pd.Series(record.letter_annotations["phred_quality"]) / -10)).mean()
+    )
 
 
 def run(parser, args):
     files = os.listdir(args.directory)
-    fastq_files = [os.path.join(args.directory, f) for f in files if fnmatch.fnmatch(f, '*.fastq*') and not f.endswith('.temp')]
+    fastq_files = [
+        os.path.join(args.directory, f)
+        for f in files
+        if fnmatch.fnmatch(f, "*.fastq*") and not f.endswith(".temp")
+    ]
 
     if fastq_files:
         if not args.output:
-            fastq_outfn = "%s_%s.fastq" % (args.prefix, os.path.basename(args.directory))
+            fastq_outfn = "%s_%s.fastq" % (
+                args.prefix,
+                os.path.basename(args.directory),
+            )
         else:
             fastq_outfn = args.output
 
         outfh = open(fastq_outfn, "w")
-        print("Processing %s files in %s" % (len(fastq_files), args.directory), file=sys.stderr)
+        print(
+            "Processing %s files in %s" % (len(fastq_files), args.directory),
+            file=sys.stderr,
+        )
 
         dups = set()
 
@@ -51,20 +59,23 @@ def run(parser, args):
             with _open(fn) as f:
                 try:
                     for rec in SeqIO.parse(f, "fastq"):
-                       if args.max_length and len(rec) > args.max_length:
-                           continue
-                       if args.min_length and len(rec) < args.min_length:
-                           continue
-                       if not args.skip_quality_check and get_read_mean_quality(rec) < args.quality:
-                           continue
-                       if args.sample < 1:
-                           r = random()
-                           if r >= args.sample:
-                              continue
+                        if args.max_length and len(rec) > args.max_length:
+                            continue
+                        if args.min_length and len(rec) < args.min_length:
+                            continue
+                        if (
+                            not args.skip_quality_check
+                            and get_read_mean_quality(rec) < args.quality
+                        ):
+                            continue
+                        if args.sample < 1:
+                            r = random()
+                            if r >= args.sample:
+                                continue
 
-                       if rec.id not in dups:
-                           SeqIO.write([rec], outfh, "fastq")
-                           dups.add(rec.id)
+                        if rec.id not in dups:
+                            SeqIO.write([rec], outfh, "fastq")
+                            dups.add(rec.id)
                 except ValueError:
                     pass
 
