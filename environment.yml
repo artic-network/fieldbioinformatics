@@ -4,14 +4,15 @@ channels:
   - bioconda
   - defaults
 dependencies:
+  - python==3.9
   - longshot
   - bcftools
   - biopython
   - bwa
+  - clair3
   - clint
   - htslib
   - minimap2
-  - clair3
   - multiqc
   - muscle<5.1
   - pandas
@@ -25,4 +26,4 @@ dependencies:
   - samtools
   - tqdm
   - pip:
-    - medaka~=1.12.0
+      - medaka==1.12.0
