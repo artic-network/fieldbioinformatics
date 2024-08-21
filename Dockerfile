@@ -22,7 +22,7 @@ USER root
 RUN python3 -m pip install ./fieldbioinformatics
 
 RUN pip uninstall -y tensorflow keras pyabpoa \
-  && micromamba install -y -c conda-forge tensorflow~=2.11 keras~=2.11
+  && micromamba install -y -c conda-forge -c bioconda tensorflow=2.11 keras=2.11
 
 USER $MAMBA_USER
 
