@@ -1,31 +1,67 @@
-FROM mambaorg/micromamba:1.5.8
+# start with an image with conda installed
+FROM condaforge/mambaforge AS compile-image
+
+WORKDIR /data
 
 COPY . ./fieldbioinformatics/
 
-USER root
+# check for updates
+RUN apt-get update -y && \
+  apt-get upgrade -y && \
+  apt install build-essential -y --no-install-recommends && \
+  apt-get clean && apt-get autoclean
 
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential wget procps
+# copy in artic
+RUN cd /data/fieldbioinformatics && \
+  mamba install conda -n base -c conda-forge -c defaults -c bioconda && \
+  mamba env create -f /data/fieldbioinformatics/environment.yml
 
-USER $MAMBA_USER
+# Make RUN commands use the new environment:
+SHELL ["conda", "run", "-n", "artic", "/bin/bash", "-c"]
+RUN mamba install -c conda-forge -n artic python=3.9 conda-pack && \
+  cd /data/fieldbioinformatics && \
+  pip install .
 
-COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /tmp/env.yml
+# Use conda-pack to create a standalone enviornment
+# in /venv:
+RUN conda list && \
+  conda-pack -n artic -o /tmp/env.tar && \
+  mkdir /venv && cd /venv && tar xf /tmp/env.tar && \
+  rm /tmp/env.tar && /venv/bin/conda-unpack
 
-RUN sed -i 's/name: artic/name: base/' /tmp/env.yml
+SHELL ["/bin/bash", "-c"]
 
-RUN micromamba install --yes --file /tmp/env.yml && \
-    micromamba clean --all --yes
+RUN conda clean --all &&\
+  conda remove --name artic --all
 
-ARG MAMBA_DOCKERFILE_ACTIVATE=1
+# build artic
+WORKDIR /data/fieldbioinformatics
+RUN source /venv/bin/activate && pip install --user --no-cache-dir . \ 
+  && pip uninstall -y tensorflow keras pyabpoa \
+  && conda install -y -c conda-forge tensorflow~=2.11 keras~=2.11
 
-USER root
+# build image
+FROM debian:bullseye-slim AS runtime-image
 
-RUN python3 -m pip install ./fieldbioinformatics
+COPY --from=compile-image /root/.local /root/.local
+ENV PATH=/root/.local/bin:$PATH
 
-RUN pip uninstall -y tensorflow keras pyabpoa \
-  && micromamba install -y -c conda-forge -c bioconda tensorflow=2.11 keras=2.11
+# Copy /venv from the previous stage:
+COPY --from=compile-image /venv /venv
 
-USER $MAMBA_USER
+# check for updates
+RUN apt-get update -y && \
+  apt-get upgrade -y && \
+  apt install build-essential -y --no-install-recommends && \
+  apt install -y procps && \
+  apt-get clean && apt-get autoclean
 
-ENTRYPOINT ["/usr/local/bin/_entrypoint.sh"]
+WORKDIR /data
+
+SHELL ["/bin/bash", "-c"]
+
+# to allow streamed log output
+ENV PYTHONUNBUFFERED=1
+ENV PATH=/venv/bin:$PATH
 
 CMD ["/bin/bash"]
