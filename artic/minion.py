@@ -242,7 +242,8 @@ def run(parser, args):
     )
 
     # 11) apply the header to the consensus sequence and run alignment against the reference sequence
-    fasta_header = "%s/ARTIC/medaka" % (args.sample)
+    caller = "medaka" if not args.clair3 else "clair3"
+    fasta_header = f"{args.sample}/ARTIC/{caller}"
     cmds.append(
         'artic_fasta_header %s.consensus.fasta "%s"' % (args.sample, fasta_header)
     )
