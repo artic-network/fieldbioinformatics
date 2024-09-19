@@ -6,6 +6,9 @@ import requests
 import hashlib
 import re
 import pandas as pd
+from Bio import SeqIO
+import subprocess
+import csv
 from clint.textui import colored
 
 
@@ -315,6 +318,7 @@ def get_scheme(
     scheme_version: str,
     scheme_directory: str,
     scheme_length: int = False,
+    read_file: str = False
 ):
     """Get the primer scheme and reference fasta file from the manifest
 
@@ -382,7 +386,7 @@ def get_scheme(
         if not manifest["primerschemes"].get(scheme_name):
             print(
                 colored.red(
-                    f"Scheme name alias does not exist in manifest, this should never happen, please create an issue on https://github.com/quick-lab/primerschemes/issues or https://github.com/artic-network/fieldbioinformatics/issues if you see this message"
+                    "Scheme name alias does not exist in manifest, this should never happen, please create an issue on https://github.com/quick-lab/primerschemes/issues or https://github.com/artic-network/fieldbioinformatics/issues if you see this message"
                 )
             )
             raise SystemExit(1)
@@ -416,7 +420,7 @@ def get_scheme(
     if not version_pattern.match(scheme_version):
         print(
             colored.red(
-                f"Invalid scheme version format, please provide a version in the format 'vX.X.X', e.g. v1.0.0"
+                "Invalid scheme version format, please provide a version in the format 'vX.X.X', e.g. v1.0.0"
             )
         )
         raise SystemExit(1)
@@ -430,6 +434,27 @@ def get_scheme(
         raise SystemExit(1)
 
     scheme = scheme[scheme_length][scheme_version]
+
+    if scheme.get("ref_selection"):
+        if not read_file:
+            print(
+                colored.red(
+                    "Reference selection is available for this scheme but reads were not provided to 'get_scheme'. This should never happen, please submit an issue to github.com/artic-network/fieldbioinformatics/issues"
+                )
+            )
+            raise SystemExit(1)
+
+        print(
+            colored.yellow(
+                f"Reference selection is available for scheme {scheme_name}, deciding which reference to use based on your reads. If you would prefer to specify the reference to use, provide the same scheme name with the appropriate suffix, choices are: {', '.join(str(x) for x in scheme[scheme_length].keys() if "-" in x)}"
+            )
+        )
+
+        suffix = pick_best_ref(multi_ref_url=scheme["ref_selection"], multi_ref_md5=scheme["ref_selection_md5"], read_file=read_file, n_reads=10000, scheme_path=scheme_directory, mm2_threads=4)
+
+        scheme_version = f"{scheme_version}-{suffix}"
+
+        print(colored.yellow(f"Selected reference suffix: {suffix}"))
 
     scheme_path = os.path.join(
         scheme_directory, scheme_name, scheme_length, scheme_version
@@ -623,3 +648,131 @@ def get_scheme_legacy(scheme_name, scheme_directory, scheme_version="1"):
         file=sys.stderr,
     )
     raise SystemExit(1)
+
+
+def pick_best_ref(
+    multi_ref_url: str,
+    multi_ref_md5: str,
+    read_file: str,
+    n_reads: int,
+    scheme_path: str,
+    mm2_threads: int,
+):
+    """Pick the best reference from a multi-reference alignment
+
+    Args:
+        multi_ref_url (str): URL to the multi-reference alignment from quick-lab/primerschemes
+        multi_ref_md5 (str): MD5 hash of the multi-reference alignment
+        read_file (str): Path to the read file to test against the references
+        n_reads (int): How many reads to sample from the read file for testing (default: 10000)
+        scheme_path (str): Path to the scheme directory
+        mm2_threads (int): Number of threads to use when aligning using minimap2
+
+    Raises:
+        SystemExit: If the ref selection fasta file cannot be fetched
+        SystemExit: If the ref selection fasta file get returns a status code other than 200
+
+    Returns:
+        str: Primer scheme suffix of the most appropriate reference for the reads
+    """
+
+    ref_selection_path = os.path.join(scheme_path, "ref_select.fasta")
+
+    if not os.path.exists(scheme_path):
+        try:
+            response = requests.get(multi_ref_url)
+        except requests.exceptions.RequestException as error:
+            print(colored.red(f"Failed to ref selection fasta with Exception: {error}"))
+            raise SystemExit(1)
+
+        if response.status_code != 200:
+            print(
+                colored.red(
+                    f"Failed to fetch ref selection fasta with status code: {response.status_code}"
+                )
+            )
+            raise SystemExit(1)
+
+        with open(ref_selection_path, "w") as bed_file:
+            bed_file.write(response.text)
+
+    check_hash(ref_selection_path, multi_ref_md5)
+
+    flat_ref_path = os.path.join(scheme_path, "flattened_references.fasta")
+
+    possible_references = {}
+
+    with open(ref_selection_path, "r") as ref_selection_fh:
+
+        for reference in SeqIO.parse(ref_selection_fh, "fasta"):
+            suffix = reference.Description.split()[1]
+            possible_references[reference.id] = suffix
+
+            # Flatten out the alignment into flat fasta reference
+            flattened = str(reference.seq).replace("-", "")
+
+            with open(flat_ref_path, "a") as flat_ref_fh:
+                flat_ref_fh.write(f">{reference.Description}\n{flattened}\n")
+
+    # fq_it = mappy.fastx_read(fastq_path)
+    seqtk = subprocess.run(
+        ["seqtk", "sample", str(read_file), str(n_reads)], stdout=subprocess.PIPE
+    )
+
+    result = subprocess.run(
+        [
+            "minimap2",
+            "-x",
+            "map-ont",
+            "-t",
+            str(mm2_threads),
+            str(flat_ref_path),
+            "-",
+        ],
+        input=seqtk.stdout,
+        stdout=subprocess.PIPE,
+    )
+
+    reader = csv.DictReader(
+        result.stdout.decode("utf-8").split("\n"),
+        delimiter="\t",
+        fieldnames=[
+            "query_name",
+            "query_len",
+            "query_start",
+            "query_end",
+            "strand",
+            "ctg_name",
+            "ctg_len",
+            "ref_start",
+            "ref_end",
+            "n_matches",
+            "alignment_len",
+            "mapq",
+        ],
+    )
+
+    read_results = {}
+
+    for alignment in reader:
+
+        if not alignment:
+            continue
+
+        identity = int(alignment["n_matches"]) / int(alignment["alignment_len"])
+
+        read_results.setdefault(alignment["query_name"], {})
+        read_results[alignment["query_name"]].setdefault(alignment["ctg_name"], 0)
+
+        if identity > read_results[alignment["query_name"]][alignment["ctg_name"]]:
+            read_results[alignment["query_name"]][alignment["ctg_name"]] = identity
+
+    ref_results = {ref: 0 for ref in possible_references.keys()}
+
+    for read, details in read_results.items():
+        best_ctg = max(details, key=details.get)
+        ref_results[best_ctg] += 1
+
+    best_ref = max(ref_results, key=ref_results.get)
+
+    return possible_references[best_ref]

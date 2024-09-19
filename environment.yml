@@ -24,5 +24,6 @@ dependencies:
   - requests
   - samtools
   - tqdm
+  - seqtk
   - pip:
-      - medaka==1.12.0
+      - medaka-cpu
