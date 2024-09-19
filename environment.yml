@@ -26,4 +26,4 @@ dependencies:
   - tqdm
   - seqtk
   - pip:
-      - medaka-cpu
+      - medaka==1.12.0
