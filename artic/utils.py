@@ -318,7 +318,7 @@ def get_scheme(
     scheme_version: str,
     scheme_directory: str,
     scheme_length: int = False,
-    read_file: str = False
+    read_file: str = False,
 ):
     """Get the primer scheme and reference fasta file from the manifest
 
@@ -446,11 +446,18 @@ def get_scheme(
 
         print(
             colored.yellow(
-                f"Reference selection is available for scheme {scheme_name}, deciding which reference to use based on your reads. If you would prefer to specify the reference to use, provide the same scheme name with the appropriate suffix, choices are: {', '.join(str(x) for x in scheme[scheme_length].keys() if "-" in x)}"
+                f"Reference selection is available for scheme {scheme_name}, deciding which reference to use based on your reads. If you would prefer to specify the reference to use, provide the same scheme name with the appropriate suffix, choices are: {', '.join(str(x) for x in scheme[scheme_length].keys() if '-' in x)}"
             )
         )
 
-        suffix = pick_best_ref(multi_ref_url=scheme["ref_selection"], multi_ref_md5=scheme["ref_selection_md5"], read_file=read_file, n_reads=10000, scheme_path=scheme_directory, mm2_threads=4)
+        suffix = pick_best_ref(
+            multi_ref_url=scheme["ref_selection"],
+            multi_ref_md5=scheme["ref_selection_md5"],
+            read_file=read_file,
+            n_reads=10000,
+            scheme_path=scheme_directory,
+            mm2_threads=4,
+        )
 
         scheme_version = f"{scheme_version}-{suffix}"
 
