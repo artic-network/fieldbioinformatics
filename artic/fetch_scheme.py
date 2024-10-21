@@ -22,7 +22,6 @@ def main():
     parser.add_argument(
         "--scheme-directory",
         type=Path,
-        required=True,
         help="Directory where schemes are stored",
         default=f"{os.getcwd()}/primer-schemes",
     )
