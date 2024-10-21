@@ -4,7 +4,6 @@
 # Thanks to Aaron Quinlan for the argparse implementation from poretools.
 
 import argparse
-import sys
 import os
 
 from . import version

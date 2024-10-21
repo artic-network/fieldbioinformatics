@@ -124,7 +124,7 @@ def identify_bed_file(bed_file):
             if version != 3:
                 print(
                     colored.red(
-                        f"Scheme BED does not appear to be a consistent scheme version, for primer scheme formats please see https://github.com/ChrisgKent/primal-page"
+                        "Scheme BED does not appear to be a consistent scheme version, for primer scheme formats please see https://github.com/ChrisgKent/primal-page"
                     )
                 )
                 raise SystemExit(1)
@@ -147,7 +147,7 @@ def identify_bed_file(bed_file):
             if version == 3:
                 print(
                     colored.red(
-                        f"Scheme BED mixed primer ID formats, please ensure your BED file is consistent"
+                        "Scheme BED mixed primer ID formats, please ensure your BED file is consistent"
                     )
                 )
                 raise SystemExit(1)
@@ -335,11 +335,8 @@ def get_scheme(
     """
 
     try:
-        # response = requests.get(
-        #     "https://raw.githubusercontent.com/quick-lab/primerschemes/main/index.json"
-        # )
         response = requests.get(
-            "https://raw.githubusercontent.com/ChrisgKent/primerschemes/main/index.json"
+            "https://raw.githubusercontent.com/quick-lab/primerschemes/main/index.json"
         )
     except requests.exceptions.RequestException as error:
         print(colored.red(f"Failed to fetch manifest with Exception: {error}"))
@@ -356,11 +353,8 @@ def get_scheme(
     manifest = response.json()
 
     try:
-        # response = requests.get(
-        #     "https://raw.githubusercontent.com/quick-lab/primerschemes/main/aliases.json"
-        # )
         response = requests.get(
-            "https://raw.githubusercontent.com/ChrisgKent/primerschemes/main/aliases.json"
+            "https://raw.githubusercontent.com/quick-lab/primerschemes/main/aliases.json"
         )
     except requests.exceptions.RequestException as error:
         print(colored.red(f"Failed to fetch scheme aliases with Exception: {error}"))
