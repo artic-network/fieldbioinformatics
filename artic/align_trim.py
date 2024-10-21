@@ -214,9 +214,8 @@ def handle_segment(
     # check if primers are correctly paired and then assign read group
     # NOTE: removed this as a function as only called once
     # TODO: will try improving this / moving it to the primer scheme processing code
-    correctly_paired = p1[2]["Primer_ID"].replace("_LEFT", "") == p2[2][
-        "Primer_ID"
-    ].replace("_RIGHT", "")
+    correctly_paired = p1[2]["Primer_ID"].split("_")[1] == p2[2]["Primer_ID"].split("_")[1]
+
 
     if not args.no_read_groups:
         if correctly_paired:
