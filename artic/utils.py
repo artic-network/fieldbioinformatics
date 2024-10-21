@@ -317,7 +317,7 @@ def get_scheme(
     scheme_name: str,
     scheme_version: str,
     scheme_directory: str,
-    scheme_length: int = False,
+    scheme_length: str = False,
     read_file: str = False,
 ):
     """Get the primer scheme and reference fasta file from the manifest
@@ -326,7 +326,7 @@ def get_scheme(
         scheme_name (str): Name of the scheme
         scheme_version (str): Version of the scheme
         scheme_directory (str): Directory where schemes are stored
-        scheme_length (int, optional): Length of the scheme. Defaults to False.
+        scheme_length (str, optional): Length of the scheme. Defaults to False.
 
     Returns:
         str: Path to the primer bed file
@@ -335,8 +335,11 @@ def get_scheme(
     """
 
     try:
+        # response = requests.get(
+        #     "https://raw.githubusercontent.com/quick-lab/primerschemes/main/index.json"
+        # )
         response = requests.get(
-            "https://raw.githubusercontent.com/quick-lab/primerschemes/main/index.json"
+            "https://raw.githubusercontent.com/ChrisgKent/primerschemes/main/index.json"
         )
     except requests.exceptions.RequestException as error:
         print(colored.red(f"Failed to fetch manifest with Exception: {error}"))
@@ -353,8 +356,11 @@ def get_scheme(
     manifest = response.json()
 
     try:
+        # response = requests.get(
+        #     "https://raw.githubusercontent.com/quick-lab/primerschemes/main/aliases.json"
+        # )
         response = requests.get(
-            "https://raw.githubusercontent.com/quick-lab/primerschemes/main/aliases.json"
+            "https://raw.githubusercontent.com/ChrisgKent/primerschemes/main/aliases.json"
         )
     except requests.exceptions.RequestException as error:
         print(colored.red(f"Failed to fetch scheme aliases with Exception: {error}"))
@@ -433,13 +439,11 @@ def get_scheme(
         )
         raise SystemExit(1)
 
-    scheme = scheme[scheme_length][scheme_version]
-
-    if scheme.get("ref_selection"):
+    if scheme[scheme_length][scheme_version].get("refselect"):
         if not read_file:
             print(
                 colored.red(
-                    "Reference selection is available for this scheme but reads were not provided to 'get_scheme'. This should never happen, please submit an issue to github.com/artic-network/fieldbioinformatics/issues"
+                    f"Reference selection is available for this scheme but reads were not provided. Either provide a read file using --read-file or specify the reference to use by providing the same scheme name with the appropriate suffix, choices are: {', '.join(str(x) for x in scheme[scheme_length].keys() if '-' in x)}"
                 )
             )
             raise SystemExit(1)
@@ -450,12 +454,28 @@ def get_scheme(
             )
         )
 
+        if len(scheme[scheme_length][scheme_version]["refselect"].keys()) > 1:
+            print(
+                colored.red(
+                    f"Multiple reference selection options found for scheme {scheme_name}, fieldbioinformatics does not currently support multi pathogen schemes"
+                )
+            )
+            raise SystemExit(1)
+
+        msa_data = next(
+            iter(scheme[scheme_length][scheme_version]["refselect"].values())
+        )
+
+        scheme_select_dir = os.path.join(
+            scheme_directory, scheme_name, scheme_length, scheme_version
+        )
+
         suffix = pick_best_ref(
-            multi_ref_url=scheme["ref_selection"],
-            multi_ref_md5=scheme["ref_selection_md5"],
+            multi_ref_url=msa_data["url"],
+            multi_ref_md5=msa_data["md5"],
             read_file=read_file,
             n_reads=10000,
-            scheme_path=scheme_directory,
+            scheme_path=scheme_select_dir,
             mm2_threads=4,
         )
 
@@ -466,6 +486,8 @@ def get_scheme(
     scheme_path = os.path.join(
         scheme_directory, scheme_name, scheme_length, scheme_version
     )
+
+    scheme = scheme[scheme_length][scheme_version]
 
     if not os.path.exists(scheme_path):
         os.makedirs(scheme_path, exist_ok=True)
@@ -683,9 +705,12 @@ def pick_best_ref(
         str: Primer scheme suffix of the most appropriate reference for the reads
     """
 
-    ref_selection_path = os.path.join(scheme_path, "ref_select.fasta")
+    ref_selection_path = os.path.join(scheme_path, "refselect.fasta")
 
     if not os.path.exists(scheme_path):
+        os.makedirs(scheme_path, exist_ok=True)
+
+    if not os.path.exists(ref_selection_path):
         try:
             response = requests.get(multi_ref_url)
         except requests.exceptions.RequestException as error:
@@ -712,14 +737,14 @@ def pick_best_ref(
     with open(ref_selection_path, "r") as ref_selection_fh:
 
         for reference in SeqIO.parse(ref_selection_fh, "fasta"):
-            suffix = reference.Description.split()[1]
+            suffix = reference.description.split()[1]
             possible_references[reference.id] = suffix
 
             # Flatten out the alignment into flat fasta reference
             flattened = str(reference.seq).replace("-", "")
 
             with open(flat_ref_path, "a") as flat_ref_fh:
-                flat_ref_fh.write(f">{reference.Description}\n{flattened}\n")
+                flat_ref_fh.write(f">{reference.description}\n{flattened}\n")
 
     # fq_it = mappy.fastx_read(fastq_path)
     seqtk = subprocess.run(
