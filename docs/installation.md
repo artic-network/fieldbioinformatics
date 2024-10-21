@@ -9,7 +9,7 @@ date: 2020-03-30
 
 # Installation
 
-As of [release 1.1.0](https://github.com/artic-network/fieldbioinformatics/releases/tag/1.1.0), it is probably easiest to install the `artic pipeline` using conda. Alternatively, you can install the pipeline itself via source/pip but you will have to also satisfy the pipeline dependencies.
+As of [release 1.4.0](https://github.com/artic-network/fieldbioinformatics/releases/tag/1.4.0), conda installation of fieldbioinformatics will become difficult due to the mutually exclusive requirements of medaka and clair3, for this reason we recommend either utilising the docker image [available here](https://quay.io/repository/artic/fieldbioinformatics) or to build the package from source after installing the dependencies via Conda.
 
 ## Via conda
 
@@ -19,21 +19,21 @@ conda install -c bioconda artic
 
 ## Via source
 
-### 1. installing the pipeline
+### 1. installing dependencies
+
+The `artic pipeline` has several [software dependencies](https://github.com/artic-network/fieldbioinformatics/blob/master/environment.yml). You can solve these dependencies using the minimal conda environment we have provided, we strongly recommend that you use either the mamba solver or conda version >= 23.10.0 since libmamba solver is now the default conda solver:
 
 ```sh
 git clone https://github.com/artic-network/fieldbioinformatics
 cd fieldbioinformatics
-python setup.py install
+conda env create -f environment.yml
 ```
 
-### 2. installing dependencies
-
-The `artic pipeline` has several [software dependencies](https://github.com/artic-network/fieldbioinformatics/blob/master/environment.yml). You can solve these dependencies using the minimal conda environment we have provided:
+### 2. installing the pipeline
 
 ```sh
-conda env create -f environment.yml
 conda activate artic
+pip install .
 ```
 
 ### 3. testing the pipeline
@@ -47,7 +47,7 @@ artic -v
 To check that you have all the required dependencies, you can try the pipeline tests with both workflows:
 
 ```
-./test-runner.sh nanopolish
+./test-runner.sh clair3
 ./test-runner.sh medaka
 ```
 

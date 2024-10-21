@@ -26,6 +26,14 @@ dist/
 
 # test data
 *.index*
-CVR1/
-NRW01/
-SP1/
+CVR1.*
+NRW01.*
+SP1.*
+MT007544*
+tmp/
+test-data/CVR1/
+test-data/NRW01/
+test-data/SP1/
+test-data/MT007544/
+rg_*
+primer-schemes/
