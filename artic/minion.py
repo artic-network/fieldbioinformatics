@@ -51,6 +51,13 @@ def run(parser, args):
         )
         raise SystemExit(1)
 
+    if not os.path.exists(args.read_file):
+        print(
+            colored.red("failed to find read-file: {}".format(args.read_file)),
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
     # check the parameters and set up the filenames
     ## find the primer scheme, reference sequence and confirm scheme version
 
@@ -63,6 +70,7 @@ def run(parser, args):
             scheme_version=args.scheme_version,
             scheme_directory=args.scheme_directory,
             scheme_length=args.scheme_length,
+            read_file=args.read_file,
         )
 
     if not os.path.exists(bed) or not os.path.exists(ref):
@@ -72,18 +80,6 @@ def run(parser, args):
                     bed, ref
                 )
             ),
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-    ## set up the read file
-    if args.read_file:
-        read_file = args.read_file
-    else:
-        read_file = "%s.fasta" % (args.sample)
-    if not os.path.exists(read_file):
-        print(
-            colored.red("failed to find read-file: {}".format(read_file)),
             file=sys.stderr,
         )
         raise SystemExit(1)
@@ -100,7 +96,7 @@ def run(parser, args):
 
     # 3) index the ref & align with minimap
     cmds.append(
-        f"minimap2 -a -x map-ont -t {args.threads} {ref} {read_file} | samtools view -bS -F 4 - | samtools sort -o {args.sample}.sorted.bam -"
+        f"minimap2 -a -x map-ont -t {args.threads} {ref} {args.read_file} | samtools view -bS -F 4 - | samtools sort -o {args.sample}.sorted.bam -"
     )
 
     cmds.append(f"samtools index {args.sample}.sorted.bam")
