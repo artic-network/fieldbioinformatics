@@ -231,14 +231,14 @@ def run(parser, args):
     cmds.append(f"tabix -f -p vcf {post_filter_vcf_file}.gz")
 
     # Normalise variants in the pass/fail VCF files
-    post_normalisation_vcf_file = f"{args.sample}.normalised.vcf"
+    post_normalisation_vcf_file = f"{args.sample}.normalised.vcf.gz"
     cmds.append(
         f"bcftools norm --check-ref x --fasta-ref {args.sample}.preconsensus.fasta -O z -o {post_normalisation_vcf_file} {post_filter_vcf_file}.gz"
     )
-    cmds.append(f"bgzip -kf {post_normalisation_vcf_file}")
-    cmds.append(f"tabix -f -p vcf {post_normalisation_vcf_file}.gz")
+    # cmds.append(f"bgzip -kf {post_normalisation_vcf_file}")
+    cmds.append(f"tabix -f -p vcf {post_normalisation_vcf_file}")
     cmds.append(
-        f"bcftools consensus -f {args.sample}.preconsensus.fasta {post_normalisation_vcf_file}.gz -m {args.sample}.coverage_mask.txt -o {args.sample}.consensus.fasta"
+        f"bcftools consensus -f {args.sample}.preconsensus.fasta {post_normalisation_vcf_file} -m {args.sample}.coverage_mask.txt -o {args.sample}.consensus.fasta"
     )
 
     # 11) apply the header to the consensus sequence and run alignment against the reference sequence
