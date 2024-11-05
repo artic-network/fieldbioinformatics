@@ -197,7 +197,7 @@ def main():
     parser.add_argument(
         "--ignore-deletions",
         action="store_true",
-        default=False,
+        default=True,
         help="if set, positional depth counts will ignore reads with reference deletions (i.e. evaluates positional depths on ref matches, not read span",
     )
     parser.add_argument(
