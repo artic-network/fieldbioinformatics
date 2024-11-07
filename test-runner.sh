@@ -35,21 +35,20 @@ guppyplexCmd="artic guppyplex \
         --output ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq"
 
 ## medaka workflow specific
-minionCmd_m="artic minion \
-            --normalise 200 \
-            --threads ${threads} \
-            --read-file ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq \
-            --model r941_e81_hac_g514 \
-            --bed ${bed} \
-            --ref ${ref} \
-            ${prefix}"
+# minionCmd_m="artic minion \
+#             --normalise 200 \
+#             --threads ${threads} \
+#             --read-file ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq \
+#             --model r941_e81_hac_g514 \
+#             --bed ${bed} \
+#             --ref ${ref} \
+#             ${prefix}"
 
 # clair3 workflow specific
 minionCmd_c="artic minion \
             --normalise 200 \
             --threads ${threads} \
             --read-file ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq \
-            --clair3 \
             --model r941_prom_hac_g360+g422 \
             --bed ${bed} \
             --ref ${ref} \
@@ -84,15 +83,15 @@ function cmdTester {
 # Run the tests.
 
 # check that clair3 or medaka is specified
-if [ "$1" == "clair3" ] || [ "$1" == "medaka" ]; then
-    echo -e "${BLUE}Starting tests...${NC}"
-    echo -e "${BLUE} - using the $1 workflow${NC}"
-    echo
-else
-    echo "please specify medaka or clair3"
-    echo "./test-runner.sh [medaka|clair3]"
-    exit 1
-fi
+# if [ "$1" == "clair3" ] || [ "$1" == "medaka" ]; then
+#     echo -e "${BLUE}Starting tests...${NC}"
+#     echo -e "${BLUE} - using the $1 workflow${NC}"
+#     echo
+# else
+#     echo "please specify medaka or clair3"
+#     echo "./test-runner.sh [medaka|clair3]"
+#     exit 1
+# fi
 
 # setup a tmp directory to work in
 mkdir tmp || true
@@ -105,20 +104,20 @@ cmdTester $extractCmd
 
 # run the correct workflow
 echo "running the pipeline..."
-if [ "$1" == "medaka" ]
-then
-    # collect the reads
-    cmdTester $guppyplexCmd
+# if [ "$1" == "medaka" ]
+# then
+#     # collect the reads
+#     cmdTester $guppyplexCmd
 
-    # run the core pipeline with medaka
-    cmdTester $minionCmd_m
-else
-    # guppyplex the reads
-    cmdTester $guppyplexCmd
+#     # run the core pipeline with medaka
+#     cmdTester $minionCmd_m
+# else
+# guppyplex the reads
+cmdTester $guppyplexCmd
 
-    # run the core pipeline with clair3
-    cmdTester $minionCmd_c
-fi
+# run the core pipeline with clair3
+cmdTester $minionCmd_c
+# fi
 
 ###########################################################################################
 # Check the output and clean up.

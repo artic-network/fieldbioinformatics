@@ -21,8 +21,7 @@ USER root
 
 RUN python3 -m pip install ./fieldbioinformatics
 
-RUN pip uninstall -y tensorflow keras pyabpoa \
-  && micromamba install -y -c conda-forge -c bioconda tensorflow=2.11 keras=2.11
+RUN artic_get_models
 
 USER $MAMBA_USER
 

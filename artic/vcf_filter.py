@@ -51,7 +51,12 @@ class MedakaFilter:
         self.no_frameshifts = no_frameshifts
 
     def check_filter(self, v):
-        depth = v.INFO["DP"]
+        try:
+            # We don't really care about the depth here, just skip it if it isn't there
+            depth = v.INFO["DP"]
+        except KeyError:
+            depth = v.format("DP")[0][0]
+
         if depth < 20:
             return False
 
@@ -81,10 +86,16 @@ def go(args):
     for v in variants:
 
         # quick pre-filter to remove rubbish that we don't want adding to the mask
-        # if v.INFO["DP"] <= 1:
-        #     continue
+        try:
+            if v.INFO["DP"] <= 1:
+                print(f"Suppress variant {v.POS} due to low depth")
+                continue
 
-        if v.QUAL < 20:
+        except KeyError:
+            pass
+
+        if v.QUAL < 15:
+            print(f"Suppress variant {v.POS} due to low quality")
             continue
 
         # now apply the filter to send variants to PASS or FAIL file
@@ -101,6 +112,7 @@ def go(args):
 
             if not variant_passes:
                 vcf_writer_filtered.write_record(v)
+
             else:
                 print("Suppress variant %s\n" % (v.POS))
 

@@ -7,6 +7,165 @@ import hashlib
 import re
 import pandas as pd
 from clint.textui import colored
+from Bio import SeqIO
+import gzip
+
+
+class clair3_manifest:
+
+    def __init__(self):
+        self.models = [
+            {
+                "name": "r1041_e82_260bps_fast_g632",
+                "model_fname": "r1041_e82_260bps_fast_g632.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_fast_g632.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_fast_g632",
+                "model_fname": "r1041_e82_400bps_fast_g632.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_fast_g632.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_sup_g615",
+                "model_fname": "r1041_e82_400bps_sup_g615.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_g615.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_260bps_hac_g632",
+                "model_fname": "r1041_e82_260bps_hac_g632.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_hac_g632.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_hac_g615",
+                "model_fname": "r1041_e82_400bps_hac_g615.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_g615.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_sup_v400",
+                "model_fname": "r1041_e82_400bps_sup_v400.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v400.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_260bps_hac_v400",
+                "model_fname": "r1041_e82_260bps_hac_v400.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_hac_v400.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_hac_g632",
+                "model_fname": "r1041_e82_400bps_hac_g632.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_g632.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_sup_v410",
+                "model_fname": "r1041_e82_400bps_sup_v410.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v410.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_260bps_hac_v410",
+                "model_fname": "r1041_e82_260bps_hac_v410.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_hac_v410.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_hac_v400",
+                "model_fname": "r1041_e82_400bps_hac_v400.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v400.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_sup_v420",
+                "model_fname": "r1041_e82_400bps_sup_v420.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v420.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_260bps_sup_g632",
+                "model_fname": "r1041_e82_260bps_sup_g632.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_sup_g632.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_hac_v410",
+                "model_fname": "r1041_e82_400bps_hac_v410.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v410.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_sup_v430",
+                "model_fname": "r1041_e82_400bps_sup_v430.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v430.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_260bps_sup_v400",
+                "model_fname": "r1041_e82_260bps_sup_v400.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_sup_v400.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_hac_v420",
+                "model_fname": "r1041_e82_400bps_hac_v420.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v420.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_sup_v500",
+                "model_fname": "r1041_e82_400bps_sup_v500.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v500.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_260bps_sup_v410",
+                "model_fname": "r1041_e82_260bps_sup_v410.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_sup_v410.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_hac_v430",
+                "model_fname": "r1041_e82_400bps_hac_v430.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v430.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r104_e81_hac_g5015",
+                "model_fname": "r104_e81_hac_g5015.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r104_e81_hac_g5015.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r1041_e82_400bps_hac_v500",
+                "model_fname": "r1041_e82_400bps_hac_v500.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v500.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r104_e81_sup_g5015",
+                "model_fname": "r104_e81_sup_g5015.tar.gz",
+                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r104_e81_sup_g5015.tar.gz",
+                "rerio": True,
+            },
+            {
+                "name": "r941_prom_sup_g5014",
+                "model_fname": "NA",
+                "model_url": "NA",
+                "rerio": False,
+            },
+            {
+                "name": "r941_prom_hac_g360+g422",
+                "model_fname": "NA",
+                "model_url": "NA",
+                "rerio": False,
+            },
+        ]
 
 
 def getPrimerDirection(primerID):
@@ -623,3 +782,168 @@ def get_scheme_legacy(scheme_name, scheme_directory, scheme_version="1"):
         file=sys.stderr,
     )
     raise SystemExit(1)
+
+
+def choose_model(read_file: str):
+
+    models_class = clair3_manifest()
+    models = models_class.models
+
+    if read_file.endswith(".gz"):
+        with gzip.open(
+            read_file,
+            "rt",
+        ) as handle:
+            reads = SeqIO.parse(handle, "fastq")
+
+            read = next(reads)
+    else:
+        reads = SeqIO.parse(read_file, "fastq")
+        read = next(reads)
+
+    split_description = read.description.split()
+    split_description = [x.split("=") for x in split_description if "=" in x]
+
+    tags = {x[0]: x[1] for x in split_description}
+
+    if "basecall_model_version_id" not in tags:
+        print(
+            colored.red(
+                "Provided fastq does not contain basecall_model_version_id in the read header so clair3 model cannot be chosen automatically, please provide an appropriate model with the --model parameter",
+                file=sys.stderr,
+            )
+        )
+        sys.exit(1)
+
+    if len(tags["basecall_model_version_id"].split("_")) == 4:
+        molecule, pore_type, kit_id, model = tags["basecall_model_version_id"].split(
+            "_"
+        )
+
+        if "@" in model:
+            preset, basecaller_version = model.split("@")
+            basecaller_version = basecaller_version.replace(".", "")
+
+        pore_type = pore_type.replace(".", "")
+        kit_id = kit_id.replace(".", "")
+
+        possible_models = [x for x in models if pore_type in x["name"]]
+
+        if not possible_models:
+            print(
+                colored.red(
+                    f"No model found for basecall model id {tags['basecall_model_version_id']}, please provide a model with the --model parameter",
+                    file=sys.stderr,
+                )
+            )
+            sys.exit(1)
+
+        if len(possible_models) == 1:
+            print(
+                colored.yellow(
+                    f"Model {possible_models[0]['name']} chosen for basecall model id {tags['basecall_model_version_id']}, if this is incorrect please provide the correct model with the --model parameter"
+                ),
+                file=sys.stderr,
+            )
+            return possible_models[0]
+
+        try:
+            possible_models = [x for x in possible_models if preset in x["name"]]
+        except NameError:
+            possible_models = [x for x in possible_models if model in x["name"]]
+
+        if not possible_models:
+            print(
+                colored.red(
+                    f"No model found for basecall model id {tags['basecall_model_version_id']}, please provide a model with the --model parameter",
+                    file=sys.stderr,
+                )
+            )
+            sys.exit(1)
+
+        if len(possible_models) == 1:
+            print(
+                colored.yellow(
+                    f"Model {possible_models[0]['name']} chosen for basecall model id {tags['basecall_model_version_id']}, if this is incorrect please provide the correct model with the --model parameter"
+                ),
+                file=sys.stderr,
+            )
+            return possible_models[0]
+
+    elif len(tags["basecall_model_version_id"].split("_")) == 5:
+        molecule, pore_type, kit_id, speed, model = tags[
+            "basecall_model_version_id"
+        ].split("_")
+
+        if "@" in model:
+            preset, basecaller_version = model.split("@")
+            basecaller_version = basecaller_version.replace(".", "")
+
+        pore_type = pore_type.replace(".", "")
+        kit_id = kit_id.replace(".", "")
+
+        search_string = f"{pore_type}_{kit_id}_{speed}"
+
+        possible_models = [x for x in models if search_string in x["name"]]
+
+    if not possible_models:
+        print(
+            colored.red(
+                f"No model found for basecall model id {tags['basecall_model_version_id']}, please provide a model with the --model parameter",
+                file=sys.stderr,
+            )
+        )
+        sys.exit(1)
+
+    if len(possible_models) == 1:
+        print(
+            colored.yellow(
+                f"Model {possible_models[0]['name']} chosen for basecall model id {tags['basecall_model_version_id']}, if this is incorrect please provide the correct model with the --model parameter"
+            )
+        )
+        return possible_models[0]
+
+    try:
+        possible_models = [x for x in possible_models if preset in x["name"]]
+    except NameError:
+        possible_models = [x for x in possible_models if model in x["name"]]
+
+    if not possible_models:
+        print(
+            colored.red(
+                f"No model found for basecall model id {tags['basecall_model_version_id']}, please provide a model with the --model parameter",
+                file=sys.stderr,
+            )
+        )
+        sys.exit(1)
+
+    if len(possible_models) == 1:
+        print(
+            colored.yellow(
+                f"Model {possible_models[0]['name']} chosen for basecall model id {tags['basecall_model_version_id']}, if this is incorrect please provide the correct model with the --model parameter"
+            )
+        )
+        return possible_models[0]
+
+    try:
+        for x in possible_models:
+            if basecaller_version in x["name"]:
+                print(
+                    colored.yellow(
+                        f"Model {x['name']} chosen for basecall model id {tags['basecall_model_version_id']}, if this is incorrect please provide the correct model with the --model parameter"
+                    ),
+                    file=sys.stderr,
+                )
+                return x
+
+    except NameError:
+        pass
+
+    print(
+        colored.red(
+            f"Multiple potential models found, please provide the appropriate model from the following with the '--model' parameter:\n{' '.join([str(x['name']) for x in possible_models])}"
+        ),
+        file=sys.stderr,
+    )
+
+    sys.exit(1)

@@ -5,7 +5,6 @@ channels:
   - defaults
 dependencies:
   - python==3.9
-  - longshot
   - bcftools
   - biopython
   - bwa
@@ -24,5 +23,3 @@ dependencies:
   - requests
   - samtools
   - tqdm
-  - pip:
-      - medaka==1.12.0

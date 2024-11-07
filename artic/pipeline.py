@@ -74,25 +74,13 @@ def init_pipeline_parser():
     )
     parser_minion.add_argument(
         "--model",
-        help="The model to use for medaka or clair3 (must be the specific model for the variant caller in question)",
-        required=True,
-    )
-    parser_minion.add_argument(
-        "--clair3",
-        action="store_true",
-        help="Use Clair3 for variant calling, currently experimental (default: medaka)",
+        help="The model to use for clair3, if not provided the pipeline will try to figure it out the appropriate model from the read fastq",
     )
     parser_minion.add_argument(
         "--model-path",
         metavar="model_path",
-        help="Path containing clair3 models, defaults to models packaged with conda installation by default",
+        help="Path containing clair3 models, defaults to models packaged with conda installation",
         type=str,
-    )
-    parser_minion.add_argument(
-        "--no-longshot",
-        dest="no_longshot",
-        action="store_true",
-        help="Do not use Longshot for variant filtering after medaka",
     )
     parser_minion.add_argument(
         "--min-mapq",

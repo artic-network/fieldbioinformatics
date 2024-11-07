@@ -28,11 +28,6 @@ jobs:
           pytest -s tests/*_unit_test.py
         shell: micromamba-shell {0}
 
-      - name: Run medaka test
-        run: |
-          ./test-runner.sh medaka
-        shell: micromamba-shell {0}
-
       - name: Run clair3 test
         run: |
           ./test-runner.sh clair3

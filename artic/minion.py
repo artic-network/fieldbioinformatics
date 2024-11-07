@@ -4,7 +4,7 @@ from clint.textui import colored
 import os
 import sys
 import time
-from artic.utils import read_bed_file, get_scheme
+from artic.utils import read_bed_file, get_scheme, choose_model
 
 
 def run(parser, args):
@@ -44,10 +44,32 @@ def run(parser, args):
         )
         raise SystemExit(1)
 
+    if args.model_path:
+        model_path = args.model_path
+    else:
+        if not os.getenv("CONDA_PREFIX"):
+            print(
+                f"CONDA_PREFIX is not set, this probably means you are not running this inside a conda environment, please provide a model path argument '--model-path'",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+
+        model_path = f"{os.getenv('CONDA_PREFIX')}/bin/models/"
+
     # check for model
     if not args.model:
+        model = choose_model(args.read_file)
+        full_model_path = f"{model_path}/{model['name']}"
+
+    else:
+        full_model_path = f"{model_path}/{args.model}"
+
+    if not os.path.exists(full_model_path):
         print(
-            colored.red("Must specify --model for clair3 or medaka variant calling"),
+            colored.red(
+                f"Model '{model['name']}' not found in '{model_path}', please run 'artic_get_models' to download the clair3 models from ONT"
+            ),
+            file=sys.stderr,
         )
         raise SystemExit(1)
 
@@ -127,50 +149,21 @@ def run(parser, args):
         if os.path.exists("%s.%s.hdf" % (args.sample, p)):
             os.remove("%s.%s.hdf" % (args.sample, p))
 
-        if args.clair3:
-            # Use a specific model path if provided else use the default conda path
-            if args.model_path:
-                model_path = f"'{args.model_path}/{args.model}'"
-
-            else:
-                model_path = f"'{os.getenv('CONDA_PREFIX')}/bin/models/{args.model}'"
-
-            # Split the BAM by read group
-            for p in pools:
-                cmds.append(
-                    f"samtools view -b -r {p} {args.sample}.trimmed.rg.sorted.bam -o {args.sample}.{p}.trimmed.rg.sorted.bam"
-                )
-
-                cmds.append(f"samtools index {args.sample}.{p}.trimmed.rg.sorted.bam")
-
-                cmds.append(
-                    f"run_clair3.sh --chunk_size=10000 --no_phasing_for_fa --bam_fn='{args.sample}.{p}.trimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path={model_path} --include_all_ctgs"
-                )
-
-                cmds.append(
-                    f"bgzip -dc {args.sample}_rg_{p}/merge_output.vcf.gz > {args.sample}.{p}.vcf"
-                )
-
-        else:
+        # Split the BAM by read group
+        for p in pools:
             cmds.append(
-                f"medaka consensus --model {args.model} --threads {args.threads} --chunk_len 800 --chunk_ovlp 400 --RG {p} {args.sample}.trimmed.rg.sorted.bam {args.sample}.{p}.hdf"
+                f"samtools view -b -r {p} {args.sample}.trimmed.rg.sorted.bam -o {args.sample}.{p}.trimmed.rg.sorted.bam"
             )
-            if args.no_indels:
-                cmds.append(
-                    "medaka snp %s %s.%s.hdf %s.%s.vcf"
-                    % (ref, args.sample, p, args.sample, p)
-                )
-            else:
-                cmds.append(
-                    "medaka variant %s %s.%s.hdf %s.%s.vcf"
-                    % (ref, args.sample, p, args.sample, p)
-                )
 
-        if args.no_longshot:
+            cmds.append(f"samtools index {args.sample}.{p}.trimmed.rg.sorted.bam")
+
             cmds.append(
-                f"medaka tools annotate --pad 25 --RG {p} {args.sample}.{p}.vcf {ref} {args.sample}.primertrimmed.rg.sorted.bam tmp.medaka-annotate.vcf"
+                f"run_clair3.sh --enable_long_indel --chunk_size=10000 --no_phasing_for_fa --bam_fn='{args.sample}.{p}.trimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs"
             )
-            cmds.append(f"mv tmp.medaka-annotate.vcf {args.sample}.{p}.vcf")
+
+            cmds.append(
+                f"bgzip -dc {args.sample}_rg_{p}/merge_output.vcf.gz > {args.sample}.{p}.vcf"
+            )
 
     # 7) merge the called variants for each read group
     merge_vcf_cmd = "artic_vcf_merge %s %s 2> %s.primersitereport.txt" % (
@@ -183,32 +176,10 @@ def run(parser, args):
 
     cmds.append(merge_vcf_cmd)
 
-    # 8) check and filter the VCFs
-    ## if using strict, run the vcf checker to remove vars present only once in overlap regions (this replaces the original merged vcf from the previous step)
-    # if args.strict:
-    #     cmds.append("bgzip -f %s.merged.vcf" % (args.sample))
-    #     cmds.append("tabix -p vcf %s.merged.vcf.gz" % (args.sample))
-    #     cmds.append(
-    #         "artic-tools check_vcf --dropPrimerVars --dropOverlapFails --vcfOut %s.merged.filtered.vcf %s.merged.vcf.gz %s 2> %s.vcfreport.txt"
-    #         % (args.sample, args.sample, bed, args.sample)
-    #     )
-    #     cmds.append(
-    #         "mv %s.merged.filtered.vcf %s.merged.vcf" % (args.sample, args.sample)
-    #     )
     pre_filter_vcf = f"{args.sample}.merged.vcf"
     cmds.append(f"bgzip -kf {pre_filter_vcf}")
     cmds.append(f"tabix -f -p vcf {pre_filter_vcf}.gz")
 
-    # if doing the medaka workflow and longshot required, do it on the merged VCF
-    if not args.no_longshot:
-        pre_filter_vcf = f"{args.sample}.longshot.vcf"
-        cmds.append(
-            f"longshot --min_mapq {args.min_mapq} -P 0 -F --max_cov 200000 --no_haps --bam {args.sample}.primertrimmed.rg.sorted.bam --ref {ref} --out {pre_filter_vcf} --potential_variants {args.sample}.merged.vcf.gz"
-        )
-        cmds.append(f"bgzip -kf {pre_filter_vcf}")
-        cmds.append(f"tabix -f -p vcf {pre_filter_vcf}.gz")
-
-    ## filter the variants to produce PASS and FAIL lists, then index them
     fs_str = "--no-frameshifts" if args.no_frameshifts else ""
     indel_str = "--no-indels" if args.no_indels else ""
     cmds.append(
@@ -242,7 +213,7 @@ def run(parser, args):
     )
 
     # 11) apply the header to the consensus sequence and run alignment against the reference sequence
-    caller = "medaka" if not args.clair3 else "clair3"
+    caller = "clair3"
     fasta_header = f"{args.sample}/ARTIC/{caller}"
     cmds.append(
         'artic_fasta_header %s.consensus.fasta "%s"' % (args.sample, fasta_header)
