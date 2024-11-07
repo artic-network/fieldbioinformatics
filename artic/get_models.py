@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import tarfile
 import sys
-from utils import clair3_manifest
+from artic.utils import clair3_manifest
 
 
 def download_file(url: str, local_path: Path):
