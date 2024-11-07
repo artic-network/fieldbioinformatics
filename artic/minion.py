@@ -117,7 +117,7 @@ def run(parser, args):
     cmds = []
 
     # 2) check the reference fasta has and index and create one if not
-    if not os.path.exists("%s.fai" % (ref)) and args.clair3:
+    if not os.path.exists("%s.fai" % (ref)):
         cmds.append("samtools faidx %s" % (ref))
 
     # 3) index the ref & align with minimap
