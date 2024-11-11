@@ -56,7 +56,7 @@ class MedakaFilter:
             depth = v.INFO["DP"]
         except KeyError:
             depth = v.format("DP")[0][0]
-        
+
         if depth < min_depth:
             return False
 
@@ -107,7 +107,7 @@ def go(args):
             indx = "%s-%s" % (v.CHROM, v.POS)
             if len(group_variants[indx]) > 1:
                 for check_variant in group_variants[indx]:
-                    if filter.check_filter(check_variant):
+                    if filter.check_filter(check_variant, args.min_depth):
                         variant_passes = True
 
             if not variant_passes:
