@@ -280,7 +280,7 @@ def identify_bed_file(bed_file):
             if version != 3:
                 print(
                     colored.red(
-                        f"Scheme BED does not appear to be a consistent scheme version, for primer scheme formats please see https://github.com/ChrisgKent/primal-page"
+                        "Scheme BED does not appear to be a consistent scheme version, for primer scheme formats please see https://github.com/ChrisgKent/primal-page"
                     )
                 )
                 raise SystemExit(1)
@@ -819,8 +819,8 @@ def choose_model(read_file: str) -> dict:
         print(
             colored.red(
                 "Provided fastq does not contain basecall_model_version_id in the read header so clair3 model cannot be chosen automatically, please provide an appropriate model with the --model parameter",
-                file=sys.stderr,
-            )
+            ),
+            file=sys.stderr,
         )
         sys.exit(6)
 
@@ -842,8 +842,8 @@ def choose_model(read_file: str) -> dict:
             print(
                 colored.red(
                     f"No model found for basecall model id {tags['basecall_model_version_id']}, please provide a model with the --model parameter",
-                    file=sys.stderr,
-                )
+                ),
+                file=sys.stderr,
             )
             sys.exit(6)
 
