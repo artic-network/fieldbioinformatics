@@ -25,8 +25,6 @@ Features include:
 - variant calling
 - consensus building
 
-There are **2 workflows** baked into this pipeline, one which uses signal data (via [nanopolish](https://github.com/jts/nanopolish)) and one that does not (via [medaka](https://github.com/nanoporetech/medaka)).
-
 <!-- ## Installation
 
 ### Via conda

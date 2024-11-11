@@ -784,7 +784,16 @@ def get_scheme_legacy(scheme_name, scheme_directory, scheme_version="1"):
     raise SystemExit(1)
 
 
-def choose_model(read_file: str):
+def choose_model(read_file: str) -> dict:
+    """
+    Choose the appropriate clair3 model based on the `basecall_model_version_id` field in the read header (if it exists)
+
+    Args:
+        read_file (str): Path to the fastq file
+
+    Returns:
+        dict: The chosen clair3 model as a dictionary
+    """
 
     models_class = clair3_manifest()
     models = models_class.models

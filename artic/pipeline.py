@@ -66,9 +66,6 @@ def init_pipeline_parser():
     parser_minion = subparsers.add_parser(
         "minion", help="Run the alignment/variant-call/consensus pipeline"
     )
-    # parser_minion.add_argument(
-    #     "scheme", metavar="scheme", help="The name of the scheme"
-    # )
     parser_minion.add_argument(
         "sample", metavar="sample", help="The name of the sample"
     )
@@ -79,7 +76,7 @@ def init_pipeline_parser():
     parser_minion.add_argument(
         "--model-path",
         metavar="model_path",
-        help="Path containing clair3 models, defaults to models packaged with conda installation",
+        help="Path containing clair3 models, defaults to models packaged with conda installation (default: $CONDA_PREFIX/bin/models/)",
         type=str,
     )
     parser_minion.add_argument(

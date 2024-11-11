@@ -4,12 +4,13 @@ summary: The installation guide.
 authors:
   - Will Rowe
   - Nick Loman
+  - Sam Wilkinson
 date: 2020-03-30
 ---
 
 # Installation
 
-As of [release 1.4.0](https://github.com/artic-network/fieldbioinformatics/releases/tag/1.4.0), conda installation of fieldbioinformatics will become difficult due to the mutually exclusive requirements of medaka and clair3, for this reason we recommend either utilising the docker image [available here](https://quay.io/repository/artic/fieldbioinformatics) or to build the package from source after installing the dependencies via Conda.
+As of [release 1.4.0](https://github.com/artic-network/fieldbioinformatics/releases/tag/1.4.0), we provide a docker image [available here](https://quay.io/repository/artic/fieldbioinformatics) and a conda package. You may also wish to install the package from source after installing the dependencies via Conda yourself.
 
 ## Via conda
 
@@ -44,11 +45,10 @@ First check the pipeline can be called:
 artic -v
 ```
 
-To check that you have all the required dependencies, you can try the pipeline tests with both workflows:
+To check that you have all the required dependencies, you can try the pipeline tests like so:
 
 ```
 ./test-runner.sh clair3
-./test-runner.sh medaka
 ```
 
 For further tests, such as the variant validation tests, see [here](http://artic.readthedocs.io/en/latest/tests?badge=latest).
