@@ -50,14 +50,14 @@ class MedakaFilter:
     def __init__(self, no_frameshifts):
         self.no_frameshifts = no_frameshifts
 
-    def check_filter(self, v):
+    def check_filter(self, v, min_depth):
         try:
             # We don't really care about the depth here, just skip it if it isn't there
             depth = v.INFO["DP"]
         except KeyError:
             depth = v.format("DP")[0][0]
-
-        if depth < 20:
+        
+        if depth < min_depth:
             return False
 
         if self.no_frameshifts and not in_frame(v):
@@ -94,12 +94,12 @@ def go(args):
         except KeyError:
             pass
 
-        if v.QUAL < 15:
+        if v.QUAL < args.min_variant_quality:
             print(f"Suppress variant {v.POS} due to low quality")
             continue
 
         # now apply the filter to send variants to PASS or FAIL file
-        if filter.check_filter(v):
+        if filter.check_filter(v, args.min_depth):
             vcf_writer.write_record(v)
         else:
             variant_passes = False
@@ -122,6 +122,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-frameshifts", action="store_true")
+    parser.add_argument("--min-variant-quality", type=int)
+    parser.add_argument("--min-depth", type=int)
     parser.add_argument("inputvcf")
     parser.add_argument("output_pass_vcf")
     parser.add_argument("output_fail_vcf")

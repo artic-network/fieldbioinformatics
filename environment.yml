@@ -18,7 +18,7 @@ dependencies:
   - pysam
   - pytest 
   - cyvcf2
-  - pyfaidx
+  - pyfaidx=0.6.0
   - requests
   - samtools
   - tqdm

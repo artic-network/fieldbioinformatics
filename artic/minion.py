@@ -158,7 +158,7 @@ def run(parser, args):
             cmds.append(f"samtools index {args.sample}.{p}.trimmed.rg.sorted.bam")
 
             cmds.append(
-                f"run_clair3.sh --enable_long_indel --chunk_size=10000 --no_phasing_for_fa --bam_fn='{args.sample}.{p}.trimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs"
+                f"run_clair3.sh --enable_long_indel --chunk_size=10000 --no_phasing_for_fa --bam_fn='{args.sample}.{p}.trimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs --min_coverage='{args.min_depth}'"
             )
 
             cmds.append(
@@ -183,7 +183,7 @@ def run(parser, args):
     fs_str = "--no-frameshifts" if args.no_frameshifts else ""
     indel_str = "--no-indels" if args.no_indels else ""
     cmds.append(
-        f"artic_vcf_filter {fs_str} {indel_str} {pre_filter_vcf}.gz {args.sample}.pass.vcf {args.sample}.fail.vcf"
+        f"artic_vcf_filter {fs_str} {indel_str} --min-variant-quality {args.min_variant_quality} --min-depth {args.min_depth} {pre_filter_vcf}.gz {args.sample}.pass.vcf {args.sample}.fail.vcf"
     )
 
     # 9) get the depth of coverage for each readgroup, create a coverage mask and plots, and add failed variants to the coverage mask (artic_mask must be run before bcftools consensus)

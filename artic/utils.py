@@ -822,7 +822,7 @@ def choose_model(read_file: str) -> dict:
                 file=sys.stderr,
             )
         )
-        sys.exit(1)
+        sys.exit(6)
 
     if len(tags["basecall_model_version_id"].split("_")) == 4:
         molecule, pore_type, kit_id, model = tags["basecall_model_version_id"].split(
@@ -845,7 +845,7 @@ def choose_model(read_file: str) -> dict:
                     file=sys.stderr,
                 )
             )
-            sys.exit(1)
+            sys.exit(6)
 
         if len(possible_models) == 1:
             print(
@@ -868,7 +868,7 @@ def choose_model(read_file: str) -> dict:
                     file=sys.stderr,
                 )
             )
-            sys.exit(1)
+            sys.exit(6)
 
         if len(possible_models) == 1:
             print(
@@ -902,7 +902,7 @@ def choose_model(read_file: str) -> dict:
                 file=sys.stderr,
             )
         )
-        sys.exit(1)
+        sys.exit(6)
 
     if len(possible_models) == 1:
         print(
@@ -924,7 +924,7 @@ def choose_model(read_file: str) -> dict:
                 file=sys.stderr,
             )
         )
-        sys.exit(1)
+        sys.exit(6)
 
     if len(possible_models) == 1:
         print(
@@ -955,4 +955,4 @@ def choose_model(read_file: str) -> dict:
         file=sys.stderr,
     )
 
-    sys.exit(1)
+    sys.exit(6)

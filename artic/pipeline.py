@@ -99,6 +99,18 @@ def init_pipeline_parser():
         help="Allow fuzzy primer matching within this threshold (default: %(default)d)",
     )
     parser_minion.add_argument(
+        "--min-depth",
+        type=int,
+        default=20,
+        help="Minimum depth required to call a variant (default: %(default)d)",
+    )
+    parser_minion.add_argument(
+        "--min-variant-quality",
+        type=int,
+        default=15,
+        help="Minimum quality required to call a variant (default: %(default)d)",
+    )
+    parser_minion.add_argument(
         "--threads",
         type=int,
         default=8,
