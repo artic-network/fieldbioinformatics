@@ -16,62 +16,59 @@ def in_frame(v):
     return False
 
 
-class NanoporeFilter:
-    def __init__(self, no_frameshifts):
+class Clair3Filter:
+    def __init__(self, no_frameshifts, min_depth):
         self.no_frameshifts = no_frameshifts
-        pass
+        self.min_depth = min_depth
+        self.min_variant_quality = 10
 
     def check_filter(self, v):
-        total_reads = float(v.INFO["TotalReads"])
         qual = v.QUAL
-        # strandbias = float(v.INFO["StrandFisherTest"])
 
-        if qual / total_reads < 3:
+        if qual < self.min_variant_quality:
             return False
 
         if self.no_frameshifts and not in_frame(v):
             return False
 
-        if v.is_indel:
-            strand_fraction_by_strand = v.INFO["SupportFractionByStrand"]
-            if float(strand_fraction_by_strand[0]) < 0.5:
-                return False
-
-            if float(strand_fraction_by_strand[1]) < 0.5:
-                return False
-
-        if total_reads < 20:
-            return False
-
-        return True
-
-
-class MedakaFilter:
-    def __init__(self, no_frameshifts, min_depth, min_variant_quality):
-        self.no_frameshifts = no_frameshifts
-        self.min_depth = min_depth
-        self.min_variant_quality = min_variant_quality
-
-    def check_filter(self, v, min_depth):
         try:
             # We don't really care about the depth here, just skip it if it isn't there
             depth = v.INFO["DP"]
         except KeyError:
             depth = v.format("DP")[0][0]
 
-        if depth < min_depth:
-            return False
-
-        if self.no_frameshifts and not in_frame(v):
-            return False
-
-        if v.num_het:
-            return False
-
-        if v.QUAL < self.min_variant_quality:
+        if depth < self.min_depth:
             return False
 
         return True
+
+
+# class MedakaFilter:
+#     def __init__(self, no_frameshifts, min_depth):
+#         self.no_frameshifts = no_frameshifts
+#         self.min_depth = min_depth
+#         self.min_variant_quality = 20
+
+#     def check_filter(self, v, min_depth):
+#         try:
+#             # We don't really care about the depth here, just skip it if it isn't there
+#             depth = v.INFO["DP"]
+#         except KeyError:
+#             depth = v.format("DP")[0][0]
+
+#         if depth < min_depth:
+#             return False
+
+#         if self.no_frameshifts and not in_frame(v):
+#             return False
+
+#         if v.num_het:
+#             return False
+
+#         if v.QUAL < self.min_variant_quality:
+#             return False
+
+#         return True
 
 
 def go(args):
@@ -80,7 +77,7 @@ def go(args):
     vcf_writer.write_header()
     vcf_writer_filtered = Writer(args.output_fail_vcf, vcf_reader, "w")
     vcf_writer_filtered.write_header()
-    filter = MedakaFilter(args.no_frameshifts)
+    filter = Clair3Filter(args.no_frameshifts, args.min_depth)
 
     variants = [v for v in vcf_reader]
 
@@ -101,7 +98,7 @@ def go(args):
             pass
 
         # now apply the filter to send variants to PASS or FAIL file
-        if filter.check_filter(v, args.min_depth):
+        if filter.check_filter(v):
             vcf_writer.write_record(v)
         else:
             variant_passes = False
@@ -109,7 +106,7 @@ def go(args):
             indx = "%s-%s" % (v.CHROM, v.POS)
             if len(group_variants[indx]) > 1:
                 for check_variant in group_variants[indx]:
-                    if filter.check_filter(check_variant, args.min_depth):
+                    if filter.check_filter(check_variant):
                         variant_passes = True
 
             if not variant_passes:
@@ -124,7 +121,6 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-frameshifts", action="store_true")
-    parser.add_argument("--min-variant-quality", type=int)
     parser.add_argument("--min-depth", type=int)
     parser.add_argument("inputvcf")
     parser.add_argument("output_pass_vcf")

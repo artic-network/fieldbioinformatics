@@ -105,12 +105,6 @@ def init_pipeline_parser():
         help="Minimum depth required to call a variant (default: %(default)d)",
     )
     parser_minion.add_argument(
-        "--min-variant-quality",
-        type=int,
-        default=15,
-        help="Minimum quality required to call a variant (default: %(default)d)",
-    )
-    parser_minion.add_argument(
         "--threads",
         type=int,
         default=8,
