@@ -44,8 +44,8 @@ def run(parser, args):
         )
         raise SystemExit(1)
 
-    if args.model_path:
-        model_path = args.model_path
+    if args.model_dir:
+        model_path = args.model_dir
     else:
         if not os.getenv("CONDA_PREFIX"):
             print(
