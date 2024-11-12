@@ -47,8 +47,10 @@ class NanoporeFilter:
 
 
 class MedakaFilter:
-    def __init__(self, no_frameshifts):
+    def __init__(self, no_frameshifts, min_depth, min_variant_quality):
         self.no_frameshifts = no_frameshifts
+        self.min_depth = min_depth
+        self.min_variant_quality = min_variant_quality
 
     def check_filter(self, v, min_depth):
         try:
@@ -65,6 +67,10 @@ class MedakaFilter:
 
         if v.num_het:
             return False
+
+        if v.QUAL < self.min_variant_quality:
+            return False
+
         return True
 
 
@@ -93,10 +99,6 @@ def go(args):
 
         except KeyError:
             pass
-
-        if v.QUAL < args.min_variant_quality:
-            print(f"Suppress variant {v.POS} due to low quality")
-            continue
 
         # now apply the filter to send variants to PASS or FAIL file
         if filter.check_filter(v, args.min_depth):
