@@ -74,7 +74,7 @@ def init_pipeline_parser():
         help="The model to use for clair3, if not provided the pipeline will try to figure it out the appropriate model from the read fastq",
     )
     parser_minion.add_argument(
-        "--model-path",
+        "--model-dir",
         metavar="model_path",
         help="Path containing clair3 models, defaults to models packaged with conda installation (default: $CONDA_PREFIX/bin/models/)",
         type=str,
