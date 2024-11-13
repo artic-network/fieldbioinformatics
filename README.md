@@ -75,8 +75,7 @@ artic -v
 You can try the pipeline tests.
 
 ```
-./test-runner.sh nanopolish
-./test-runner.sh medaka
+./test-runner.sh clair3
 ```
 
 For further tests, such as the variant validation tests, check [the documentation](http://artic.readthedocs.io/en/latest/tests?badge=latest).
