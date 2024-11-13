@@ -3,7 +3,7 @@
     <h1>ARTIC</h1>
     <h3>a bioinformatics pipeline for working with virus sequencing data sequenced with nanopore</h3>
     <hr>
-    <a href="https://travis-ci.org/artic-network/fieldbioinformatics"><img src="https://travis-ci.org/artic-network/fieldbioinformatics.svg?branch=master" alt="travis"></a>
+    <a href="https://github.com/artic-network/fieldbioinformatics/actions/workflows/unittests.yml"><img src="https://github.com/artic-network/fieldbioinformatics/actions/workflows/unittests.yml/badge.svg" alt="Unit tests"></a>
     <a href='http://artic.readthedocs.io/en/latest/?badge=latest'><img src='https://readthedocs.org/projects/artic/badge/?version=latest' alt='Documentation Status'></a>
     <a href="https://bioconda.github.io/recipes/artic/README.html"><img src="https://anaconda.org/bioconda/artic/badges/downloads.svg" alt="bioconda"></a>
     <a href="https://github.com/artic-network/fieldbioinformatics/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-orange.svg" alt="License"></a>
