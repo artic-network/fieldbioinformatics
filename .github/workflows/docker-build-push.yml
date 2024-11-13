@@ -12,7 +12,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: quay.io/artic-network/fieldbioinformatics
+          images: quay.io/artic/fieldbioinformatics
           flavor: |
             latest=true
           tags: |
