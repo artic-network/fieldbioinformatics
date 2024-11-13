@@ -26,7 +26,7 @@ Features include:
 - variant calling
 - consensus building
 
-<!-- ## Installation
+## Installation
 
 ### Via conda
 
@@ -34,7 +34,7 @@ Features include:
 conda install -c bioconda -c conda-forge artic
 ```
 
-Please make sure you are using either mamba or conda version >= 23.10.0 where libmamba solver was made the default conda solver. -->
+Please make sure you are using either mamba or conda version >= 23.10.0 where libmamba solver was made the default conda solver.
 
 ### Via source
 
