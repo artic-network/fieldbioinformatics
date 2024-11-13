@@ -4,18 +4,19 @@ summary: The FAQ.
 authors:
   - Will Rowe
   - Nick Loman
+  - Sam Wilkinson
 date: 2020-03-30
 ---
 
 # FAQ
 
-## Where can I find the SOP for SARS-CoV-2
+## How do I process MPXV data?
+
+A set of resources for processing MPXV sequencing data may be found [here](https://artic.network/mpxv), this includes running this pipeline on the command line and the artic MPXV nextflow pipelines via epi2me.
+
+## Where can I find the SOP for SARS-CoV-2?
 
 The standard operating proceedure for the ARTIC Network SARS-SoV-2 bioinformatics can be found [here](https://artic.network/ncov-2019/ncov2019-bioinformatics-sop.html).
-
-## Should I use the nanopolish or medaka workflow
-
-We currently recommend the nanopolish workflow (if you have signal data available) as we have spent more time validating and supporting this workflow. That being said, both tend to give consistent results with our test datasets so the choice is yours.
 
 ## Lab-on-an-SSD
 

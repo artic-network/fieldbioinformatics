@@ -4,7 +4,8 @@ summary: Outline of minion workflows.
 authors:
   - Will Rowe
   - Nick Loman
-date: 2020-09-01
+  - Sam Wilkinson
+date: 2024-11-11
 ---
 
 # Core pipeline
@@ -13,29 +14,20 @@ date: 2020-09-01
 
 This page describes the core pipeline which is run via the `artic minion` command.
 
-There are **2 workflows** baked into the core pipeline, one which uses signal data (via [nanopolish](https://github.com/jts/nanopolish)) and one that does not (via [medaka](https://github.com/nanoporetech/medaka)). As the workflows are identical in many ways, this page will describe the pipeline as whole and notify the reader when there is dfferent behaviour between the two workflows.
-It should be noted here that by default the `nanopolish` workflow is selected; you need to specify `--medaka` (and `--medaka-model`) if you want the medaka workflow enabled.
-
-> **NOTE**: It is very important that you select the appropriate value for `--medaka-model`.
-
 At the end of each stage, we list here the "useful" stage output files which are kept. There will also be some additional files leftover at the end of the pipeline but these can be ignored (and are hopefully quite intuitively named).
 
 ## Stages
 
 ### Input validation
 
-The supplied `--scheme-directory` will be checked for a **reference sequence** and **primer scheme**. If `--scheme-version` is not supplied, version 1 will be assumed.
+As of version 1.2.0, the pipeline will try and download the reference and scheme from the [artic primer scheme](https://github.com/artic-network/primer-schemes) repository if it is not found/provided. It will be downloaded to the directory provided by `--scheme-directory` which defaults to a subfolder of the current working directory `primer-schemes/`
 
-As of version 1.2.0, the pipeline will try and download the reference and scheme from the [artic primer scheme](https://github.com/artic-network/primer-schemes) repository if it is not found/provided.
+This is done using the `--scheme-name` `--scheme-length` and `--scheme-version` parameters, for example, to fetch the [artic-inrb-mpox/2500/v1.0.0](https://github.com/quick-lab/primerschemes/tree/main/primerschemes/artic-inrb-mpox/2500/v1.0.0) scheme you should provide the following arguments:
+* `--scheme-name artic-inrb-mpox`
+* `--scheme-length 2500`
+* `--scheme-version v1.0.0`
 
-Once the scheme and reference have been found, the pipeline will validate the scheme and extract the primer pool information.
-
-If running the **nanopolish workflow**, the pipeline will check the reference only contains one sequence and then run `nanopolish index` to map basecalled reads to the signal data.
-
-#### stage output
-
-- primer validation log (optional)
-- nanopolish index (workflow dependant)
+Alternatively you may provide the `--bed` and `--ref` arguments to point directly towards the primer bed file and reference fasta you wish to use.
 
 ### Reference alignment and post-processing
 
@@ -69,26 +61,17 @@ More information on how the primer scheme is used to infer amplicons can be foun
 
 ### Variant calling
 
-Once alignments have been softmasked, sorted and indexed (again), they are used for variant calling. This is where the two workflows actually differ.
+We use the following commands on the `$SAMPLE.primertrimmed.rg.sorted.bam` alignment:
 
-For the **medaka workflow**, we use the following commands on the `$SAMPLE.primertrimmed.rg.sorted.bam` alignment:
+- [run_clair3.sh](https://github.com/HKU-BAL/Clair3)
 
-- [medaka consensus](https://github.com/nanoporetech/medaka)
-- medaka variant or snps (if pipeline has been told not to detect INDELS via `--no-indels`)
-- medaka tools annotate (if `--no-longshot` has been selected)
-- [longshot](https://github.com/pjedge/longshot) (if `--no-longshot` not selected)
-
-And for the **nanopolish workflow** we use the following command on the `$SAMPLE.trimmed.rg.sorted.bam` alignment:
-
-- [nanopolish variants](https://github.com/jts/nanopolish)
-
-For both workflows, the variant calling steps are run for each **read group** in turn. We then merge variants reported per read group into a single file using the `artic_vcf_merge` module.
-
-> Note: we use the `$SAMPLE.trimmed.rg.sorted.bam` alignment for the **nanopolish workflow** as nanopolish requires some leading sequence to make variant calls; we use the primer sequence for this purpose in order to call variants at the start of amplicons.
+The variant calling steps are run for each **read group** in turn. We then merge variants reported per read group into a single file using the `artic_vcf_merge` module.
 
 Opionally, we can check the merged variant file against the primer scheme. This will allow us to detect variants called in primer and amplicon overlap regions.
 
-Finally, we use the `artic_vcf_filter` module to filter the merged variant file through a set of workflow specific checks and assign all variants as either PASS or FAIL. The final PASS file is subsequently indexed ready for the next stage.
+We then use the `artic_vcf_filter` module to filter the merged variant file through a set of workflow specific checks and assign all variants as either PASS or FAIL. The final PASS file is subsequently indexed ready for the next stage.
+
+Finally the variants which have passed filtering are normalised against the depth masked pre-consensus using [bcftools norm](https://github.com/samtools/bcftools) to ensure that the REF column in the VCF matches the pre-consensus for the final output.
 
 #### stage output
 
@@ -99,14 +82,15 @@ Finally, we use the `artic_vcf_filter` module to filter the merged variant file 
 | `$SAMPLE.vcfreport.txt`  | a report evaluating reported variants against the primer scheme |
 | `$SAMPLE.fail.vcf`       | variants deemed too low quality                                 |
 | `$SAMPLE.pass.vcf.gz`    | detected variants (indexed)                                     |
+| `$SAMPLE.normalised.vcf.gz` | normalised variants (indexed)                                     |
 
 ### Consensus building
 
 Prior to building a consensus, we use the post-processed alignment from the previous step to check each position of the reference sequence for sample coverage. Any poition that is not covered by at least 20 reads from either read group are marked as low coverage. We use the `artic_make_depth_mask` module for this, which produces coverage information for each read group and also produces a coverage mask to tell us which coordinates in the reference sequence failed the coverage threshold.
 
-Next, to build a consensus sequence for a sample, we require a pre-consensus sequence based on the input reference sequence. The preconsensus has low quality sites masked out with `N`'s using the coverage mask and the `$SAMPLE.fail.vcf` file. We then use `bcftools consensus` to combine the preconsensus with the `$SAMPLE.pass.vcf` variants to produce a consensus sequence for the sample. The consensus sequence has the artic workflow written to its header.
+Next, to build a consensus sequence for a sample, we require a pre-consensus sequence based on the input reference sequence. The preconsensus has low quality sites masked out with `N`'s using the coverage mask and the `$SAMPLE.fail.vcf` file. We then use `bcftools consensus` to combine the preconsensus with the `$SAMPLE.normalised.vcf.gz` variants to produce a consensus sequence for the sample. The consensus sequence has the artic workflow written to its header.
 
-Finally, the consensus sequence is aligned against the reference sequence using `muscle`.
+Finally, the consensus sequence is aligned against the reference sequence using `muscle` if the `--use-muscle` parameter is provided.
 
 #### stage output
 
@@ -126,11 +110,3 @@ Finally, the consensus sequence is aligned against the reference sequence using 
 | artic_make_depth_mask     | create a coverage mask from the post-processed alignment                                             |
 | artic_mask                | combines the reference sequence, FAIL variants and coverage mask to produce a pre-consensus sequence |
 | artic_fasta_header        | applies the artic workflow and identifier to the consensus sequence header                           |
-
-## Optional pipeline report
-
-As of version 1.2.1, if you run the pipeline with `--strict`, you can run MultiQC (which should be installed as part of the artic conda environment) on the pipeline output directory and this will produce a report containing amplicon coverage plots and variant call information. To generate a report from within your pipeline output directory:
-
-```
-multiqc .
-```

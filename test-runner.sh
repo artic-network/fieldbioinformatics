@@ -7,7 +7,7 @@ set -e
 # full data available: http://artic.s3.climb.ac.uk/run-folders/EBOV_Amplicons_flongle.tar.gz
 #
 # usage:
-#       ./test-runner.sh [medaka|nanopolish]
+#       ./test-runner.sh [medaka|clair3]
 #
 #   specify either medaka or nanopolish to run the respective workflow of the pipeline
 #
@@ -15,65 +15,43 @@ set -e
 # Setup the data, commands and the testing function.
 
 # data
-inputData="./20190830_1509_MN22126_AAQ411_9efc5448"
+inputData="./20190830_1509_MN22126_AAQ411_9efc5448_barcoded"
 primerSchemes="../test-data/primer-schemes"
 primerScheme="IturiEBOV/V1"
 prefix="ebov-mayinga"
+bed="../test-data/primer-schemes/IturiEBOV/V1/IturiEBOV.scheme.bed"
+ref="../test-data/primer-schemes/IturiEBOV/V1/IturiEBOV.reference.fasta"
 barcode="03"
 threads=2
-downloadCmd="wget http://artic.s3.climb.ac.uk/run-folders/EBOV_Amplicons_flongle.tar.gz"
-extractCmd="tar -vxzf EBOV_Amplicons_flongle.tar.gz"
+downloadCmd="wget https://loman-labz-public-datasets.s3.climb.ac.uk/EBOV_Amplicons_flongle_barcoded.tar.gz"
+extractCmd="tar -vxzf EBOV_Amplicons_flongle_barcoded.tar.gz"
 
-# pipeline commands
-## nanopolish workflow specific
-gatherCmd_n="artic gather \
+
+guppyplexCmd="artic guppyplex \
         --min-length 400 \
         --max-length 800 \
         --prefix ${prefix} \
-        --directory ${inputData} \
-        --fast5-directory ${inputData}/fast5_pass"
-
-demuxCmd_n="artic demultiplex \
-            --threads ${threads} \
-            ${prefix}_fastq_pass.fastq"
-
-minionCmd_n="artic minion \
-                --normalise 200 \
-                --threads ${threads} \
-                --scheme-directory ${primerSchemes} \
-                --read-file ${prefix}_fastq_pass-NB${barcode}.fastq \
-                --fast5-directory ${inputData}/fast5_pass \
-                --sequencing-summary ${inputData}/lab-on-an-ssd_20190830_160932_AAQ411_minion_sequencing_run_EBOV_Amplicons_flongle_sequencing_summary.txt \
-                ${primerScheme} \
-                ${prefix}"
-
-## medaka workflow specific
-gatherCmd_m="artic gather \
-        --min-length 400 \
-        --max-length 800 \
-        --prefix ${prefix} \
-        --directory ${inputData} \
-        --no-fast5s"
-
-demuxCmd_m="artic demultiplex \
-            --threads ${threads} \
-            ${prefix}_fastq_pass.fastq"
-
-guppyplexCmd_m="artic guppyplex \
-        --min-length 400 \
-        --max-length 800 \
-        --prefix ${prefix} \
-        --directory ./ \
+        --directory ./${inputData}/pass/barcode${barcode} \
         --output ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq"
 
-minionCmd_m="artic minion \
+## medaka workflow specific
+# minionCmd_m="artic minion \
+#             --normalise 200 \
+#             --threads ${threads} \
+#             --read-file ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq \
+#             --model r941_e81_hac_g514 \
+#             --bed ${bed} \
+#             --ref ${ref} \
+#             ${prefix}"
+
+# clair3 workflow specific
+minionCmd_c="artic minion \
             --normalise 200 \
             --threads ${threads} \
-            --scheme-directory ${primerSchemes} \
             --read-file ${prefix}_guppyplex_fastq_pass-NB${barcode}.fastq \
-            --medaka \
-            --medaka-model r941_min_high_g351 \
-            ${primerScheme} \
+            --model r941_prom_hac_g360+g422 \
+            --bed ${bed} \
+            --ref ${ref} \
             ${prefix}"
 
 # colours
@@ -104,19 +82,20 @@ function cmdTester {
 ###########################################################################################
 # Run the tests.
 
-# check that nanopolish or medaka is specified
-if [ "$1" == "nanopolish" ] || [ "$1" == "medaka" ]; then
-    echo -e "${BLUE}Starting tests...${NC}"
-    echo -e "${BLUE} - using the $1 workflow${NC}"
-    echo
-else
-    echo "please specify medaka or nanopolish"
-    echo "./test-runner.sh [medaka|nanopolish]"
-    exit 1
-fi
+# check that clair3 or medaka is specified
+# if [ "$1" == "clair3" ] || [ "$1" == "medaka" ]; then
+#     echo -e "${BLUE}Starting tests...${NC}"
+#     echo -e "${BLUE} - using the $1 workflow${NC}"
+#     echo
+# else
+#     echo "please specify medaka or clair3"
+#     echo "./test-runner.sh [medaka|clair3]"
+#     exit 1
+# fi
 
 # setup a tmp directory to work in
-mkdir tmp && cd tmp || exit
+mkdir tmp || true
+cd tmp || exit
 
 # download the data
 echo "downloading the test data..."
@@ -125,31 +104,20 @@ cmdTester $extractCmd
 
 # run the correct workflow
 echo "running the pipeline..."
-if [ "$1" == "nanopolish" ]
-then
+# if [ "$1" == "medaka" ]
+# then
+#     # collect the reads
+#     cmdTester $guppyplexCmd
 
-    # collect the reads
-    cmdTester $gatherCmd_n
+#     # run the core pipeline with medaka
+#     cmdTester $minionCmd_m
+# else
+# guppyplex the reads
+cmdTester $guppyplexCmd
 
-    # demultiplex
-    cmdTester $demuxCmd_n
-
-    # run the core pipeline with nanopolish
-    cmdTester $minionCmd_n
-else
-
-    # collect the reads
-    cmdTester $gatherCmd_m
-
-    # demultiplex
-    cmdTester $demuxCmd_m
-
-    # guppyplex
-    cmdTester $guppyplexCmd_m
-
-    # run the core pipeline with medaka
-    cmdTester $minionCmd_m
-fi
+# run the core pipeline with clair3
+cmdTester $minionCmd_c
+# fi
 
 ###########################################################################################
 # Check the output and clean up.

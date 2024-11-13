@@ -22,28 +22,19 @@ Tiling amplicon schemes contain primers that are designed using a greedy algorit
 
 ## Availability
 
-Frequently used primer schemes for viral genome sequencing are found in the [ARTIC primer scheme repo](https://github.com/artic-network/primer-schemes). These include Nipah, Ebola and SARS-CoV-2 primer schemes. Multiple scheme versions may be available, with a higher version number denoting schemes that have had improvements made to them (e.g. introduction of alternate primers).
-
-ARTIC primer schemes can be downloaded using the [artic-tools get_scheme](./commands.md#get_scheme) command. For example:
-
-```sh
-artic-tools get_scheme ebola --schemeVersion 2
-```
-
-The `artic pipeline` will also attempt to download a scheme using `artic tools` if a scheme can not be found locally.
+Frequently used primer schemes for viral genome sequencing are found in the [Quick-lab primer scheme repo](https://github.com/quick-lab/primerschemes).
 
 ## File format
 
 Primer schemes produced by [Primal Scheme](https://primalscheme.com/) come with several files (which you can read more about [here](https://github.com/aresti/primalscheme#output)). The 2 files which are needed for `artic` are:
 
-| file extension      | description                                                                    |
+| filename      | description                                                                    |
 | ------------------- | ------------------------------------------------------------------------------ |
-| `*.reference.fasta` | the sequence of the reference genome used in the scheme                        |
-| `*.primer.bed`      | the coordinates of each primer in the scheme, relative to the reference genome |
+| `reference.fasta` | the sequence of the reference genome used in the scheme                        |
+| `primer.bed`      | the coordinates of each primer in the scheme, relative to the reference genome |
 
-**Note**: `*.primer.bed` was formerly `*.scheme.bed`, but has lately changed to reflect a slightly updated file format. The old `*.scheme.bed` should still work fine and is available alongside the new versions at the [ARTIC primer scheme repo](https://github.com/artic-network/primer-schemes).
 
-The `*.primer.bed` file is in 6-column BED format, with the following column descriptions:
+The `primer.bed` file is in 7-column BED format, with the following column descriptions:
 
 | column | name       | type   | description                                               |
 | ------ | ---------- | ------ | --------------------------------------------------------- |
@@ -53,6 +44,7 @@ The `*.primer.bed` file is in 6-column BED format, with the following column des
 | 4      | name       | string | primer name                                               |
 | 5      | primerPool | int    | primer pool<sup>\*</sup>                                  |
 | 6      | strand     | string | primer direction (+/-)                                    |
+| 7      | primer     | string | the primer sequence                                       |
 
 <sup>\*</sup> column 5 in the BED spec is an int for score, whereas here we are using it to denote primerPool.
 
@@ -60,13 +52,13 @@ The `*.primer.bed` file is in 6-column BED format, with the following column des
 
 ## Scheme logic
 
-The following sections will discuss how primer schemes are read from a `*.primer.bed` file and used in the ARTIC software.
+The following sections will discuss how primer schemes are read from a `primer.bed` file and used in the ARTIC software.
 
 ### Reading schemes
 
 #### primers
 
-Each line in a `*.primer.bed` file is a single primer. Lines are processed one at a time and the input file does not need to be sorted in any way beforehand (although most schemes are sorted by primer start coordinate). As lines are read, they are converted to primer objects.
+Each line in a `primer.bed` file is a single primer. Lines are processed one at a time and the input file does not need to be sorted in any way beforehand (although most schemes are sorted by primer start coordinate). As lines are read, they are converted to primer objects.
 
 Most of the logic behind creating a primer object relies on the primer name (column 4). As a primer line is read, we check for the following tags in the name field:
 
@@ -74,16 +66,14 @@ Most of the logic behind creating a primer object relies on the primer name (col
 | -------- | -------------------- |
 | `_LEFT`  | the left primer      |
 | `_RIGHT` | the right primer     |
-| `_alt`   | the primer is an alt |
 
 **Important**:
 
 - tags are case sensitive
 - tags can be anywhere in the primer name but typically are placed at the end (e.g. REGION_42_RIGHT_alt)
 - a `_LEFT` or `_RIGHT` tag is required and only one is allowed per primer
-- the `_alt` tag is optional and denotes that the primer is an alternate version of another primer
 
-To merge a primer with its alternate into a single primer object, the two primers are combined such that a maximal span is achieved. The merged primer will have `_alt` dropped from the ID.
+To merge a primer with alternates into a single primer object, the two primers are combined such that a maximal span is achieved.
 
 Depending on the presence of the `_LEFT` or `_RIGHT` tag, the primer is assigned a direction (+/- to denote forward/reverse). Direction is also encoded in column 6 of newer schemes.
 
@@ -102,25 +92,7 @@ We can also call several helper methods on the object for getting things such as
 
 #### schemes
 
-Once all lines in a `*.primer.bed` file have been read and converted to primer objects they are held in a `scheme`. In `artic-tools`, this consists of 2 unordered maps, one for forward primers and one for reverse primers, as well as some additional datastructures to allow validation, index and query of schemes.
-
-### Validating schemes
-
-> Note: the following sections apply to `artic-tools`
-
-On reading the scheme file, it will have satisified the following checks:
-
-- scheme file must exist and be readable
-- scheme file must have at least 5 columns (tab separated)
-- each row must encode a primer (problem rows are flagged and validation fails after all rows are tried)
-- scheme file must not contain multiple reference sequence IDs (first column)
-
-The scheme data structure will then be validated:
-
-- the scheme must contain primers
-- the number of forward primers must match the number of reverse primers (this is **after** merging alts)
-- each forward primer must have a reverse primer with a matching base name within the same primer pool
-- no gaps must be present within the scheme (i.e. regions of the reference not covered)
+Once all lines in a `primer.bed` file have been read and converted to primer objects they are held in a `scheme`. In `artic-tools`, this consists of 2 unordered maps, one for forward primers and one for reverse primers, as well as some additional datastructures to allow validation, index and query of schemes.
 
 ### Querying schemes
 

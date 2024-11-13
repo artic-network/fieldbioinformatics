@@ -1,0 +1,40 @@
+name: fieldbioinformatics_unit_tests
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v3
+      - uses: mamba-org/setup-micromamba@v1
+        name: Setup dependencies
+        with:
+          environment-file: environment.yml
+          init-shell: >-
+            bash
+          cache-environment: true
+          post-cleanup: "all"
+
+      - name: Pip install artic
+        run: |
+          python3 -m pip install -e .
+        shell: micromamba-shell {0}
+
+      - name: Run unit tests
+        run: |
+          pytest -s tests/*_unit_test.py
+        shell: micromamba-shell {0}
+
+      - name: Run clair3 test
+        run: |
+          ./test-runner.sh clair3
+        shell: micromamba-shell {0}
+
+      - name: Run minion_validator tests
+        run: |
+          pytest -s tests/minion_validator.py
+        shell: micromamba-shell {0}
+

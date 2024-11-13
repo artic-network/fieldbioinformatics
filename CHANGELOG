@@ -1,3 +1,16 @@
+v1.4.5:
+    * Fieldbioinformatics now supports rapid barcoded (fragmented) primer trimming and normalisation
+    * Nanopolish has been removed completely due to several compatibility issues
+    * Medaka has also been removed completely due to kicking out long indels in a way that cannot be changed.
+    * Clair3 is now the default variant caller, by default only the r9.4.1 models are available but a artic_get_models command has been added which will fetch the ONT created r10.4.1 models listed in the rerio repository.
+    * The pipeline will also attempt to pick an appropriate model based on the basecall_model_version_id field that is added to read headers by default by ONT sequencers.
+    * Removed longshot entirely, it also kicks out long variants and is now unnecessary due to clair3 being a much better variant caller.
+    * Primer scheme fetcher has been updated to pull from the quick-lab primal hub schemes repository. For schemes not available in this repository you may provide them directly with the arguments --bed and --ref.
+    * Automated docker builds pushing to quay.io for use in nextflow pipelines etc.
+    * Remove some old functionality which is no longer relevant (basecalling, gather, etc)
+    * Re-implement CI as a gh action.
+    * Fix the overlapping variants issue by normalising variants against the pre-consensus using bcftools norm.
+
 v1.1.0-rc1:
     * Support for read groups:
         * Support ‘pool’ read groups taken from BED file, e.g.:

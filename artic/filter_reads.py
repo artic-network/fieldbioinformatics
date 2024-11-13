@@ -1,31 +1,27 @@
 import sys
 from Bio import SeqIO
-import tempfile
-import os
-import glob
-import shutil
 
 # extract with constraints:
 #   -- only one group ever
 #   -- only one flowcell ID ever
 #   -- always unique read ID
 
+
 def run(parser, args):
-	dups = set()
-	uniq = 0
-	total = 0	
-	for rec in SeqIO.parse(open(args.filename), "fastq"):
-		if args.max_length and len(rec) > args.max_length:
-			continue
-		if args.min_length and len(rec) < args.min_length:
-			continue
+    dups = set()
+    uniq = 0
+    total = 0
+    for rec in SeqIO.parse(open(args.filename), "fastq"):
+        if args.max_length and len(rec) > args.max_length:
+            continue
+        if args.min_length and len(rec) < args.min_length:
+            continue
 
-		total += 1
-		if rec.id not in dups:
-			SeqIO.write([rec], sys.stdout, "fastq")
+        total += 1
+        if rec.id not in dups:
+            SeqIO.write([rec], sys.stdout, "fastq")
 
-			dups.add(rec.id)
-			uniq += 1
+            dups.add(rec.id)
+            uniq += 1
 
-	print("%s\t%s\t%s" % (total, uniq), file=sys.stderr)
-
+    print("%s\t%s\t%s" % (total, uniq), file=sys.stderr)
