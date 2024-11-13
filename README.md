@@ -46,7 +46,6 @@ Clone the repository then checkout the 1.4.0-dev branch to test the 1.4.0 pre-re
 ```sh
 git clone https://github.com/artic-network/fieldbioinformatics
 cd fieldbioinformatics
-git checkout 1.4.0-dev
 ```
 
 #### 2. installing dependencies:
