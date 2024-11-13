@@ -4,7 +4,7 @@ COPY . ./fieldbioinformatics/
 
 USER root
 
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential wget procps
+RUN apt-get update && apt-get install -y --no-install-recommends procps
 
 USER $MAMBA_USER
 
