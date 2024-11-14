@@ -7,7 +7,7 @@ import argparse
 import sys
 import os
 
-from . import version
+from importlib.metadata import version
 
 
 def run_subtool(parser, args):
@@ -56,7 +56,7 @@ def init_pipeline_parser():
         "--version",
         help="Installed Artic version",
         action="version",
-        version="%(prog)s " + str(version.__version__),
+        version=f"artic {version('artic')}",
     )
     subparsers = parser.add_subparsers(
         title="[sub-commands]", dest="command", parser_class=ArgumentParserWithDefaults
