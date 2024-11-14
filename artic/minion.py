@@ -219,14 +219,9 @@ def run(parser, args):
         'artic_fasta_header %s.consensus.fasta "%s"' % (args.sample, fasta_header)
     )
 
-    if args.use_muscle:
+    if args.align_consensus:
         cmds.append(
-            "cat %s.consensus.fasta %s > %s.muscle.in.fasta"
-            % (args.sample, ref, args.sample)
-        )
-        cmds.append(
-            "muscle -in %s.muscle.in.fasta -out %s.muscle.out.fasta"
-            % (args.sample, args.sample)
+            f"mafft --6merpair --addfragments {args.sample}.consensus.fasta {ref} > {args.sample}.aligned.fasta"
         )
 
     # 13) setup the log file and run the pipeline commands
