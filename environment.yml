@@ -12,7 +12,7 @@ dependencies:
   - htslib
   - minimap2
   - multiqc
-  - muscle<5.1
+  - mafft
   - pandas
   - pip
   - pysam

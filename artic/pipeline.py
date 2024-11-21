@@ -172,9 +172,9 @@ def init_pipeline_parser():
         help="Remove variants which induce frameshifts (ignored when --no-indels set)",
     )
     parser_minion.add_argument(
-        "--use-muscle",
+        "--align-consensus",
         action="store_true",
-        help="Run muscle alignment of consensus to reference",
+        help="Run a mafft alignment of consensus to reference after generation",
     )
     parser_minion.add_argument("--dry-run", action="store_true")
     parser_minion.set_defaults(func=run_subtool)
