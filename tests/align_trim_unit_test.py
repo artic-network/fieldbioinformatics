@@ -10,10 +10,34 @@ from artic import utils
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # dummy primers (using min required fields)
-p1 = {"start": 0, "end": 10, "direction": "+", "primerID": "primer1_LEFT"}
-p2 = {"start": 30, "end": 40, "direction": "-", "primerID": "primer1_RIGHT"}
-p3 = {"start": 10, "end": 20, "direction": "+", "primerID": "primer2_LEFT"}
-p4 = {"start": 40, "end": 50, "direction": "-", "primerID": "primer2_RIGHT"}
+p1 = {
+    "chrom": "MN908947.3",
+    "start": 0,
+    "end": 10,
+    "direction": "+",
+    "primerID": "primer1_LEFT",
+}
+p2 = {
+    "chrom": "MN908947.3",
+    "start": 30,
+    "end": 40,
+    "direction": "-",
+    "primerID": "primer1_RIGHT",
+}
+p3 = {
+    "chrom": "MN908947.3",
+    "start": 10,
+    "end": 20,
+    "direction": "+",
+    "primerID": "primer2_LEFT",
+}
+p4 = {
+    "chrom": "MN908947.3",
+    "start": 40,
+    "end": 50,
+    "direction": "-",
+    "primerID": "primer2_RIGHT",
+}
 
 # primer scheme to hold dummy primers
 dummyPrimerScheme = [p1, p2, p3, p4]
@@ -23,8 +47,10 @@ primerScheme = utils.read_bed_file(
     TEST_DIR + "/../test-data/primer-schemes/nCoV-2019/V1/nCoV-2019.scheme.bed"
 )
 
+header = pysam.AlignmentHeader.from_dict({"SQ": [{"LN": 29903, "SN": "MN908947.3"}]})
+
 # nCov alignment segment (derived from a real nCov read)
-seg1 = pysam.AlignedSegment()
+seg1 = pysam.AlignedSegment(header=header)
 seg1.query_name = "0be29940-97ae-440e-b02c-07748edeceec"
 seg1.flag = 0
 seg1.reference_id = 0
@@ -35,7 +61,7 @@ seg1.query_sequence = "CAGGTTAACACAAAGACACCGACAACTTTCTTCAGCACCTACAGTGCTTAAAAGTGT
 seg1.query_qualities = [30] * 490
 
 # nCov alignment segment (derived from a real nCov read) - will result in a leading CIGAR deletion during softmasking
-seg2 = pysam.AlignedSegment()
+seg2 = pysam.AlignedSegment(header=header)
 seg2.query_name = "15c86d34-a527-4506-9b0c-f62827d01555"
 seg2.flag = 0
 seg2.reference_id = 0
@@ -60,11 +86,11 @@ def test_find_primer():
     for primer in dummyPrimerScheme:
         if primer["direction"] == "+":
             result = align_trim.find_primer(
-                dummyPrimerScheme, primer["start"], primer["direction"]
+                dummyPrimerScheme, primer["start"], primer["direction"], "MN908947.3"
             )
         else:
             result = align_trim.find_primer(
-                dummyPrimerScheme, primer["end"], primer["direction"]
+                dummyPrimerScheme, primer["end"], primer["direction"], "MN908947.3"
             )
 
         assert result
@@ -73,13 +99,13 @@ def test_find_primer():
         ), "find_primer did not produce the query primer, which should be nearest"
 
     # test against other ref positions
-    result = align_trim.find_primer(dummyPrimerScheme, 8, "+")
+    result = align_trim.find_primer(dummyPrimerScheme, 8, "+", "MN908947.3")
     assert result
     assert (
         result[2]["primerID"] == "primer2_LEFT"
     ), "find_primer returned incorrect primer"
 
-    result = align_trim.find_primer(dummyPrimerScheme, 25, "-")
+    result = align_trim.find_primer(dummyPrimerScheme, 25, "-", "MN908947.3")
     assert result
     assert (
         result[2]["primerID"] == "primer1_RIGHT"
@@ -92,10 +118,13 @@ def test_trim():
     def testRunner(seg, expectedCIGAR):
 
         # get the nearest primers to the alignment segment
-        p1 = align_trim.find_primer(primerScheme, seg.reference_start, "+")
-        p2 = align_trim.find_primer(primerScheme, seg.reference_end, "-")
+        p1 = align_trim.find_primer(
+            primerScheme, seg.reference_start, "+", "MN908947.3"
+        )
+        p2 = align_trim.find_primer(primerScheme, seg.reference_end, "-", "MN908947.3")
 
         # get the primer positions
+        print(p1, p2)
         p1_position = p1[2]["end"]
         p2_position = p2[2]["start"]
 

@@ -359,12 +359,12 @@ def read_bed_file(fn):
     for _, row in primers.iterrows():
         scheme_name, primer_id, direction, primer_n = row["Primer_ID"].split("_")
 
-        if (primer_id, direction) not in canonical_primers:
-            canonical_primers[(primer_id, direction)] = row.to_dict()
+        if (row["chrom"], primer_id, direction) not in canonical_primers:
+            canonical_primers[(row["chrom"], primer_id, direction)] = row.to_dict()
             continue
 
-        canonical_primers[(primer_id, direction)] = merge_sites(
-            canonical_primers[(primer_id, direction)], row
+        canonical_primers[(row["chrom"], primer_id, direction)] = merge_sites(
+            canonical_primers[(row["chrom"], primer_id, direction)], row
         )
 
     # return the bedFile as a list
