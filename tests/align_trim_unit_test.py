@@ -1,7 +1,7 @@
 # align_trim_unit_test.py contains unit tests for alignment trimming
 import os
 import pysam
-import pytest
+from types import SimpleNamespace
 
 from artic import align_trim
 from artic import utils
@@ -92,6 +92,10 @@ def test_trim():
 
     def testRunner(seg, expectedCIGAR):
 
+        global args
+
+        args = SimpleNamespace(verbose=False)
+
         # get the nearest primers to the alignment segment
         p1 = align_trim.find_primer(primerScheme, seg.reference_start, "+")
         p2 = align_trim.find_primer(primerScheme, seg.reference_end, "-")
@@ -114,7 +118,7 @@ def test_trim():
 
         # trim the forward primer
         try:
-            align_trim.trim(seg, p1_position, False, False)
+            align_trim.trim(seg, p1_position, False)
         except Exception as e:
             raise Exception(
                 "problem soft masking left primer in {} (error: {})".format(
@@ -132,7 +136,7 @@ def test_trim():
 
         # trim the reverse primer
         try:
-            align_trim.trim(seg, p2_position, True, False)
+            align_trim.trim(seg, p2_position, True)
         except Exception as e:
             raise Exception(
                 "problem soft masking right primer in {} (error: {})".format(
