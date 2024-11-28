@@ -60,7 +60,7 @@ def find_primer(bed, pos, direction, threshold=20):
     return closest
 
 
-def trim(segment, primer_pos, end, debug):
+def trim(segment, primer_pos, end):
     """Soft mask an alignment to fit within primer start/end sites.
 
     Parameters
@@ -93,13 +93,14 @@ def trim(segment, primer_pos, end, debug):
                 flag, length = cigar.pop()
             else:
                 flag, length = cigar.pop(0)
-            if debug:
+            if args.verbose:
                 print("Chomped a %s, %s" % (flag, length), file=sys.stderr)
         except IndexError:
-            print(
-                "Ran out of cigar during soft masking - completely masked read will be ignored",
-                file=sys.stderr,
-            )
+            if args.verbose:
+                print(
+                    "Ran out of cigar during soft masking - completely masked read will be ignored",
+                    file=sys.stderr,
+                )
             break
 
         # if the CIGAR operation consumes the reference sequence, increment/decrement the position by the CIGAR operation length
@@ -121,10 +122,10 @@ def trim(segment, primer_pos, end, debug):
 
     # calculate how many extra matches are needed in the CIGAR
     extra = abs(pos - primer_pos)
-    if debug:
+    if args.verbose:
         print("extra %s" % (extra), file=sys.stderr)
     if extra:
-        if debug:
+        if args.verbose:
             print("Inserted a %s, %s" % (0, extra), file=sys.stderr)
         if end:
             cigar.append((0, extra))
@@ -137,12 +138,12 @@ def trim(segment, primer_pos, end, debug):
 
         # update the position of the leftmost mappinng base
         segment.pos = pos - extra
-        if debug:
+        if args.verbose:
             print("New pos: %s" % (segment.pos), file=sys.stderr)
 
         # if proposed softmask leads straight into a deletion, shuffle leftmost mapping base along and ignore the deletion
         if cigar[0][0] == 2:
-            if debug:
+            if args.verbose:
                 print(
                     "softmask created a leading deletion in the CIGAR, shuffling the alignment",
                     file=sys.stderr,
@@ -188,16 +189,19 @@ def handle_segment(
 
     # filter out unmapped and supplementary alignment segments
     if segment.is_unmapped:
-        print("%s skipped as unmapped" % (segment.query_name), file=sys.stderr)
+        if args.verbose:
+            print("%s skipped as unmapped" % (segment.query_name), file=sys.stderr)
         return False
     if segment.is_supplementary:
-        print("%s skipped as supplementary" % (segment.query_name), file=sys.stderr)
+        if args.verbose:
+            print("%s skipped as supplementary" % (segment.query_name), file=sys.stderr)
         return False
     if segment.mapping_quality < min_mapq:
-        print(
-            "%s skipped as mapping quality below threshold" % (segment.query_name),
-            file=sys.stderr,
-        )
+        if args.verbose:
+            print(
+                "%s skipped as mapping quality below threshold" % (segment.query_name),
+                file=sys.stderr,
+            )
         return False
 
     # locate the nearest primers to this alignment segment
@@ -205,17 +209,19 @@ def handle_segment(
     p2 = find_primer(bed, segment.reference_end, "-", args.primer_match_threshold)
 
     if not p1 or not p2:
-        print(
-            "%s skipped as no primer found for segment" % (segment.query_name),
-            file=sys.stderr,
-        )
+        if args.verbose:
+            print(
+                "%s skipped as no primer found for segment" % (segment.query_name),
+                file=sys.stderr,
+            )
         return False
 
     # check if primers are correctly paired and then assign read group
     # NOTE: removed this as a function as only called once
     # TODO: will try improving this / moving it to the primer scheme processing code
-    correctly_paired = p1[2]["Primer_ID"].split("_")[1] == p2[2]["Primer_ID"].split("_")[1]
-
+    correctly_paired = (
+        p1[2]["Primer_ID"].split("_")[1] == p2[2]["Primer_ID"].split("_")[1]
+    )
 
     if not args.no_read_groups:
         if correctly_paired:
@@ -247,10 +253,11 @@ def handle_segment(
         report_writer.writerow(report)
 
     if args.remove_incorrect_pairs and not correctly_paired:
-        print(
-            "%s skipped as not correctly paired" % (segment.query_name),
-            file=sys.stderr,
-        )
+        if args.verbose:
+            print(
+                "%s skipped as not correctly paired" % (segment.query_name),
+                file=sys.stderr,
+            )
         return False
 
     if args.verbose:
@@ -269,7 +276,7 @@ def handle_segment(
     # softmask the alignment if left primer start/end inside alignment
     if segment.reference_start < p1_position:
         try:
-            trim(segment, p1_position, False, args.verbose)
+            trim(segment, p1_position, False)
             if args.verbose:
                 print(
                     "ref start %s >= primer_position %s"
@@ -288,7 +295,7 @@ def handle_segment(
     # softmask the alignment if right primer start/end inside alignment
     if segment.reference_end > p2_position:
         try:
-            trim(segment, p2_position, True, args.verbose)
+            trim(segment, p2_position, True)
             if args.verbose:
                 print(
                     "ref start %s >= primer_position %s"
@@ -306,11 +313,12 @@ def handle_segment(
 
     # check the the alignment still contains bases matching the reference
     if "M" not in segment.cigarstring:
-        print(
-            "%s dropped as does not match reference post masking"
-            % (segment.query_name),
-            file=sys.stderr,
-        )
+        if args.verbose:
+            print(
+                "%s dropped as does not match reference post masking"
+                % (segment.query_name),
+                file=sys.stderr,
+            )
         return False
 
     return (amplicon, segment)
@@ -397,10 +405,11 @@ def normalise(trimmed_segments: dict, normalise: int, bed: list):
         amplicon_depth = np.zeros((amplicons[amplicon]["length"],), dtype=int)
 
         if not segments:
-            print(
-                f"No segments assigned to amplicon {amplicon}, skipping",
-                file=sys.stderr,
-            )
+            if args.verbose:
+                print(
+                    f"No segments assigned to amplicon {amplicon}, skipping",
+                    file=sys.stderr,
+                )
             continue
 
         random.shuffle(segments)
@@ -566,7 +575,10 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Debug mode")
     parser.add_argument("--remove-incorrect-pairs", action="store_true")
 
+    global args
+
     args = parser.parse_args()
+
     go(args)
 
 
