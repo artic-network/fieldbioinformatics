@@ -1,7 +1,6 @@
 # align_trim_unit_test.py contains unit tests for alignment trimming
 import os
 import pysam
-from types import SimpleNamespace
 
 from artic import align_trim
 from artic import utils
