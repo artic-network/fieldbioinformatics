@@ -224,9 +224,8 @@ def run(parser, args):
 
     # 11) apply the header to the consensus sequence and run alignment against the reference sequence
     caller = "clair3"
-    fasta_header = f"{args.sample}/ARTIC/{caller}"
     cmds.append(
-        'artic_fasta_header %s.consensus.fasta "%s"' % (args.sample, fasta_header)
+        f"artic_fasta_header {args.sample}.consensus.fasta {args.sample} {caller}"
     )
 
     if args.align_consensus:

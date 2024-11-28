@@ -1,19 +1,16 @@
 from Bio import SeqIO
 
 
-def fasta_header(fn, header):
-    fh = open(fn)
-    rec = list(SeqIO.parse(fh, "fasta"))
-    if len(rec) > 1:
-        print("Sorry, this script doesn't support multi-FASTA files!")
-        raise SystemExit
-    fh.close()
+def fasta_header(args):
+    with open(args.filename) as fh:
+        rec = list(SeqIO.parse(fh, "fasta"))
 
-    fh = open(fn, "w")
-    rec[0].id = header
-    SeqIO.write([rec[0]], fh, "fasta")
-    fh.close()
+    with open(args.filename, "w") as fh:
+        for record in rec:
+            chrom = record.id
+            record.id = f"{args.samplename}/{chrom}/ARTIC/{args.caller}"
 
+            SeqIO.write(rec, fh, "fasta")
 
 def main():
     import argparse
@@ -22,10 +19,11 @@ def main():
         description="Trim alignments from an amplicon scheme."
     )
     parser.add_argument("filename")
-    parser.add_argument("header")
+    parser.add_argument("samplename")
+    parser.add_argument("caller")
 
     args = parser.parse_args()
-    fasta_header(args.filename, args.header)
+    fasta_header(args)
 
 
 if __name__ == "__main__":
