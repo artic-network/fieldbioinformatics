@@ -60,7 +60,7 @@ def find_primer(bed, pos, direction, threshold=20):
     return closest
 
 
-def trim(segment, primer_pos, end):
+def trim(segment, primer_pos, end, verbose=False):
     """Soft mask an alignment to fit within primer start/end sites.
 
     Parameters
@@ -71,7 +71,7 @@ def trim(segment, primer_pos, end):
         The position in the reference to soft mask up to (equates to the start/end position of the primer in the reference)
     end : bool
         If True, the segment is being masked from the end (i.e. for the reverse primer)
-    debug : bool
+    vernose : bool
         If True, will print soft masking info during trimming
     """
     # get a copy of the cigar tuples to work with
@@ -93,10 +93,10 @@ def trim(segment, primer_pos, end):
                 flag, length = cigar.pop()
             else:
                 flag, length = cigar.pop(0)
-            if args.verbose:
+            if verbose:
                 print("Chomped a %s, %s" % (flag, length), file=sys.stderr)
         except IndexError:
-            if args.verbose:
+            if verbose:
                 print(
                     "Ran out of cigar during soft masking - completely masked read will be ignored",
                     file=sys.stderr,
@@ -122,10 +122,10 @@ def trim(segment, primer_pos, end):
 
     # calculate how many extra matches are needed in the CIGAR
     extra = abs(pos - primer_pos)
-    if args.verbose:
+    if verbose:
         print("extra %s" % (extra), file=sys.stderr)
     if extra:
-        if args.verbose:
+        if verbose:
             print("Inserted a %s, %s" % (0, extra), file=sys.stderr)
         if end:
             cigar.append((0, extra))
@@ -138,12 +138,12 @@ def trim(segment, primer_pos, end):
 
         # update the position of the leftmost mappinng base
         segment.pos = pos - extra
-        if args.verbose:
+        if verbose:
             print("New pos: %s" % (segment.pos), file=sys.stderr)
 
         # if proposed softmask leads straight into a deletion, shuffle leftmost mapping base along and ignore the deletion
         if cigar[0][0] == 2:
-            if args.verbose:
+            if verbose:
                 print(
                     "softmask created a leading deletion in the CIGAR, shuffling the alignment",
                     file=sys.stderr,
@@ -276,7 +276,7 @@ def handle_segment(
     # softmask the alignment if left primer start/end inside alignment
     if segment.reference_start < p1_position:
         try:
-            trim(segment, p1_position, False)
+            trim(segment, p1_position, False, args.verbose)
             if args.verbose:
                 print(
                     "ref start %s >= primer_position %s"
@@ -295,7 +295,7 @@ def handle_segment(
     # softmask the alignment if right primer start/end inside alignment
     if segment.reference_end > p2_position:
         try:
-            trim(segment, p2_position, True)
+            trim(segment, p2_position, True, args.verbose)
             if args.verbose:
                 print(
                     "ref start %s >= primer_position %s"
@@ -372,7 +372,7 @@ def generate_amplicons(bed: list):
     return amplicons
 
 
-def normalise(trimmed_segments: dict, normalise: int, bed: list):
+def normalise(trimmed_segments: dict, normalise: int, bed: list, verbose: bool = False):
     """Normalise the depth of the trimmed segments to a given value. Perform per-amplicon normalisation using numpy vector maths to determine whether the segment in question would take the depth closer to the desired depth accross the amplicon.
 
     Args:
@@ -405,7 +405,7 @@ def normalise(trimmed_segments: dict, normalise: int, bed: list):
         amplicon_depth = np.zeros((amplicons[amplicon]["length"],), dtype=int)
 
         if not segments:
-            if args.verbose:
+            if verbose:
                 print(
                     f"No segments assigned to amplicon {amplicon}, skipping",
                     file=sys.stderr,
@@ -516,7 +516,7 @@ def go(args):
     # normalise if requested
     if args.normalise:
         output_segments, mean_amp_depths = normalise(
-            trimmed_segments, args.normalise, bed
+            trimmed_segments, args.normalise, bed, args.verbose
         )
 
         # write mean amplicon depths to file
@@ -574,8 +574,6 @@ def main():
     )
     parser.add_argument("--verbose", action="store_true", help="Debug mode")
     parser.add_argument("--remove-incorrect-pairs", action="store_true")
-
-    global args
 
     args = parser.parse_args()
 

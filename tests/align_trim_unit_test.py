@@ -92,10 +92,6 @@ def test_trim():
 
     def testRunner(seg, expectedCIGAR):
 
-        global args
-
-        args = SimpleNamespace(verbose=False)
-
         # get the nearest primers to the alignment segment
         p1 = align_trim.find_primer(primerScheme, seg.reference_start, "+")
         p2 = align_trim.find_primer(primerScheme, seg.reference_end, "-")
