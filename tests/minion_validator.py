@@ -184,13 +184,9 @@ def genCommand(sampleID, workflow):
         "--scheme-directory",
         dataDir + "primer-schemes",
     ]
-    if workflow == "medaka":
-        cmd.append("--model")
-        cmd.append("r941_min_high_g351")
 
     if workflow == "clair3":
-        cmd.append("--model")
-        cmd.append("r941_prom_hac_g360+g422")
+        cmd.append("--model r941_prom_hac_g360+g422")
 
     if sampleID in extraFlags[workflow]:
         for flag in extraFlags[workflow][sampleID]:
