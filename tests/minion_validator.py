@@ -186,7 +186,8 @@ def genCommand(sampleID, workflow):
     ]
 
     if workflow == "clair3":
-        cmd.append("--model r941_prom_hac_g360+g422")
+        cmd.append("--model")
+        cmd.append("r941_prom_hac_g360+g422")
 
     if sampleID in extraFlags[workflow]:
         for flag in extraFlags[workflow][sampleID]:
@@ -251,6 +252,7 @@ def runner(workflow, sampleID):
         args = parser.parse_args(cmd)
     except SystemExit:
         sys.stderr.write("failed to parse valid command for `artic minion`")
+        assert False
 
     # run the minion pipeline
     try:
