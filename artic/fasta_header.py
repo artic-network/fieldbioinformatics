@@ -10,7 +10,8 @@ def fasta_header(args):
             chrom = record.id
             record.id = f"{args.samplename}/{chrom}/ARTIC/{args.caller}"
 
-            SeqIO.write(rec, fh, "fasta")
+            SeqIO.write(record, fh, "fasta")
+
 
 def main():
     import argparse
