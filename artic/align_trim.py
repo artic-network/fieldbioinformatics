@@ -16,7 +16,7 @@ consumesReference = [True, False, True, True, False, False, False, True]
 consumesQuery = [True, True, False, False, True, False, False, True]
 
 
-def find_primer(bed, pos, direction, threshold=20):
+def find_primer(bed, pos, direction, chrom, threshold=35):
     """Given a reference position and a direction of travel, walk out and find the nearest primer site.
 
     Parameters
@@ -39,14 +39,14 @@ def find_primer(bed, pos, direction, threshold=20):
         primer_distances = [
             (abs(p["start"] - pos), p["start"] - pos, p)
             for p in bed
-            if (p["direction"] == direction) and (pos >= (p["start"] - threshold))
+            if (p["direction"] == direction) and (pos >= (p["start"] - threshold)) and chrom == p["chrom"]
         ]
 
     else:
         primer_distances = [
             (abs(p["end"] - pos), p["end"] - pos, p)
             for p in bed
-            if (p["direction"] == direction) and (pos <= (p["end"] + threshold))
+            if (p["direction"] == direction) and (pos <= (p["end"] + threshold)) and chrom == p["chrom"]
         ]
 
     if not primer_distances:
@@ -205,8 +205,10 @@ def handle_segment(
         return False
 
     # locate the nearest primers to this alignment segment
-    p1 = find_primer(bed, segment.reference_start, "+", args.primer_match_threshold)
-    p2 = find_primer(bed, segment.reference_end, "-", args.primer_match_threshold)
+    # p1 = find_primer(bed, segment.reference_start, "+", segment.reference_name, args.primer_match_threshold)
+    p1 = find_primer(bed=bed, pos=segment.reference_start, direction="+", chrom=segment.reference_name, threshold=args.primer_match_threshold)
+    # p2 = find_primer(bed, segment.reference_end, "-", segment.reference_name, args.primer_match_threshold)
+    p2 = find_primer(bed=bed, pos=segment.reference_end, direction="-", chrom=segment.reference_name, threshold=args.primer_match_threshold)
 
     if not p1 or not p2:
         if args.verbose:
@@ -235,6 +237,7 @@ def handle_segment(
     if args.report:
         # update the report with this alignment segment + primer details
         report = {
+            "chrom": segment.reference_name,
             "QueryName": segment.query_name,
             "ReferenceStart": segment.reference_start,
             "ReferenceEnd": segment.reference_end,
@@ -342,32 +345,33 @@ def generate_amplicons(bed: list):
 
         amplicon = primer["Primer_ID"].split("_")[1]
 
-        amplicons.setdefault(amplicon, {})
+        amplicons.setdefault(primer["chrom"], {})
+        amplicons[primer["chrom"]].setdefault(amplicon, {})
 
         if primer["direction"] == "+":
-            amplicons[amplicon]["p_start"] = primer["start"]
-            amplicons[amplicon]["start"] = primer["end"] + 1
+            amplicons[primer["chrom"]][amplicon]["p_start"] = primer["start"]
+            amplicons[primer["chrom"]][amplicon]["start"] = primer["end"] + 1
 
         elif primer["direction"] == "-":
-            amplicons[amplicon]["p_end"] = primer["end"]
-            amplicons[amplicon]["end"] = primer["start"] - 1
+            amplicons[primer["chrom"]][amplicon]["p_end"] = primer["end"]
+            amplicons[primer["chrom"]][amplicon]["end"] = primer["start"] - 1
 
         else:
             raise ValueError("Primer direction not recognised")
+    for chrom, amplicons_dict in amplicons.items():
+        for amplicon in amplicons_dict:
+            if not all([x in amplicons_dict[amplicon] for x in ["p_start", "p_end"]]):
+                raise ValueError(f"Primer scheme for amplicon {amplicon} for reference {chrom} is incomplete")
 
-    for amplicon in amplicons:
-        if not all([x in amplicons[amplicon] for x in ["p_start", "p_end"]]):
-            raise ValueError(f"Primer scheme for amplicon {amplicon} is incomplete")
+            # Check if primer runs accross reference start / end -> circular virus
+            amplicons_dict[amplicon]["circular"] = (
+                amplicons_dict[amplicon]["p_start"] > amplicons_dict[amplicon]["p_end"]
+            )
 
-        # Check if primer runs accross reference start / end -> circular virus
-        amplicons[amplicon]["circular"] = (
-            amplicons[amplicon]["p_start"] > amplicons[amplicon]["p_end"]
-        )
-
-        # Calculate amplicon length considering that the "length" may be negative if the genome is circular
-        amplicons[amplicon]["length"] = abs(
-            amplicons[amplicon]["p_end"] - amplicons[amplicon]["p_start"]
-        )
+            # Calculate amplicon length considering that the "length" may be negative if the genome is circular
+            amplicons_dict[amplicon]["length"] = abs(
+                amplicons_dict[amplicon]["p_end"] - amplicons_dict[amplicon]["p_start"]
+            )
 
     return amplicons
 
@@ -392,51 +396,53 @@ def normalise(trimmed_segments: dict, normalise: int, bed: list, verbose: bool =
 
     output_segments = []
 
-    mean_depths = {x: 0 for x in amplicons}
+    # mean_depths = {x: {} for x in amplicons}
+    mean_depths = {}
 
-    for amplicon, segments in trimmed_segments.items():
-        if amplicon not in amplicons:
-            raise ValueError(f"Segment {amplicon} not found in primer scheme file")
+    for chrom, amplicon_dict in trimmed_segments.items():
+        for amplicon, segments in amplicon_dict.items():
+            if amplicon not in amplicons[chrom]:
+                raise ValueError(f"Segment {amplicon} not found in primer scheme file")
 
-        desired_depth = np.full_like(
-            (amplicons[amplicon]["length"],), normalise, dtype=int
-        )
+            desired_depth = np.full_like(
+                (amplicons[chrom][amplicon]["length"],), normalise, dtype=int
+            )
 
-        amplicon_depth = np.zeros((amplicons[amplicon]["length"],), dtype=int)
+            amplicon_depth = np.zeros((amplicons[chrom][amplicon]["length"],), dtype=int)
 
-        if not segments:
-            if verbose:
-                print(
-                    f"No segments assigned to amplicon {amplicon}, skipping",
-                    file=sys.stderr,
-                )
-            continue
+            if not segments:
+                if verbose:
+                    print(
+                        f"No segments assigned to amplicon {amplicon}, skipping",
+                        file=sys.stderr,
+                    )
+                continue
 
-        random.shuffle(segments)
+            random.shuffle(segments)
 
-        distance = np.mean(np.abs(amplicon_depth - desired_depth))
+            distance = np.mean(np.abs(amplicon_depth - desired_depth))
 
-        for segment in segments:
-            test_depths = np.copy(amplicon_depth)
+            for segment in segments:
+                test_depths = np.copy(amplicon_depth)
 
-            relative_start = segment.reference_start - amplicons[amplicon]["p_start"]
+                relative_start = segment.reference_start - amplicons[chrom][amplicon]["p_start"]
 
-            if relative_start < 0:
-                relative_start = 0
+                if relative_start < 0:
+                    relative_start = 0
 
-            relative_end = segment.reference_end - amplicons[amplicon]["p_start"]
+                relative_end = segment.reference_end - amplicons[chrom][amplicon]["p_start"]
 
-            test_depths[relative_start:relative_end] += 1
+                test_depths[relative_start:relative_end] += 1
 
-            test_distance = np.mean(np.abs(test_depths - desired_depth))
+                test_distance = np.mean(np.abs(test_depths - desired_depth))
 
-            if test_distance < distance:
-                amplicon_depth = test_depths
-                distance = test_distance
-                output_segments.append(segment)
+                if test_distance < distance:
+                    amplicon_depth = test_depths
+                    distance = test_distance
+                    output_segments.append(segment)
 
-        mean_depths[amplicon] = np.mean(amplicon_depth)
-
+            mean_depths[(chrom, amplicon)] = np.mean(amplicon_depth)
+        
     return output_segments, mean_depths
 
 
@@ -449,6 +455,7 @@ def go(args):
     if args.report:
         reportfh = open(args.report, "w")
         report_headers = [
+            "chrom",
             "QueryName",
             "ReferenceStart",
             "ReferenceEnd",
@@ -469,6 +476,7 @@ def go(args):
     # open the primer scheme and get the pools
     bed = read_bed_file(args.bedfile)
     pools = set([row["PoolName"] for row in bed])
+    chroms = set([row["chrom"] for row in bed])
     pools.add("unmatched")
 
     # open the input SAM file and process read groups
@@ -484,7 +492,7 @@ def go(args):
     # prepare the alignment outfile
     outfile = pysam.AlignmentFile("-", "wh", header=bam_header)
 
-    trimmed_segments = {}
+    trimmed_segments = {x: {} for x in chroms}
 
     # iterate over the alignment segments in the input SAM file
     for segment in infile:
@@ -508,10 +516,10 @@ def go(args):
 
         # unpack the trimming tuple since segment passed trimming
         amplicon, trimmed_segment = trimming_tuple
-        trimmed_segments.setdefault(amplicon, [])
+        trimmed_segments[trimmed_segment.reference_name].setdefault(amplicon, [])
 
         if trimmed_segment:
-            trimmed_segments[amplicon].append(trimmed_segment)
+            trimmed_segments[trimmed_segment.reference_name][amplicon].append(trimmed_segment)
 
     # normalise if requested
     if args.normalise:
@@ -522,9 +530,9 @@ def go(args):
         # write mean amplicon depths to file
         if args.amp_depth_report:
             with open(args.amp_depth_report, "w") as amp_depth_report_fh:
-                amp_depth_report_fh.write("amplicon\tmean_depth\n")
-                for amplicon, depth in mean_amp_depths.items():
-                    amp_depth_report_fh.write(f"{amplicon}\t{depth}\n")
+                amp_depth_report_fh.write("chrom\tamplicon\tmean_depth\n")
+                for (chrom, amplicon), depth in mean_amp_depths.items():
+                    amp_depth_report_fh.write(f"{chrom}\t{amplicon}\t{depth}\n")
 
         for output_segment in output_segments:
             outfile.write(output_segment)
@@ -554,7 +562,7 @@ def main():
     parser.add_argument(
         "--primer-match-threshold",
         type=int,
-        default=5,
+        default=35,
         help="Fuzzy match primer positions within this threshold",
     )
     parser.add_argument("--report", type=str, help="Output report to file")

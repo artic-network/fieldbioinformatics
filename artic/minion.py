@@ -134,20 +134,22 @@ def run(parser, args):
         normalise_string = ""
 
     cmds.append(
-        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --remove-incorrect-pairs --min-mapq {args.min_mapq} --report {args.sample}.alignreport.csv < {args.sample}.sorted.bam > {args.sample}.trimmed.rg.bam"
+        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --remove-incorrect-pairs --min-mapq {args.min_mapq} --report {args.sample}.alignreport.csv < {args.sample}.sorted.bam > {args.sample}.trimmed.rg.sam"
     )
 
     cmds.append(
-        f"samtools sort -T {args.sample} {args.sample}.trimmed.rg.bam -o {args.sample}.trimmed.rg.sorted.bam"
+        f"samtools sort -T {args.sample} {args.sample}.trimmed.rg.sam -o {args.sample}.trimmed.rg.sorted.bam"
+    )
+    cmds.append(f"rm {args.sample}.trimmed.rg.sam")
+
+    cmds.append(
+        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --min-mapq {args.min_mapq} --remove-incorrect-pairs --trim-primers --report {args.sample}.alignreport.csv --amp-depth-report {args.sample}.amplicon_depths.tsv < {args.sample}.sorted.bam > {args.sample}.primertrimmed.rg.sam"
     )
 
     cmds.append(
-        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --min-mapq {args.min_mapq} --remove-incorrect-pairs --trim-primers --report {args.sample}.alignreport.csv --amp-depth-report {args.sample}.amplicon_depths.tsv < {args.sample}.sorted.bam > {args.sample}.primertrimmed.rg.bam"
+        f"samtools sort -T {args.sample} {args.sample}.primertrimmed.rg.sam -o {args.sample}.primertrimmed.rg.sorted.bam"
     )
-
-    cmds.append(
-        f"samtools sort -T {args.sample} {args.sample}.primertrimmed.rg.bam -o {args.sample}.primertrimmed.rg.sorted.bam"
-    )
+    cmds.append(f"rm {args.sample}.primertrimmed.rg.sam")
 
     cmds.append(f"samtools index {args.sample}.trimmed.rg.sorted.bam")
     cmds.append(f"samtools index {args.sample}.primertrimmed.rg.sorted.bam")
