@@ -7,8 +7,11 @@ import hashlib
 import re
 import pandas as pd
 from clint.textui import colored
+import subprocess
 from Bio import SeqIO
 import gzip
+import csv
+import json
 
 
 class clair3_manifest:
@@ -303,7 +306,7 @@ def identify_bed_file(bed_file):
             if version == 3:
                 print(
                     colored.red(
-                        f"Scheme BED mixed primer ID formats, please ensure your BED file is consistent"
+                        "Scheme BED mixed primer ID formats, please ensure your BED file is consistent"
                     )
                 )
                 raise SystemExit(1)
@@ -474,6 +477,7 @@ def get_scheme(
     scheme_version: str,
     scheme_directory: str,
     scheme_length: int = False,
+    read_file: str = False,
 ):
     """Get the primer scheme and reference fasta file from the manifest
 
@@ -493,37 +497,57 @@ def get_scheme(
         response = requests.get(
             "https://raw.githubusercontent.com/quick-lab/primerschemes/main/index.json"
         )
-    except requests.exceptions.RequestException as error:
-        print(colored.red(f"Failed to fetch manifest with Exception: {error}"))
-        raise SystemExit(1)
+        manifest = response.json()
+        os.makedirs(scheme_directory, exist_ok=True)
+        with open(os.path.join(scheme_directory, "index.json"), "w") as manifest_file:
+            json.dump(manifest, manifest_file)
 
-    if response.status_code != 200:
-        print(
-            colored.red(
-                f"Failed to fetch primer schemes manifest with status code: {response.status_code}"
+    except Exception:
+        os.makedirs(scheme_directory, exist_ok=True)
+        index_path = os.path.join(scheme_directory, "index.json")
+        if os.path.exists(index_path):
+            print(
+                colored.yellow(
+                    f"Could not get a remote copy of manifest but found a local one in {scheme_directory}, using this instead. Be warned this may be out of date"
+                )
             )
-        )
-        raise SystemExit(1)
-
-    manifest = response.json()
+            with open(index_path, "r") as manifest_file:
+                manifest = json.load(manifest_file)
+        else:
+            print(
+                colored.red(
+                    f"Failed to fetch manifest and no local copy found in {scheme_directory}, please check your internet connection and try again"
+                )
+            )
+            raise SystemExit(1)
 
     try:
         response = requests.get(
             "https://raw.githubusercontent.com/quick-lab/primerschemes/main/aliases.json"
         )
-    except requests.exceptions.RequestException as error:
-        print(colored.red(f"Failed to fetch scheme aliases with Exception: {error}"))
-        raise SystemExit(1)
+        aliases = response.json()
+        os.makedirs(scheme_directory, exist_ok=True)
+        with open(os.path.join(scheme_directory, "aliases.json"), "w") as aliases_file:
+            json.dump(aliases, aliases_file)
 
-    if response.status_code != 200:
-        print(
-            colored.red(
-                f"Failed to fetch primer schemes alias file with status code: {response.status_code}"
+    except Exception:
+        os.makedirs(scheme_directory, exist_ok=True)
+        aliases_path = os.path.join(scheme_directory, "aliases.json")
+        if os.path.exists(aliases_path):
+            print(
+                colored.yellow(
+                    f"Could not get a remote copy of manifest but found a local one in {scheme_directory}, using this instead. Be warned this may be out of date"
+                )
             )
-        )
-        raise SystemExit(1)
-
-    aliases = response.json()
+            with open(aliases_path, "r") as aliases_file:
+                aliases = json.load(aliases_file)
+        else:
+            print(
+                colored.red(
+                    f"Failed to fetch manifest and no local copy found in {scheme_directory}, please check your internet connection and try again"
+                )
+            )
+            raise SystemExit(1)
 
     scheme_name = scheme_name.lower().rstrip()
 
@@ -541,7 +565,7 @@ def get_scheme(
         if not manifest["primerschemes"].get(scheme_name):
             print(
                 colored.red(
-                    f"Scheme name alias does not exist in manifest, this should never happen, please create an issue on https://github.com/quick-lab/primerschemes/issues or https://github.com/artic-network/fieldbioinformatics/issues if you see this message"
+                    "Scheme name alias does not exist in manifest, this should never happen, please create an issue on https://github.com/quick-lab/primerschemes/issues or https://github.com/artic-network/fieldbioinformatics/issues if you see this message"
                 )
             )
             raise SystemExit(1)
@@ -575,7 +599,7 @@ def get_scheme(
     if not version_pattern.match(scheme_version):
         print(
             colored.red(
-                f"Invalid scheme version format, please provide a version in the format 'vX.X.X', e.g. v1.0.0"
+                "Invalid scheme version format, please provide a version in the format 'vX.X.X', e.g. v1.0.0"
             )
         )
         raise SystemExit(1)
@@ -587,6 +611,50 @@ def get_scheme(
             )
         )
         raise SystemExit(1)
+
+    if scheme[scheme_length][scheme_version].get("refselect"):
+        if not read_file:
+            print(
+                colored.red(
+                    f"Reference selection is available for this scheme but reads were not provided. Either provide a read file using --read-file or specify the reference to use by providing the same scheme name with the appropriate suffix, choices are: {', '.join(str(x) for x in scheme[scheme_length].keys() if '-' in x)}"
+                )
+            )
+            raise SystemExit(1)
+
+        print(
+            colored.yellow(
+                f"Reference selection is available for scheme {scheme_name}, deciding which reference to use based on your reads. If you would prefer to specify the reference to use, provide the same scheme name with the appropriate suffix, choices are: {', '.join(str(x) for x in scheme[scheme_length].keys() if '-' in x)}"
+            )
+        )
+
+        if len(scheme[scheme_length][scheme_version]["refselect"].keys()) > 1:
+            print(
+                colored.red(
+                    f"Multiple reference selection options found for scheme {scheme_name}, fieldbioinformatics does not currently support multi pathogen schemes"
+                )
+            )
+            raise SystemExit(1)
+
+        msa_data = next(
+            iter(scheme[scheme_length][scheme_version]["refselect"].values())
+        )
+
+        scheme_select_dir = os.path.join(
+            scheme_directory, scheme_name, scheme_length, scheme_version
+        )
+
+        suffix = pick_best_ref(
+            multi_ref_url=msa_data["url"],
+            multi_ref_md5=msa_data["md5"],
+            read_file=read_file,
+            n_reads=10000,
+            scheme_path=scheme_select_dir,
+            mm2_threads=4,
+        )
+
+        scheme_version = f"{scheme_version}-{suffix}"
+
+        print(colored.yellow(f"Selected reference suffix: {suffix}"))
 
     scheme = scheme[scheme_length][scheme_version]
 
@@ -608,14 +676,8 @@ def get_scheme(
             response = requests.get(bed_url)
         except requests.exceptions.RequestException as error:
             print(
-                colored.red(f"Failed to fetch primer bed file with Exception: {error}")
-            )
-            raise SystemExit(1)
-
-        if response.status_code != 200:
-            print(
                 colored.red(
-                    f"Failed to fetch primer bed file with status code: {response.status_code}"
+                    f"Failed to fetch primer bed file due to Exception: {error}"
                 )
             )
             raise SystemExit(1)
@@ -956,3 +1018,134 @@ def choose_model(read_file: str) -> dict:
     )
 
     sys.exit(6)
+
+
+def pick_best_ref(
+    multi_ref_url: str,
+    multi_ref_md5: str,
+    read_file: str,
+    n_reads: int,
+    scheme_path: str,
+    mm2_threads: int,
+):
+    """Pick the best reference from a multi-reference alignment
+
+    Args:
+        multi_ref_url (str): URL to the multi-reference alignment from quick-lab/primerschemes
+        multi_ref_md5 (str): MD5 hash of the multi-reference alignment
+        read_file (str): Path to the read file to test against the references
+        n_reads (int): How many reads to sample from the read file for testing (default: 10000)
+        scheme_path (str): Path to the scheme directory
+        mm2_threads (int): Number of threads to use when aligning using minimap2
+
+    Raises:
+        SystemExit: If the ref selection fasta file cannot be fetched
+        SystemExit: If the ref selection fasta file get returns a status code other than 200
+
+    Returns:
+        str: Primer scheme suffix of the most appropriate reference for the reads
+    """
+
+    ref_selection_path = os.path.join(scheme_path, "refselect.fasta")
+
+    if not os.path.exists(scheme_path):
+        os.makedirs(scheme_path, exist_ok=True)
+
+    if not os.path.exists(ref_selection_path):
+        try:
+            response = requests.get(multi_ref_url)
+        except requests.exceptions.RequestException as error:
+            print(colored.red(f"Failed to ref selection fasta with Exception: {error}"))
+            raise SystemExit(1)
+
+        if response.status_code != 200:
+            print(
+                colored.red(
+                    f"Failed to fetch ref selection fasta with status code: {response.status_code}"
+                )
+            )
+            raise SystemExit(1)
+
+        with open(ref_selection_path, "w") as ref_select_fasta:
+            ref_select_fasta.write(response.text)
+
+    check_hash(ref_selection_path, multi_ref_md5)
+
+    flat_ref_path = os.path.join(scheme_path, "flattened_references.fasta")
+
+    possible_references = {}
+
+    with open(ref_selection_path, "r") as ref_selection_fh:
+
+        for reference in SeqIO.parse(ref_selection_fh, "fasta"):
+            suffix = reference.description.split()[1]
+            possible_references[reference.id] = suffix
+
+            # Flatten out the alignment into flat fasta reference
+            flattened = str(reference.seq).replace("-", "")
+
+            with open(flat_ref_path, "a") as flat_ref_fh:
+                flat_ref_fh.write(f">{reference.description}\n{flattened}\n")
+
+    # fq_it = mappy.fastx_read(fastq_path)
+    seqtk = subprocess.run(
+        ["seqtk", "sample", str(read_file), str(n_reads)], stdout=subprocess.PIPE
+    )
+
+    result = subprocess.run(
+        [
+            "minimap2",
+            "-x",
+            "map-ont",
+            "-t",
+            str(mm2_threads),
+            str(flat_ref_path),
+            "-",
+        ],
+        input=seqtk.stdout,
+        stdout=subprocess.PIPE,
+    )
+
+    reader = csv.DictReader(
+        result.stdout.decode("utf-8").split("\n"),
+        delimiter="\t",
+        fieldnames=[
+            "query_name",
+            "query_len",
+            "query_start",
+            "query_end",
+            "strand",
+            "ctg_name",
+            "ctg_len",
+            "ref_start",
+            "ref_end",
+            "n_matches",
+            "alignment_len",
+            "mapq",
+        ],
+    )
+
+    read_results = {}
+
+    for alignment in reader:
+
+        if not alignment:
+            continue
+
+        identity = int(alignment["n_matches"]) / int(alignment["alignment_len"])
+
+        read_results.setdefault(alignment["query_name"], {})
+        read_results[alignment["query_name"]].setdefault(alignment["ctg_name"], 0)
+
+        if identity > read_results[alignment["query_name"]][alignment["ctg_name"]]:
+            read_results[alignment["query_name"]][alignment["ctg_name"]] = identity
+
+    ref_results = {ref: 0 for ref in possible_references.keys()}
+
+    for read, details in read_results.items():
+        best_ctg = max(details, key=details.get)
+        ref_results[best_ctg] += 1
+
+    best_ref = max(ref_results, key=ref_results.get)
+
+    return possible_references[best_ref]
