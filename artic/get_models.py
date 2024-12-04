@@ -4,6 +4,7 @@ from pathlib import Path
 import tarfile
 import sys
 from artic.utils import clair3_manifest
+from clint.textui import colored
 
 
 def download_file(url: str, local_path: Path):
@@ -17,6 +18,8 @@ def download_file(url: str, local_path: Path):
 def get_model(model_dir: Path, model_fname: str, model_url: str):
 
     model_path = Path(model_dir, model_fname)
+
+    os.makedirs(model_dir, exist_ok=True)
 
     download_file(model_url, model_path)
 
