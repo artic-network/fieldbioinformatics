@@ -7,7 +7,7 @@ dependencies:
   - bcftools
   - biopython
   - bwa
-  - clair3
+  - clair3>=1.0.0
   - clint
   - htslib
   - minimap2
