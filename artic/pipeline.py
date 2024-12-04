@@ -129,7 +129,7 @@ def init_pipeline_parser():
     )
     remote_scheme_options.add_argument(
         "--scheme-length",
-        type=int,
+        type=str,
         metavar="scheme_length",
         default=False,
         help="Length of the scheme to fetch from the scheme repository (https://github.com/quick-lab/primerschemes). This is only required if the --scheme-name has multiple possible lengths.",

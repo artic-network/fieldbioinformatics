@@ -49,7 +49,7 @@ def run(parser, args):
     else:
         if not os.getenv("CONDA_PREFIX"):
             print(
-                f"CONDA_PREFIX is not set, this probably means you are not running this inside a conda environment, please provide a model path argument '--model-path'",
+                "CONDA_PREFIX is not set, this probably means you are not running this inside a conda environment, please provide a model path argument '--model-path'",
                 file=sys.stderr,
             )
             raise SystemExit(1)
@@ -85,6 +85,7 @@ def run(parser, args):
             scheme_version=args.scheme_version,
             scheme_directory=args.scheme_directory,
             scheme_length=args.scheme_length,
+            read_file=args.read_file,
         )
 
     if not os.path.exists(bed) or not os.path.exists(ref):
