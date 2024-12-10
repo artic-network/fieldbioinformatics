@@ -21,3 +21,4 @@ dependencies:
   - requests
   - samtools
   - tqdm
+  - seqtk
