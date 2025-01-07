@@ -42,8 +42,6 @@ Please make sure you are using either mamba or conda version >= 23.10.0 where li
 
 <!-- Download a [release](https://github.com/artic-network/fieldbioinformatics/releases) or use the latest master (which tracks the current release): -->
 
-Clone the repository then checkout the 1.4.0-dev branch to test the 1.4.0 pre-release.
-
 ```sh
 git clone https://github.com/artic-network/fieldbioinformatics
 cd fieldbioinformatics
