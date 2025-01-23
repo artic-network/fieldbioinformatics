@@ -102,7 +102,7 @@ def init_pipeline_parser():
         "--min-depth",
         type=int,
         default=20,
-        help="Minimum depth required to call a variant (default: %(default)d)",
+        help="Minimum coverage required for a position to be included in the consensus sequence (default: %(default)d)",
     )
     parser_minion.add_argument(
         "--threads",

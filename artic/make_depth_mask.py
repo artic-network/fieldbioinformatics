@@ -65,9 +65,13 @@ def collect_depths(bamfile, refName, minDepth, ignoreDeletions, warnRGcov):
 
     # generate the pileup
     for pileupcolumn in bamFile.pileup(
-        refName, start=0, stop=bamFile.get_reference_length(refName), max_depth=10000, truncate=False, min_base_quality=0
+        refName,
+        start=0,
+        stop=bamFile.get_reference_length(refName),
+        max_depth=100000000,
+        truncate=False,
+        min_base_quality=0,
     ):
-
         # process the pileup column
         for pileupread in pileupcolumn.pileups:
 
@@ -78,13 +82,16 @@ def collect_depths(bamfile, refName, minDepth, ignoreDeletions, warnRGcov):
             # process the pileup read
             if pileupread.is_refskip:
                 continue
+
             if pileupread.is_del:
                 if not ignoreDeletions:
                     depths[pileupcolumn.pos] += 1
                     rgDepths[rg][pileupcolumn.pos] += 1
+
             elif not pileupread.is_del:
                 depths[pileupcolumn.pos] += 1
                 rgDepths[rg][pileupcolumn.pos] += 1
+
             else:
                 raise Exception("unhandled pileup read encountered")
 
