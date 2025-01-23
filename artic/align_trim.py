@@ -39,14 +39,18 @@ def find_primer(bed, pos, direction, chrom, threshold=35):
         primer_distances = [
             (abs(p["start"] - pos), p["start"] - pos, p)
             for p in bed
-            if (p["direction"] == direction) and (pos >= (p["start"] - threshold)) and chrom == p["chrom"]
+            if (p["direction"] == direction)
+            and (pos >= (p["start"] - threshold))
+            and chrom == p["chrom"]
         ]
 
     else:
         primer_distances = [
             (abs(p["end"] - pos), p["end"] - pos, p)
             for p in bed
-            if (p["direction"] == direction) and (pos <= (p["end"] + threshold)) and chrom == p["chrom"]
+            if (p["direction"] == direction)
+            and (pos <= (p["end"] + threshold))
+            and chrom == p["chrom"]
         ]
 
     if not primer_distances:
@@ -206,9 +210,21 @@ def handle_segment(
 
     # locate the nearest primers to this alignment segment
     # p1 = find_primer(bed, segment.reference_start, "+", segment.reference_name, args.primer_match_threshold)
-    p1 = find_primer(bed=bed, pos=segment.reference_start, direction="+", chrom=segment.reference_name, threshold=args.primer_match_threshold)
+    p1 = find_primer(
+        bed=bed,
+        pos=segment.reference_start,
+        direction="+",
+        chrom=segment.reference_name,
+        threshold=args.primer_match_threshold,
+    )
     # p2 = find_primer(bed, segment.reference_end, "-", segment.reference_name, args.primer_match_threshold)
-    p2 = find_primer(bed=bed, pos=segment.reference_end, direction="-", chrom=segment.reference_name, threshold=args.primer_match_threshold)
+    p2 = find_primer(
+        bed=bed,
+        pos=segment.reference_end,
+        direction="-",
+        chrom=segment.reference_name,
+        threshold=args.primer_match_threshold,
+    )
 
     if not p1 or not p2:
         if args.verbose:
@@ -361,7 +377,9 @@ def generate_amplicons(bed: list):
     for chrom, amplicons_dict in amplicons.items():
         for amplicon in amplicons_dict:
             if not all([x in amplicons_dict[amplicon] for x in ["p_start", "p_end"]]):
-                raise ValueError(f"Primer scheme for amplicon {amplicon} for reference {chrom} is incomplete")
+                raise ValueError(
+                    f"Primer scheme for amplicon {amplicon} for reference {chrom} is incomplete"
+                )
 
             # Check if primer runs accross reference start / end -> circular virus
             amplicons_dict[amplicon]["circular"] = (
@@ -408,7 +426,9 @@ def normalise(trimmed_segments: dict, normalise: int, bed: list, verbose: bool =
                 (amplicons[chrom][amplicon]["length"],), normalise, dtype=int
             )
 
-            amplicon_depth = np.zeros((amplicons[chrom][amplicon]["length"],), dtype=int)
+            amplicon_depth = np.zeros(
+                (amplicons[chrom][amplicon]["length"],), dtype=int
+            )
 
             if not segments:
                 if verbose:
@@ -425,12 +445,16 @@ def normalise(trimmed_segments: dict, normalise: int, bed: list, verbose: bool =
             for segment in segments:
                 test_depths = np.copy(amplicon_depth)
 
-                relative_start = segment.reference_start - amplicons[chrom][amplicon]["p_start"]
+                relative_start = (
+                    segment.reference_start - amplicons[chrom][amplicon]["p_start"]
+                )
 
                 if relative_start < 0:
                     relative_start = 0
 
-                relative_end = segment.reference_end - amplicons[chrom][amplicon]["p_start"]
+                relative_end = (
+                    segment.reference_end - amplicons[chrom][amplicon]["p_start"]
+                )
 
                 test_depths[relative_start:relative_end] += 1
 
@@ -442,7 +466,7 @@ def normalise(trimmed_segments: dict, normalise: int, bed: list, verbose: bool =
                     output_segments.append(segment)
 
             mean_depths[(chrom, amplicon)] = np.mean(amplicon_depth)
-        
+
     return output_segments, mean_depths
 
 
@@ -519,7 +543,9 @@ def go(args):
         trimmed_segments[trimmed_segment.reference_name].setdefault(amplicon, [])
 
         if trimmed_segment:
-            trimmed_segments[trimmed_segment.reference_name][amplicon].append(trimmed_segment)
+            trimmed_segments[trimmed_segment.reference_name][amplicon].append(
+                trimmed_segment
+            )
 
     # normalise if requested
     if args.normalise:
@@ -536,10 +562,12 @@ def go(args):
 
         for output_segment in output_segments:
             outfile.write(output_segment)
+
     else:
-        for amplicon, segments in trimmed_segments.items():
-            for segment in segments:
-                outfile.write(segment)
+        for chrom, amplicon_dict in trimmed_segments.items():
+            for amplicon, segments in amplicon_dict.items():
+                for segment in segments:
+                    outfile.write(segment)
 
     # close up the file handles
     infile.close()

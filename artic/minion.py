@@ -44,6 +44,15 @@ def run(parser, args):
         )
         raise SystemExit(1)
 
+    if args.normalise > 10000:
+        print(
+            colored.red(
+                "--normalise appears to be an aribtrarily high value, if you wish to not normalise your BAM files set '--normalise 0' to disable normalisation entirely"
+            ),
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
     if args.model_dir:
         model_path = args.model_dir
     else:
@@ -169,7 +178,7 @@ def run(parser, args):
             cmds.append(f"samtools index {args.sample}.{p}.trimmed.rg.sorted.bam")
 
             cmds.append(
-                f"run_clair3.sh --enable_long_indel --chunk_size=10000 --haploid_precise --no_phasing_for_fa --bam_fn='{args.sample}.{p}.trimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs --min_coverage='{args.min_depth}'"
+                f"run_clair3.sh --enable_long_indel --chunk_size=10000 --haploid_precise --no_phasing_for_fa --bam_fn='{args.sample}.{p}.trimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs"
             )
 
             cmds.append(
@@ -199,7 +208,7 @@ def run(parser, args):
 
     # 9) get the depth of coverage for each readgroup, create a coverage mask and plots, and add failed variants to the coverage mask (artic_mask must be run before bcftools consensus)
     cmds.append(
-        f"artic_make_depth_mask --store-rg-depths {ref} {args.sample}.primertrimmed.rg.sorted.bam {args.sample}.coverage_mask.txt"
+        f"artic_make_depth_mask --depth {args.min_depth} --store-rg-depths {ref} {args.sample}.primertrimmed.rg.sorted.bam {args.sample}.coverage_mask.txt"
     )
 
     cmds.append(
