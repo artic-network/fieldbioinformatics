@@ -126,7 +126,18 @@ def run(parser, args):
     ## create a holder to keep the pipeline commands in
     cmds = []
 
-    # 2) check the reference fasta has and index and create one if not
+    # 2) linearise the reference if desired, check the reference fasta has an index and create one if not
+    if args.linearise_fasta:
+        linearised_ref = f"{args.sample}.linearised.fasta"
+        # No f-strings here to reduce amount of escaping
+        cmds.append(
+            'awk \'/^>/ \{printf("%s%s\t",(N>0?"\n":""),$0);N++;next;} {printf("%s",$0);} END {printf("\n");}\''
+            + ref
+            + " > "
+            + linearised_ref
+        )
+        ref = linearised_ref
+
     if not os.path.exists("%s.fai" % (ref)):
         cmds.append("samtools faidx %s" % (ref))
 
