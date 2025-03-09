@@ -131,7 +131,7 @@ def run(parser, args):
         linearised_ref = f"{args.sample}.linearised.fasta"
         # No f-strings here to reduce amount of escaping
         cmds.append(
-            """awk '/^>/ {printf("%s%s\t",(N>0?"\\n":""),$0);N++;next;} {printf("%s",$0);} END {printf("\\n");}' """
+            """awk '!/^>/ { printf "%s", $0; n = "\\n" } /^>/ { print n $0; n = "" } END { printf "%s", n }' """
             + ref
             + " > "
             + linearised_ref
