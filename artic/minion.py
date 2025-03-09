@@ -126,7 +126,7 @@ def run(parser, args):
     ## create a holder to keep the pipeline commands in
     cmds = []
 
-    # 2) check the reference fasta has and index and create one if not
+    # 2) check the reference fasta has an index and create one if not
     if not os.path.exists("%s.fai" % (ref)):
         cmds.append("samtools faidx %s" % (ref))
 
@@ -234,8 +234,9 @@ def run(parser, args):
 
     # 11) apply the header to the consensus sequence and run alignment against the reference sequence
     caller = "clair3"
+    linearise_fasta = "--linearise-fasta" if args.linearise_fasta else ""
     cmds.append(
-        f"artic_fasta_header {args.sample}.consensus.fasta {args.sample} {caller}"
+        f"artic_fasta_header {linearise_fasta} {args.sample}.consensus.fasta {args.sample} {caller}"
     )
 
     if args.align_consensus:

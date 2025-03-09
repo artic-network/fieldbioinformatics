@@ -179,6 +179,7 @@ def genCommand(sampleID, workflow):
         "minion",
         "--threads",
         "2",
+        "--linearise-fasta",
         "--read-file",
         dataDir + sampleID + "/" + sampleID + ".fastq",
         "--scheme-directory",

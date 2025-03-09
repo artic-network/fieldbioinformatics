@@ -176,6 +176,11 @@ def init_pipeline_parser():
         action="store_true",
         help="Run a mafft alignment of consensus to reference after generation",
     )
+    parser_minion.add_argument(
+        "--linearise-fasta",
+        action="store_true",
+        help="Output linearised (unwrapped) FASTA consensus files",
+    )
     parser_minion.add_argument("--dry-run", action="store_true")
     parser_minion.set_defaults(func=run_subtool)
 
