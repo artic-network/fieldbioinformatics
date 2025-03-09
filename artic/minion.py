@@ -126,18 +126,7 @@ def run(parser, args):
     ## create a holder to keep the pipeline commands in
     cmds = []
 
-    # 2) linearise the reference if desired, check the reference fasta has an index and create one if not
-    if args.linearise_fasta:
-        linearised_ref = f"{args.sample}.linearised.fasta"
-        # No f-strings here to reduce amount of escaping
-        cmds.append(
-            """awk '!/^>/ { printf "%s", $0; n = "\\n" } /^>/ { print n $0; n = "" } END { printf "%s", n }' """
-            + ref
-            + " > "
-            + linearised_ref
-        )
-        ref = linearised_ref
-
+    # 2) check the reference fasta has an index and create one if not
     if not os.path.exists("%s.fai" % (ref)):
         cmds.append("samtools faidx %s" % (ref))
 
@@ -245,8 +234,9 @@ def run(parser, args):
 
     # 11) apply the header to the consensus sequence and run alignment against the reference sequence
     caller = "clair3"
+    linearise_fasta = "--linearise-fasta" if args.linearise_fasta else ""
     cmds.append(
-        f"artic_fasta_header {args.sample}.consensus.fasta {args.sample} {caller}"
+        f"artic_fasta_header {linearise_fasta} {args.sample}.consensus.fasta {args.sample} {caller}"
     )
 
     if args.align_consensus:
