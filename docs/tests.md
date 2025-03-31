@@ -29,7 +29,7 @@ pytest -s artic/*_unit_test.py
 
 ## Pipeline tests
 
-To test the core pipeline, you can use the `test-runner.sh` bash script. You can test both the medaka and nanopolish workflows:
+To test the core pipeline, you can use the `test-runner.sh` bash script:
 
 ```
 ./test-runner.sh clair3
@@ -44,13 +44,3 @@ Finally, we have also included some validation tests that will download several 
 ```
 pytest -s artic/minion_validator.py
 ```
-
-Or you can specify which workflow and how many datasets to validate against:
-
-```
-pytest -s artic/minion_validator.py --workFlow medaka --numValidations 2
-```
-
-> use --workFlows to specify workflow (medaka|nanopolish)
-
-> use --numValidations to specify how many datasets to download and validate against (specifing -1 or too high a number will just run all the datasets)

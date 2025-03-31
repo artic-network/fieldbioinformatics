@@ -20,7 +20,7 @@ The standard operating proceedure for the ARTIC Network SARS-SoV-2 bioinformatic
 
 ## Lab-on-an-SSD
 
-Please refer to [the ARTIC website](https://artic.network/lab-on-an-SSD) for more information about lab-on-SSD.
+Lab-on-an-SSD is now defunct and unsupported, we do not recommend anyone use it any more.
 
 ## Adding this repository as a submodule of another
 

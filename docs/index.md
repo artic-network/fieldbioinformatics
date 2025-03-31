@@ -13,16 +13,17 @@ date: 2020-03-30
     <hr/>
 </div>
 
-`artic` is a pipeline and set of accompanying tools for working with viral nanopore sequencing data, generated from tiling amplicon schemes.
+`artic` (or `fieldbioinformatics`) is a pipeline and set of accompanying tools for working with viral nanopore sequencing data, generated from tiling amplicon schemes.
 
 Features include:
 
+- reference sequence selection (for primer schemes which support this)
 - read filtering
 - primer trimming
 - amplicon coverage normalisation
 - variant calling
 - consensus building
 
-`artic` is designed to help run the artic bioinformatics protocols; for example the [SARS-CoV-2 coronavirus protocol](https://artic.network/ncov-2019/ncov2019-bioinformatics-sop.html).
+`artic` is designed to help run the artic bioinformatics protocols; for example the [MPXV fieldbioinformatics SOP](https://artic.network/mpxv/mpxv-bioinformatics-sop.html).
 
 Use the navigation dropdowns on the left to read more about the pipeline, it's installation and getting started.
