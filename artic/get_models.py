@@ -53,8 +53,6 @@ def main():
     models = model_manifest.models
 
     for model in models:
-        if not model["rerio"]:
-            continue
 
         if not os.path.exists(Path(args.model_dir, model["name"])):
             get_model(
