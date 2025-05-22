@@ -139,8 +139,8 @@ class clair3_manifest:
                 "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v520.tar.gz",
             },
             {
-                "name": "r1041_e82_400bps_sup_v520_model",
-                "model_fname": "r1041_e82_400bps_sup_v520_model.tar.gz",
+                "name": "r1041_e82_400bps_sup_v520",
+                "model_fname": "r1041_e82_400bps_sup_v520.tar.gz",
                 "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v520.tar.gz",
             },
             {

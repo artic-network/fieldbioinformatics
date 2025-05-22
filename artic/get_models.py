@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 import tarfile
 import sys
+import shutil
 from artic.utils import clair3_manifest
-from clint.textui import colored
 
 
 def download_file(url: str, local_path: Path):
@@ -15,7 +15,9 @@ def download_file(url: str, local_path: Path):
                 f.write(chunk)
 
 
-def get_model(model_dir: Path, model_fname: str, model_url: str):
+def get_model(
+    model_dir: Path, model_fname: str, model_url: str, model_name: str = None
+):
 
     model_path = Path(model_dir, model_fname)
 
@@ -24,7 +26,18 @@ def get_model(model_dir: Path, model_fname: str, model_url: str):
     download_file(model_url, model_path)
 
     with tarfile.open(model_path, "r") as tar:
+        paths = [Path(x) for x in tar.getnames()]
+        root_paths = [str(x.parent) for x in paths if str(x.parent) != "."]
+        if len(set(root_paths)) != 1:
+            raise ValueError(
+                f"The Clair3 model tarfile {model_fname} contains multiple root directories (there can only be one), please check the tar file."
+            )
+
         tar.extractall(model_dir)
+
+        if model_name:
+            if root_paths[0] != model_name:
+                shutil.move(Path(model_dir, root_paths[0]), Path(model_dir, model_name))
 
     os.remove(model_path)
 
@@ -45,7 +58,7 @@ def main():
 
     if not os.getenv("CONDA_PREFIX"):
         print(
-            f"CONDA_PREFIX is not set, this probably means you are not running this inside a conda environment, if you have not provided a model path argument '--model-dir' the models might be downloaded somewhere you don't want them to be.",
+            "CONDA_PREFIX is not set, this probably means you are not running this inside a conda environment, if you have not provided a model path argument '--model-dir' the models might be downloaded somewhere you don't want them to be.",
             file=sys.stderr,
         )
 
@@ -54,11 +67,15 @@ def main():
 
     for model in models:
 
-        if not os.path.exists(Path(args.model_dir, model["name"])):
+        if (
+            not os.path.exists(Path(args.model_dir, model["name"]))
+            or len(os.listdir(Path(args.model_dir, model["name"]))) == 0
+        ):
             get_model(
                 model_dir=args.model_dir,
                 model_fname=model["model_fname"],
                 model_url=model["model_url"],
+                model_name=model["name"],
             )
             print(f"Downloaded model: {model['name']}", file=sys.stderr)
 
