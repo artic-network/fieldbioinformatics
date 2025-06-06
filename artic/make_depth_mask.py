@@ -143,12 +143,14 @@ def intervals_extract(iterable):
 def go(args):
 
     # open the reference sequence and collect the sequence header and sequence length of the first record
-    record = list(SeqIO.parse(args.reference, "fasta"))[0]
-    seqID = record.id
-    seqLength = len(record.seq)
+    records = [x for x in SeqIO.parse(args.reference, "fasta")]
+    intervals = []
 
-    # collect the depths from the pileup, replacing any depth<minDepth with 0
-    try:
+    for record in records:
+        seqID = record.id
+        seqLength = len(record.seq)
+
+        # collect the depths from the pileup, replacing any depth<minDepth with 0
         depths, rgDepths = collect_depths(
             args.bamfile,
             seqID,
@@ -156,38 +158,34 @@ def go(args):
             args.ignore_deletions,
             args.warn_rg_coverage,
         )
-    except Exception as e:
-        print(e)
-        raise SystemExit(1)
 
-    # check the number of positions in the reported depths matches the reference sequence
-    if len(depths) != seqLength:
-        print("pileup length did not match expected reference sequence length")
+        # check the number of positions in the reported depths matches the reference sequence
+        if len(depths) != seqLength:
+            print("pileup length did not match expected reference sequence length")
 
-    # print the readgroup depths to individual files if requested
-    if args.store_rg_depths:
+        # print the readgroup depths to individual files if requested
+        if args.store_rg_depths:
+            # rg is the readgroup and rgd is the depths per position for this readgroup
+            for rg, rgd in rgDepths.items():
+                fh = open(args.outfile + "." + rg + ".depths", "a")
+                for pos, depth in enumerate(rgd):
+                    fh.write("%s\t%s\t%d\t%d\n" % (seqID, rg, pos, depth))
+                fh.close()
 
-        # rg is the readgroup and rgd is the depths per position for this readgroup
-        for rg, rgd in rgDepths.items():
-            fh = open(args.outfile + "." + rg + ".depths", "w")
-            for pos, depth in enumerate(rgd):
-                fh.write("%s\t%s\t%d\t%d\n" % (seqID, rg, pos, depth))
-            fh.close()
+        # create a mask_vector that records reference positions where depth < minDepth
+        mask_vector = []
+        for pos, depth in enumerate(depths):
+            if depth == 0:
+                mask_vector.append(pos)
 
-    # create a mask_vector that records reference positions where depth < minDepth
-    mask_vector = []
-    for pos, depth in enumerate(depths):
-        if depth == 0:
-            mask_vector.append(pos)
+        # get the intervals from the mask_vector
+        intervals = list(intervals_extract(mask_vector))
 
-    # get the intervals from the mask_vector
-    intervals = list(intervals_extract(mask_vector))
-
-    # create the mask outfile
-    maskfh = open(args.outfile, "w")
-    for i in intervals:
-        maskfh.write("%s\t%s\t%s\n" % (seqID, i[0] + 1, i[1] + 1))
-    maskfh.close()
+        # create the mask outfile
+        maskfh = open(args.outfile, "a")
+        for i in intervals:
+            maskfh.write("%s\t%s\t%s\n" % (seqID, i[0] + 1, i[1] + 1))
+        maskfh.close()
 
 
 def main():
