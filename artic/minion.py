@@ -209,7 +209,7 @@ def run(parser, args):
 
     # 9) get the depth of coverage for each readgroup, create a coverage mask and plots, and add failed variants to the coverage mask (artic_mask must be run before bcftools consensus)
     cmds.append(
-        f"artic_make_depth_mask --depth {args.min_depth} --store-rg-depths {ref} {args.sample}.primertrimmed.rg.sorted.bam {args.sample}.coverage_mask.txt"
+        f"artic_make_depth_mask --depth {args.min_depth} {ref} {args.sample}.primertrimmed.rg.sorted.bam {args.sample}.coverage_mask.txt"
     )
 
     cmds.append(

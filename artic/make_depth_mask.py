@@ -53,8 +53,6 @@ def collect_depths(bamfile, refName, minDepth, ignoreDeletions, warnRGcov):
 
     # get the read groups and init the depth vectors
     for rg in bamFile.header["RG"]:
-        if rg["ID"] == "unmatched":
-            continue
         rgDepths[rg["ID"]] = [0] * bamFile.get_reference_length(refName)
 
     # flag to state if BAM file has low readgroup coverage
