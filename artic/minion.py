@@ -143,8 +143,11 @@ def run(parser, args):
     else:
         normalise_string = ""
 
+    if not args.allow_mismatched_primers:
+        incorrect_pairs_string = "--remove-incorrect-pairs"
+
     cmds.append(
-        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --remove-incorrect-pairs --min-mapq {args.min_mapq} --report {args.sample}.alignreport.csv < {args.sample}.sorted.bam > {args.sample}.trimmed.rg.sam"
+        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} {incorrect_pairs_string} --min-mapq {args.min_mapq} --report {args.sample}.alignreport.csv < {args.sample}.sorted.bam > {args.sample}.trimmed.rg.sam"
     )
 
     cmds.append(
@@ -153,7 +156,7 @@ def run(parser, args):
     cmds.append(f"rm {args.sample}.trimmed.rg.sam")
 
     cmds.append(
-        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --min-mapq {args.min_mapq} --remove-incorrect-pairs --trim-primers --report {args.sample}.alignreport.csv --amp-depth-report {args.sample}.amplicon_depths.tsv < {args.sample}.sorted.bam > {args.sample}.primertrimmed.rg.sam"
+        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --min-mapq {args.min_mapq} {incorrect_pairs_string} --trim-primers --report {args.sample}.alignreport.csv --amp-depth-report {args.sample}.amplicon_depths.tsv < {args.sample}.sorted.bam > {args.sample}.primertrimmed.rg.sam"
     )
 
     cmds.append(

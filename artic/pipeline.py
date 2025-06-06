@@ -99,6 +99,11 @@ def init_pipeline_parser():
         help="Allow fuzzy primer matching within this threshold (default: %(default)d)",
     )
     parser_minion.add_argument(
+        "--allow-mismatched-primers",
+        action="store_true",
+        help="Do not remove reads which appear to have mismatched primers (default: False)",
+    )
+    parser_minion.add_argument(
         "--min-depth",
         type=int,
         default=20,
