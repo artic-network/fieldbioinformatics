@@ -138,13 +138,11 @@ def run(parser, args):
     cmds.append(f"samtools index {args.sample}.sorted.bam")
 
     # 4) trim the alignments to the primer start sites and normalise the coverage to save time
-    if args.normalise:
-        normalise_string = f"--normalise {args.normalise}"
-    else:
-        normalise_string = ""
+    normalise_string = f"--normalise {args.normalise}" if args.normalise else ""
 
-    if not args.allow_mismatched_primers:
-        incorrect_pairs_string = "--remove-incorrect-pairs"
+    incorrect_pairs_string = (
+        "--remove-incorrect-pairs" if not args.allow_mismatched_primers else ""
+    )
 
     cmds.append(
         f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} {incorrect_pairs_string} --min-mapq {args.min_mapq} --report {args.sample}.alignreport.csv < {args.sample}.sorted.bam > {args.sample}.trimmed.rg.sam"
