@@ -123,13 +123,11 @@ medakaTestVariants = {
 
 # extraFlags is a way to add extra sample-specific commands to the validation test cmd
 extraFlags = {
-    "medaka": {
-        "SP1": ["--no-frameshifts"],
-    },
     "clair3": {
         "SP1": ["--no-frameshifts"],
         "CVR1": ["--no-frameshifts"],
     },
+    "clair3_allow_mismatches": {"CVR1": ["--allow-mismatched-primers"]},
 }
 
 
@@ -186,7 +184,7 @@ def genCommand(sampleID, workflow):
         dataDir + "primer-schemes",
     ]
 
-    if workflow == "clair3":
+    if workflow == "clair3" or workflow == "clair3_allow_mismatches":
         cmd.append("--model")
         cmd.append("r941_prom_hac_g360+g422")
 
@@ -224,6 +222,8 @@ def checkConsensus(consensusFile, subSeq):
 def runner(workflow, sampleID):
 
     if workflow == "clair3":
+        data = clair3TestVariants
+    elif workflow == "clair3_allow_mismatches":
         data = clair3TestVariants
     elif workflow == "medaka":
         data = medakaTestVariants
@@ -354,6 +354,9 @@ def runner(workflow, sampleID):
 class TestMinion(unittest.TestCase):
     def setUp(self):
         dataChecker()
+
+    def test_Clair3_CVR1_allow_primer_mismatches(self):
+        runner("clair3_allow_mismatches", "CVR1")
 
     def test_Clair3_CVR1(self):
         runner("clair3", "CVR1")

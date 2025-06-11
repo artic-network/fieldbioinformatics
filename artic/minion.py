@@ -121,7 +121,7 @@ def run(parser, args):
         raise SystemExit(1)
 
     ## collect the primer pools
-    pools = set([row["PoolName"] for row in read_bed_file(bed)])
+    pools = set([row["PoolName"] for row in read_bed_file(bed)] + ["unmatched"])
 
     ## create a holder to keep the pipeline commands in
     cmds = []
@@ -237,7 +237,7 @@ def run(parser, args):
     caller = "clair3"
     linearise_fasta = "--linearise-fasta" if args.linearise_fasta else ""
     cmds.append(
-        f"artic_fasta_header {linearise_fasta} {args.sample}.consensus.fasta {args.sample} {caller}"
+        f"artic_fasta_header {linearise_fasta} {args.sample}.consensus.fasta {args.sample}"
     )
 
     if args.align_consensus:
