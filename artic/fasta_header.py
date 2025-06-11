@@ -12,8 +12,10 @@ def fasta_header(args):
     with open(args.filename, "w") as fh:
         for record in rec:
             chrom = record.id
-            record.id = f"{args.samplename} {chrom}_artic-network/fieldbioinformatics_{artic_version}"
-            record.description = ""  # Clear the description
+            record.id = f"{args.samplename}"
+            record.description = (
+                f"{chrom}_artic-network/fieldbioinformatics_{artic_version}"
+            )
 
             SeqIO.write(record, fh, fasta_format)
 
