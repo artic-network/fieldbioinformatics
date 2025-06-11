@@ -1,4 +1,5 @@
 from Bio import SeqIO
+from importlib.metadata import version
 
 
 def fasta_header(args):
@@ -6,11 +7,12 @@ def fasta_header(args):
         rec = list(SeqIO.parse(fh, "fasta"))
 
     fasta_format = "fasta-2line" if args.linearise_fasta else "fasta"
+    artic_version = version("artic")
 
     with open(args.filename, "w") as fh:
         for record in rec:
             chrom = record.id
-            record.id = f"{args.samplename}/{chrom}/ARTIC/{args.caller}"
+            record.id = f"{args.samplename} {chrom}_artic-network/fieldbioinformatics_{artic_version}"
 
             SeqIO.write(record, fh, fasta_format)
 
