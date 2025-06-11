@@ -123,9 +123,6 @@ medakaTestVariants = {
 
 # extraFlags is a way to add extra sample-specific commands to the validation test cmd
 extraFlags = {
-    "medaka": {
-        "SP1": ["--no-frameshifts"],
-    },
     "clair3": {
         "SP1": ["--no-frameshifts"],
         "CVR1": ["--no-frameshifts"],
@@ -225,6 +222,10 @@ def runner(workflow, sampleID):
 
     if workflow == "clair3":
         data = clair3TestVariants
+    elif workflow == "clair3_allow_mismatches":
+        data = clair3TestVariants
+        # add the allow mismatches flag to the command
+        extraFlags["clair3"][sampleID] = ["--allow-mismatched-primers"]
     elif workflow == "medaka":
         data = medakaTestVariants
     else:
@@ -363,3 +364,6 @@ class TestMinion(unittest.TestCase):
 
     def test_Clair3_SP1(self):
         runner("clair3", "SP1")
+
+    def test_Clair3_CVR1_allow_primer_mismatches(self):
+        runner("clair3_allow_mismatches", "CVR1")

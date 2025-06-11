@@ -13,6 +13,7 @@ def fasta_header(args):
         for record in rec:
             chrom = record.id
             record.id = f"{args.samplename} {chrom}_artic-network/fieldbioinformatics_{artic_version}"
+            record.description = ""  # Clear the description
 
             SeqIO.write(record, fh, fasta_format)
 
@@ -25,7 +26,6 @@ def main():
     )
     parser.add_argument("filename")
     parser.add_argument("samplename")
-    parser.add_argument("caller")
     parser.add_argument("--linearise-fasta", action="store_true")
 
     args = parser.parse_args()
