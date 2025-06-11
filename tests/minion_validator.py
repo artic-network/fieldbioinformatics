@@ -184,7 +184,7 @@ def genCommand(sampleID, workflow):
         dataDir + "primer-schemes",
     ]
 
-    if workflow == "clair3":
+    if workflow == "clair3" or workflow == "clair3_allow_mismatches":
         cmd.append("--model")
         cmd.append("r941_prom_hac_g360+g422")
 
@@ -355,6 +355,9 @@ class TestMinion(unittest.TestCase):
     def setUp(self):
         dataChecker()
 
+    def test_Clair3_CVR1_allow_primer_mismatches(self):
+        runner("clair3_allow_mismatches", "CVR1")
+
     def test_Clair3_CVR1(self):
         runner("clair3", "CVR1")
 
@@ -363,6 +366,3 @@ class TestMinion(unittest.TestCase):
 
     def test_Clair3_SP1(self):
         runner("clair3", "SP1")
-
-    def test_Clair3_CVR1_allow_primer_mismatches(self):
-        runner("clair3_allow_mismatches", "CVR1")
