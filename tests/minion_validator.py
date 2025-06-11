@@ -127,6 +127,7 @@ extraFlags = {
         "SP1": ["--no-frameshifts"],
         "CVR1": ["--no-frameshifts"],
     },
+    "clair3_allow_mismatches": {"CVR1": ["--allow-mismatched-primers"]},
 }
 
 
@@ -224,8 +225,6 @@ def runner(workflow, sampleID):
         data = clair3TestVariants
     elif workflow == "clair3_allow_mismatches":
         data = clair3TestVariants
-        # add the allow mismatches flag to the command
-        extraFlags["clair3"][sampleID] = ["--allow-mismatched-primers"]
     elif workflow == "medaka":
         data = medakaTestVariants
     else:
