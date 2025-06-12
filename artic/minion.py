@@ -171,20 +171,19 @@ def run(parser, args):
             os.remove("%s.%s.hdf" % (args.sample, p))
 
         # Split the BAM by read group
-        for p in pools:
-            cmds.append(
-                f"samtools view -b -r {p} {args.sample}.trimmed.rg.sorted.bam -o {args.sample}.{p}.trimmed.rg.sorted.bam"
-            )
+        cmds.append(
+            f"samtools view -b -r {p} {args.sample}.trimmed.rg.sorted.bam -o {args.sample}.{p}.trimmed.rg.sorted.bam"
+        )
 
-            cmds.append(f"samtools index {args.sample}.{p}.trimmed.rg.sorted.bam")
+        cmds.append(f"samtools index {args.sample}.{p}.trimmed.rg.sorted.bam")
 
-            cmds.append(
-                f"run_clair3.sh --enable_long_indel --chunk_size=10000 --haploid_precise --no_phasing_for_fa --bam_fn='{args.sample}.{p}.trimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs"
-            )
+        cmds.append(
+            f"run_clair3.sh --enable_long_indel --chunk_size=10000 --haploid_precise --no_phasing_for_fa --bam_fn='{args.sample}.{p}.trimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs"
+        )
 
-            cmds.append(
-                f"bgzip -dc {args.sample}_rg_{p}/merge_output.vcf.gz > {args.sample}.{p}.vcf"
-            )
+        cmds.append(
+            f"bgzip -dc {args.sample}_rg_{p}/merge_output.vcf.gz > {args.sample}.{p}.vcf"
+        )
 
     # 7) merge the called variants for each read group
     merge_vcf_cmd = "artic_vcf_merge %s %s 2> %s.primersitereport.txt" % (
