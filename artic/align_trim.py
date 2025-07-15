@@ -79,6 +79,11 @@ def trim(segment, primer_pos, end, verbose=False):
     vernose : bool
         If True, will print soft masking info during trimming
     """
+    if verbose:
+        print(
+            f"{segment.query_name}: Trimming {'end' if end else 'start'} of read to primer position {primer_pos}",
+            file=sys.stderr,
+        )
     # get a copy of the cigar tuples to work with
     cigar = copy(segment.cigartuples)
 
@@ -99,11 +104,14 @@ def trim(segment, primer_pos, end, verbose=False):
             else:
                 flag, length = cigar.pop(0)
             if verbose:
-                print("Chomped a %s, %s" % (flag, length), file=sys.stderr)
+                print(
+                    f"{segment.query_name}: Chomped a {flag}, {length}",
+                    file=sys.stderr,
+                )
         except IndexError:
             if verbose:
                 print(
-                    "Ran out of cigar during soft masking - completely masked read will be ignored",
+                    f"{segment.query_name}: Ran out of cigar during soft masking - completely masked read will be ignored",
                     file=sys.stderr,
                 )
             break
@@ -128,10 +136,13 @@ def trim(segment, primer_pos, end, verbose=False):
     # calculate how many extra matches are needed in the CIGAR
     extra = abs(pos - primer_pos)
     if verbose:
-        print("extra %s" % (extra), file=sys.stderr)
+        print(f"{segment.query_name}: extra {extra}", file=sys.stderr)
     if extra:
         if verbose:
-            print("Inserted a %s, %s" % (0, extra), file=sys.stderr)
+            print(
+                f"{segment.query_name}: Inserted a 0, {extra}",
+                file=sys.stderr,
+            )
         if end:
             cigar.append((0, extra))
         else:
@@ -144,13 +155,16 @@ def trim(segment, primer_pos, end, verbose=False):
         # update the position of the leftmost mappinng base
         segment.pos = pos - extra
         if verbose:
-            print("New pos: %s" % (segment.pos), file=sys.stderr)
+            print(
+                f"{segment.query_name}: New pos - {segment.pos}",
+                file=sys.stderr,
+            )
 
         # if proposed softmask leads straight into a deletion, shuffle leftmost mapping base along and ignore the deletion
         if cigar[0][0] == 2:
             if verbose:
                 print(
-                    "softmask created a leading deletion in the CIGAR, shuffling the alignment",
+                    f"{segment.query_name}: softmask created a leading deletion in the CIGAR, shuffling the alignment",
                     file=sys.stderr,
                 )
             while 1:
@@ -168,7 +182,13 @@ def trim(segment, primer_pos, end, verbose=False):
 
     # check the new CIGAR and replace the old one
     if cigar[0][1] <= 0 or cigar[-1][1] <= 0:
-        raise ("invalid cigar operation created - possibly due to INDEL in primer")
+        if verbose:
+            print(
+                f"{segment.query_name}: invalid cigar operation created - possibly due to INDEL in primer",
+                file=sys.stderr,
+            )
+        return
+
     segment.cigartuples = cigar
     return
 
@@ -195,16 +215,22 @@ def handle_segment(
     # filter out unmapped and supplementary alignment segments
     if segment.is_unmapped:
         if args.verbose:
-            print("%s skipped as unmapped" % (segment.query_name), file=sys.stderr)
+            print(
+                f"{segment.query_name}: {segment.query_name} skipped as unmapped",
+                file=sys.stderr,
+            )
         return False
     if segment.is_supplementary:
         if args.verbose:
-            print("%s skipped as supplementary" % (segment.query_name), file=sys.stderr)
+            print(
+                f"{segment.query_name}: {segment.query_name} skipped as supplementary",
+                file=sys.stderr,
+            )
         return False
     if segment.mapping_quality < min_mapq:
         if args.verbose:
             print(
-                "%s skipped as mapping quality below threshold" % (segment.query_name),
+                f"{segment.query_name}: skipped as mapping quality below threshold",
                 file=sys.stderr,
             )
         return False
@@ -230,7 +256,7 @@ def handle_segment(
     if not p1 or not p2:
         if args.verbose:
             print(
-                "%s skipped as no primer found for segment" % (segment.query_name),
+                f"{segment.query_name}: skipped as no primer found for segment",
                 file=sys.stderr,
             )
         return False
@@ -260,9 +286,9 @@ def handle_segment(
             "ReferenceEnd": segment.reference_end,
             "PrimerPair": f"{p1[2]['Primer_ID']}_{p2[2]['Primer_ID']}",
             "Primer1": p1[2]["Primer_ID"],
-            "Primer1Start": abs(p1[1]),
+            "Primer1Start": p1[2]["start"],
             "Primer2": p2[2]["Primer_ID"],
-            "Primer2Start": abs(p2[1]),
+            "Primer2Start": p2[2]["start"],
             "IsSecondary": segment.is_secondary,
             "IsSupplementary": segment.is_supplementary,
             "Start": p1[2]["start"],
@@ -275,15 +301,10 @@ def handle_segment(
     if args.remove_incorrect_pairs and not correctly_paired:
         if args.verbose:
             print(
-                "%s skipped as not correctly paired" % (segment.query_name),
+                f"{segment.query_name}: skipped as not correctly paired",
                 file=sys.stderr,
             )
         return False
-
-    if args.verbose:
-        # Dont screw with the order of the dict
-        report_str = "\t".join(str(x) for x in report.values())
-        print(report_str, file=sys.stderr)
 
     # get the primer positions
     if args.trim_primers:
@@ -299,15 +320,12 @@ def handle_segment(
             trim(segment, p1_position, False, args.verbose)
             if args.verbose:
                 print(
-                    "ref start %s >= primer_position %s"
-                    % (segment.reference_start, p1_position),
+                    f"{segment.query_name}: ref start {segment.reference_start} >= primer_position {p1_position}",
                     file=sys.stderr,
                 )
         except Exception as e:
             print(
-                "problem soft masking left primer in {} (error: {}), skipping".format(
-                    segment.query_name, e
-                ),
+                f"{segment.query_name}: problem soft masking left primer (error: {e}), skipping",
                 file=sys.stderr,
             )
             return False
@@ -318,15 +336,12 @@ def handle_segment(
             trim(segment, p2_position, True, args.verbose)
             if args.verbose:
                 print(
-                    "ref start %s >= primer_position %s"
-                    % (segment.reference_start, p2_position),
+                    f"{segment.query_name}: ref start {segment.reference_start} >= primer_position {p2_position}",
                     file=sys.stderr,
                 )
         except Exception as e:
             print(
-                "problem soft masking right primer in {} (error: {}), skipping".format(
-                    segment.query_name, e
-                ),
+                f"{segment.query_name}: problem soft masking right primer (error: {e}), skipping",
                 file=sys.stderr,
             )
             return False
@@ -335,8 +350,7 @@ def handle_segment(
     if "M" not in segment.cigarstring:
         if args.verbose:
             print(
-                "%s dropped as does not match reference post masking"
-                % (segment.query_name),
+                f"{segment.query_name}:  dropped as does not match reference post masking",
                 file=sys.stderr,
             )
         return False
@@ -366,9 +380,10 @@ def handle_paired_segment(
     segment1, segment2 = segments
 
     if not segment1 or not segment2:
+        segment = segment1 if segment1 else segment2
         if args.verbose:
             print(
-                "Segment pair skipped as at least one segment in pair does not exist",
+                f"{segment.query_name}: Pair skipped as at least one segment in pair does not exist",
                 file=sys.stderr,
             )
         return False
@@ -377,7 +392,7 @@ def handle_paired_segment(
     if segment1.is_unmapped or segment2.is_unmapped:
         if args.verbose:
             print(
-                "Segment pair: %s skipped as unmapped" % (segment1.query_name),
+                f"{segment1.query_name}: Segment pair skipped as one of pair is unmapped",
                 file=sys.stderr,
             )
         return False
@@ -385,7 +400,7 @@ def handle_paired_segment(
     if segment1.is_supplementary or segment2.is_supplementary:
         if args.verbose:
             print(
-                "Segment pair: %s skipped as supplementary" % (segment1.query_name),
+                f"{segment1.query_name}: Pair skipped as at least one of pair is supplementary",
                 file=sys.stderr,
             )
         return False
@@ -393,8 +408,7 @@ def handle_paired_segment(
     if segment1.mapping_quality < min_mapq or segment2.mapping_quality < min_mapq:
         if args.verbose:
             print(
-                "Segment pair: %s skipped as mapping quality below threshold"
-                % (segment1.query_name),
+                f"{segment1.query_name}: Pair skipped as at least one mapping quality of pair is below threshold",
                 file=sys.stderr,
             )
         return False
@@ -418,8 +432,7 @@ def handle_paired_segment(
     if not p1 or not p2:
         if args.verbose:
             print(
-                "Paired segment: %s skipped as no primer found for segment"
-                % (segment1.query_name),
+                f"{segment1.query_name}: Pair skipped as no primer found for at least one read in pair",
                 file=sys.stderr,
             )
         return False
@@ -451,9 +464,9 @@ def handle_paired_segment(
             "ReferenceEnd": segment2.reference_end,
             "PrimerPair": f"{p1[2]['Primer_ID']}_{p2[2]['Primer_ID']}",
             "Primer1": p1[2]["Primer_ID"],
-            "Primer1Start": abs(p1[1]),
+            "Primer1Start": p1[2]["start"],
             "Primer2": p2[2]["Primer_ID"],
-            "Primer2Start": abs(p2[1]),
+            "Primer2Start": p2[2]["start"],
             "IsSecondary": segment1.is_secondary,
             "IsSupplementary": segment1.is_supplementary,
             "Start": p1[2]["start"],
@@ -466,16 +479,10 @@ def handle_paired_segment(
     if args.remove_incorrect_pairs and not correctly_paired:
         if args.verbose:
             print(
-                "Paired segment: %s skipped as not correctly paired"
-                % (segment1.query_name),
+                f"{segment1.query_name}: Pair skipped due to primers not being correctly paired between reads of pair",
                 file=sys.stderr,
             )
         return False
-
-    if args.verbose:
-        # Dont screw with the order of the dict
-        report_str = "\t".join(str(x) for x in report.values())
-        print(report_str, file=sys.stderr)
 
     # get the primer positions
     if args.trim_primers:
@@ -491,15 +498,27 @@ def handle_paired_segment(
             trim(segment1, p1_position, False, args.verbose)
             if args.verbose:
                 print(
-                    "ref start %s >= primer_position %s"
-                    % (segment1.reference_start, p1_position),
+                    f"{segment1.query_name}: ref start {segment1.reference_start} >= primer_position {p1_position}",
                     file=sys.stderr,
                 )
         except Exception as e:
             print(
-                "problem soft masking left primer in {} (error: {}), skipping".format(
-                    segment1.query_name, e
-                ),
+                f"{segment1.query_name}: Problem soft masking left primer (error: {e}), skipping",
+                file=sys.stderr,
+            )
+            return False
+
+    elif segment1.reference_end > p2_position:
+        try:
+            trim(segment1, p2_position, True, args.verbose)
+            if args.verbose:
+                print(
+                    f"{segment1.query_name}: ref_end {segment1.reference_end} >= primer_position {p2_position}",
+                    file=sys.stderr,
+                )
+        except Exception as e:
+            print(
+                f"{segment1.query_name}: Problem soft masking right primer (error: {e}), skipping",
                 file=sys.stderr,
             )
             return False
@@ -510,15 +529,26 @@ def handle_paired_segment(
             trim(segment2, p2_position, True, args.verbose)
             if args.verbose:
                 print(
-                    "ref start %s >= primer_position %s"
-                    % (segment2.reference_start, p2_position),
+                    f"{segment1.query_name}: ref_start {segment2.reference_start} >= primer_position {p2_position}",
                     file=sys.stderr,
                 )
         except Exception as e:
             print(
-                "problem soft masking right primer in {} (error: {}), skipping".format(
-                    segment1.query_name, e
-                ),
+                f"{segment1.query_name}: Problem soft masking right primer (error: {e}), skipping",
+                file=sys.stderr,
+            )
+            return False
+    elif segment2.reference_start < p1_position:
+        try:
+            trim(segment2, p1_position, False, args.verbose)
+            if args.verbose:
+                print(
+                    f"{segment1.query_name}: ref_end {segment2.reference_end} >= primer_position {p1_position}",
+                    file=sys.stderr,
+                )
+        except Exception as e:
+            print(
+                f"{segment1.query_name}: Problem soft masking left primer (error: {e}), skipping",
                 file=sys.stderr,
             )
             return False
@@ -527,8 +557,7 @@ def handle_paired_segment(
     if "M" not in segment1.cigarstring or "M" not in segment2.cigarstring:
         if args.verbose:
             print(
-                "Paired segment: %s dropped as does not match reference post masking"
-                % (segment1.query_name),
+                f"{segment1.query_name}: Paired segment dropped as does not match reference post masking",
                 file=sys.stderr,
             )
         return False
@@ -613,7 +642,7 @@ def normalise(trimmed_segments: dict, normalise: int, bed: list, verbose: bool =
     for chrom, amplicon_dict in trimmed_segments.items():
         for amplicon, segments in amplicon_dict.items():
             if amplicon not in amplicons[chrom]:
-                raise ValueError(f"Segment {amplicon} not found in primer scheme file")
+                raise ValueError(f"Amplicon {amplicon} not found in primer scheme file")
 
             desired_depth = np.full_like(
                 (amplicons[chrom][amplicon]["length"],), normalise, dtype=int
@@ -952,8 +981,8 @@ def main():
     parser.add_argument(
         "--no-read-groups",
         dest="no_read_groups",
-        action="store_true",
         help="Do not divide reads into groups in SAM output",
+        action="store_true",
     )
     parser.add_argument("--verbose", action="store_true", help="Debug mode")
     parser.add_argument("--remove-incorrect-pairs", action="store_true")
