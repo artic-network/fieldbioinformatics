@@ -140,7 +140,7 @@ def trim(segment, primer_pos, end, verbose=False):
     if extra:
         if verbose:
             print(
-                f"{segment.query_name}: Inserted a 0, {extra}" % (0, extra),
+                f"{segment.query_name}: Inserted a 0, {extra}",
                 file=sys.stderr,
             )
         if end:
