@@ -380,9 +380,10 @@ def handle_paired_segment(
     segment1, segment2 = segments
 
     if not segment1 or not segment2:
+        segment = segment1 if segment1 else segment2
         if args.verbose:
             print(
-                f"{segment1.query_name}: Pair skipped as at least one segment in pair does not exist",
+                f"{segment.query_name}: Pair skipped as at least one segment in pair does not exist",
                 file=sys.stderr,
             )
         return False
