@@ -79,6 +79,11 @@ def trim(segment, primer_pos, end, verbose=False):
     vernose : bool
         If True, will print soft masking info during trimming
     """
+    if verbose:
+        print(
+            f"Trimming segment {segment.query_name} {'end' if end else 'start'} to primer position {primer_pos}",
+            file=sys.stderr,
+        )
     # get a copy of the cigar tuples to work with
     cigar = copy(segment.cigartuples)
 
@@ -260,9 +265,9 @@ def handle_segment(
             "ReferenceEnd": segment.reference_end,
             "PrimerPair": f"{p1[2]['Primer_ID']}_{p2[2]['Primer_ID']}",
             "Primer1": p1[2]["Primer_ID"],
-            "Primer1Start": abs(p1[1]),
+            "Primer1Start": p1[2]["start"],
             "Primer2": p2[2]["Primer_ID"],
-            "Primer2Start": abs(p2[1]),
+            "Primer2Start": p2[2]["start"],
             "IsSecondary": segment.is_secondary,
             "IsSupplementary": segment.is_supplementary,
             "Start": p1[2]["start"],
@@ -294,6 +299,12 @@ def handle_segment(
         p2_position = p2[2]["end"]
 
     # softmask the alignment if left primer start/end inside alignment
+    if args.verbose:
+        print(
+            f"Trimming segment (start) {segment.query_name} refstart: {segment.reference_start} primer_end: {p1_position}",
+            file=sys.stderr,
+        )
+
     if segment.reference_start < p1_position:
         try:
             trim(segment, p1_position, False, args.verbose)
@@ -313,6 +324,12 @@ def handle_segment(
             return False
 
     # softmask the alignment if right primer start/end inside alignment
+    if args.verbose:
+        print(
+            f"Trimming segment (end) {segment.query_name} refstart: {segment.reference_end} primer_start: {p2_position}",
+            file=sys.stderr,
+        )
+
     if segment.reference_end > p2_position:
         try:
             trim(segment, p2_position, True, args.verbose)
@@ -451,9 +468,9 @@ def handle_paired_segment(
             "ReferenceEnd": segment2.reference_end,
             "PrimerPair": f"{p1[2]['Primer_ID']}_{p2[2]['Primer_ID']}",
             "Primer1": p1[2]["Primer_ID"],
-            "Primer1Start": abs(p1[1]),
+            "Primer1Start": p1[2]["start"],
             "Primer2": p2[2]["Primer_ID"],
-            "Primer2Start": abs(p2[1]),
+            "Primer2Start": p2[2]["start"],
             "IsSecondary": segment1.is_secondary,
             "IsSupplementary": segment1.is_supplementary,
             "Start": p1[2]["start"],
@@ -472,11 +489,6 @@ def handle_paired_segment(
             )
         return False
 
-    if args.verbose:
-        # Dont screw with the order of the dict
-        report_str = "\t".join(str(x) for x in report.values())
-        print(report_str, file=sys.stderr)
-
     # get the primer positions
     if args.trim_primers:
         p1_position = p1[2]["end"]
@@ -486,6 +498,12 @@ def handle_paired_segment(
         p2_position = p2[2]["end"]
 
     # softmask the alignment if left primer start/end inside alignment
+    if args.verbose:
+        print(
+            f"Trimming segment (start) {segment1.query_name} refstart: {segment1.reference_start} refend: {segment1.reference_end} primer_end: {p1_position}",
+            file=sys.stderr,
+        )
+
     if segment1.reference_start < p1_position:
         try:
             trim(segment1, p1_position, False, args.verbose)
@@ -504,7 +522,30 @@ def handle_paired_segment(
             )
             return False
 
+    elif segment1.reference_end > p2_position:
+        try:
+            trim(segment1, p2_position, True, args.verbose)
+            if args.verbose:
+                print(
+                    "ref end %s >= primer_position %s"
+                    % (segment1.reference_end, p2_position),
+                    file=sys.stderr,
+                )
+        except Exception as e:
+            print(
+                "problem soft masking right primer in {} (error: {}), skipping".format(
+                    segment1.query_name, e
+                ),
+                file=sys.stderr,
+            )
+            return False
+
     # softmask the alignment if right primer start/end inside alignment
+    if args.verbose:
+        print(
+            f"Trimming segment (end) {segment2.query_name} refstart: {segment1.reference_start} refend: {segment1.reference_end} primer_start: {p2_position}",
+            file=sys.stderr,
+        )
     if segment2.reference_end > p2_position:
         try:
             trim(segment2, p2_position, True, args.verbose)
@@ -517,6 +558,23 @@ def handle_paired_segment(
         except Exception as e:
             print(
                 "problem soft masking right primer in {} (error: {}), skipping".format(
+                    segment1.query_name, e
+                ),
+                file=sys.stderr,
+            )
+            return False
+    elif segment2.reference_start < p1_position:
+        try:
+            trim(segment2, p1_position, False, args.verbose)
+            if args.verbose:
+                print(
+                    "ref end %s >= primer_position %s"
+                    % (segment2.reference_end, p1_position),
+                    file=sys.stderr,
+                )
+        except Exception as e:
+            print(
+                "problem soft masking left primer in {} (error: {}), skipping".format(
                     segment1.query_name, e
                 ),
                 file=sys.stderr,
