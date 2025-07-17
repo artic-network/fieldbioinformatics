@@ -14,146 +14,143 @@ import csv
 import json
 
 
-class clair3_manifest:
-
-    def __init__(self):
-        self.models = [
-            {
-                "name": "r1041_e82_260bps_fast_g632",
-                "model_fname": "r1041_e82_260bps_fast_g632.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_fast_g632.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_fast_g632",
-                "model_fname": "r1041_e82_400bps_fast_g632.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_fast_g632.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_sup_g615",
-                "model_fname": "r1041_e82_400bps_sup_g615.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_g615.tar.gz",
-            },
-            {
-                "name": "r1041_e82_260bps_hac_g632",
-                "model_fname": "r1041_e82_260bps_hac_g632.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_hac_g632.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_hac_g615",
-                "model_fname": "r1041_e82_400bps_hac_g615.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_g615.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_sup_v400",
-                "model_fname": "r1041_e82_400bps_sup_v400.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v400.tar.gz",
-            },
-            {
-                "name": "r1041_e82_260bps_hac_v400",
-                "model_fname": "r1041_e82_260bps_hac_v400.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_hac_v400.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_hac_g632",
-                "model_fname": "r1041_e82_400bps_hac_g632.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_g632.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_sup_v410",
-                "model_fname": "r1041_e82_400bps_sup_v410.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v410.tar.gz",
-            },
-            {
-                "name": "r1041_e82_260bps_hac_v410",
-                "model_fname": "r1041_e82_260bps_hac_v410.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_hac_v410.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_hac_v400",
-                "model_fname": "r1041_e82_400bps_hac_v400.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v400.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_sup_v420",
-                "model_fname": "r1041_e82_400bps_sup_v420.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v420.tar.gz",
-            },
-            {
-                "name": "r1041_e82_260bps_sup_g632",
-                "model_fname": "r1041_e82_260bps_sup_g632.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_sup_g632.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_hac_v410",
-                "model_fname": "r1041_e82_400bps_hac_v410.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v410.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_sup_v430",
-                "model_fname": "r1041_e82_400bps_sup_v430.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v430.tar.gz",
-            },
-            {
-                "name": "r1041_e82_260bps_sup_v400",
-                "model_fname": "r1041_e82_260bps_sup_v400.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_sup_v400.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_hac_v420",
-                "model_fname": "r1041_e82_400bps_hac_v420.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v420.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_sup_v500",
-                "model_fname": "r1041_e82_400bps_sup_v500.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v500.tar.gz",
-            },
-            {
-                "name": "r1041_e82_260bps_sup_v410",
-                "model_fname": "r1041_e82_260bps_sup_v410.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_sup_v410.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_hac_v430",
-                "model_fname": "r1041_e82_400bps_hac_v430.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v430.tar.gz",
-            },
-            {
-                "name": "r104_e81_hac_g5015",
-                "model_fname": "r104_e81_hac_g5015.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r104_e81_hac_g5015.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_hac_v500",
-                "model_fname": "r1041_e82_400bps_hac_v500.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v500.tar.gz",
-            },
-            {
-                "name": "r104_e81_sup_g5015",
-                "model_fname": "r104_e81_sup_g5015.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r104_e81_sup_g5015.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_hac_v520",
-                "model_fname": "r1041_e82_400bps_hac_v520.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v520.tar.gz",
-            },
-            {
-                "name": "r1041_e82_400bps_sup_v520",
-                "model_fname": "r1041_e82_400bps_sup_v520.tar.gz",
-                "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v520.tar.gz",
-            },
-            {
-                "name": "r941_prom_sup_g5014",
-                "model_fname": "r941_prom_sup_g5014.tar.gz",
-                "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models/r941_prom_sup_g5014.tar.gz",
-            },
-            {
-                "name": "r941_prom_hac_g360+g422",
-                "model_fname": "r941_prom_hac_g360+g422.tar.gz",
-                "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models/r941_prom_hac_g360+g422.tar.gz",
-            },
-        ]
+CLAIR3_MANIFEST = [
+    {
+        "name": "r1041_e82_260bps_fast_g632",
+        "model_fname": "r1041_e82_260bps_fast_g632.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_fast_g632.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_fast_g632",
+        "model_fname": "r1041_e82_400bps_fast_g632.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_fast_g632.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_sup_g615",
+        "model_fname": "r1041_e82_400bps_sup_g615.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_g615.tar.gz",
+    },
+    {
+        "name": "r1041_e82_260bps_hac_g632",
+        "model_fname": "r1041_e82_260bps_hac_g632.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_hac_g632.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_hac_g615",
+        "model_fname": "r1041_e82_400bps_hac_g615.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_g615.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_sup_v400",
+        "model_fname": "r1041_e82_400bps_sup_v400.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v400.tar.gz",
+    },
+    {
+        "name": "r1041_e82_260bps_hac_v400",
+        "model_fname": "r1041_e82_260bps_hac_v400.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_hac_v400.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_hac_g632",
+        "model_fname": "r1041_e82_400bps_hac_g632.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_g632.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_sup_v410",
+        "model_fname": "r1041_e82_400bps_sup_v410.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v410.tar.gz",
+    },
+    {
+        "name": "r1041_e82_260bps_hac_v410",
+        "model_fname": "r1041_e82_260bps_hac_v410.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_hac_v410.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_hac_v400",
+        "model_fname": "r1041_e82_400bps_hac_v400.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v400.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_sup_v420",
+        "model_fname": "r1041_e82_400bps_sup_v420.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v420.tar.gz",
+    },
+    {
+        "name": "r1041_e82_260bps_sup_g632",
+        "model_fname": "r1041_e82_260bps_sup_g632.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_sup_g632.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_hac_v410",
+        "model_fname": "r1041_e82_400bps_hac_v410.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v410.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_sup_v430",
+        "model_fname": "r1041_e82_400bps_sup_v430.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v430.tar.gz",
+    },
+    {
+        "name": "r1041_e82_260bps_sup_v400",
+        "model_fname": "r1041_e82_260bps_sup_v400.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_sup_v400.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_hac_v420",
+        "model_fname": "r1041_e82_400bps_hac_v420.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v420.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_sup_v500",
+        "model_fname": "r1041_e82_400bps_sup_v500.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v500.tar.gz",
+    },
+    {
+        "name": "r1041_e82_260bps_sup_v410",
+        "model_fname": "r1041_e82_260bps_sup_v410.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_sup_v410.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_hac_v430",
+        "model_fname": "r1041_e82_400bps_hac_v430.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v430.tar.gz",
+    },
+    {
+        "name": "r104_e81_hac_g5015",
+        "model_fname": "r104_e81_hac_g5015.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r104_e81_hac_g5015.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_hac_v500",
+        "model_fname": "r1041_e82_400bps_hac_v500.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v500.tar.gz",
+    },
+    {
+        "name": "r104_e81_sup_g5015",
+        "model_fname": "r104_e81_sup_g5015.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r104_e81_sup_g5015.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_hac_v520",
+        "model_fname": "r1041_e82_400bps_hac_v520.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v520.tar.gz",
+    },
+    {
+        "name": "r1041_e82_400bps_sup_v520",
+        "model_fname": "r1041_e82_400bps_sup_v520.tar.gz",
+        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v520.tar.gz",
+    },
+    {
+        "name": "r941_prom_sup_g5014",
+        "model_fname": "r941_prom_sup_g5014.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models/r941_prom_sup_g5014.tar.gz",
+    },
+    {
+        "name": "r941_prom_hac_g360+g422",
+        "model_fname": "r941_prom_hac_g360+g422.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models/r941_prom_hac_g360+g422.tar.gz",
+    },
+]
 
 
 def getPrimerDirection(primerID):
@@ -842,8 +839,7 @@ def choose_model(read_file: str) -> dict:
         dict: The chosen clair3 model as a dictionary
     """
 
-    models_class = clair3_manifest()
-    models = models_class.models
+    models = CLAIR3_MANIFEST
 
     if read_file.endswith(".gz"):
         with gzip.open(
