@@ -1,0 +1,51 @@
+[build-system]
+requires = [
+    "setuptools>=61.2",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "artic"
+version = "1.7.5"
+authors = [
+    { name = "Nick Loman", email = "n.j.loman@bham.ac.uk" },
+]
+maintainers = [
+    { name = "Sam Wilkinson", email = "s.a.j.wilkinson@bham.ac.uk" },
+]
+description = "``artic`` is a pipeline for working with viral amplicon sequencing data"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+requires-python = ">=3.7"
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[project.scripts]
+artic = "artic.pipeline:main"
+align_trim = "artic.align_trim:main"
+margin_cons = "artic.margin_cons:main"
+vcfextract = "artic.vcfextract:main"
+artic_vcf_merge = "artic.vcf_merge:main"
+artic_vcf_filter = "artic.vcf_filter:main"
+artic_make_depth_mask = "artic.make_depth_mask:main"
+artic_fasta_header = "artic.fasta_header:main"
+artic_mask = "artic.mask:main"
+artic_get_models = "artic.get_models:main"
+artic_get_scheme = "artic.get_scheme:main"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+license-files = [
+    "LICENSE",
+]
+
+[tool.setuptools.packages.find]
+namespaces = false
