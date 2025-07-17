@@ -4,7 +4,7 @@ from pathlib import Path
 import tarfile
 import sys
 import shutil
-from artic.utils import clair3_manifest
+from artic.utils import CLAIR3_MANIFEST
 
 
 def download_file(url: str, local_path: Path):
@@ -62,8 +62,7 @@ def main():
             file=sys.stderr,
         )
 
-    model_manifest = clair3_manifest()
-    models = model_manifest.models
+    models = CLAIR3_MANIFEST
 
     for model in models:
 

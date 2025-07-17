@@ -76,7 +76,7 @@ def run(parser, args):
     if not os.path.exists(full_model_path):
         print(
             colored.red(
-                f"Model '{model['name']}' not found in '{model_path}', please run 'artic_get_models' to download the clair3 models from ONT"
+                f"Model '{str(args.model) if args.model else model['name']}' not found in '{model_path}', please run 'artic_get_models' to download the clair3 models from ONT"
             ),
             file=sys.stderr,
         )

@@ -8,6 +8,7 @@ import sys
 import os
 
 from importlib.metadata import version
+from artic.utils import CLAIR3_MANIFEST
 
 
 def run_subtool(parser, args):
@@ -72,6 +73,8 @@ def init_pipeline_parser():
     parser_minion.add_argument(
         "--model",
         help="The model to use for clair3, if not provided the pipeline will try to figure it out the appropriate model from the read fastq",
+        type=str,
+        choices=[m["name"] for m in CLAIR3_MANIFEST],
     )
     parser_minion.add_argument(
         "--model-dir",
