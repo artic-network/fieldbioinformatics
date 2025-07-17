@@ -14,7 +14,7 @@ def test_pipeline_parser():
     dummyCLI = [
         "minion",
         "--model",
-        "some_nonsense_model",
+        "r1041_e82_400bps_sup_v420",
         "--read-file",
         "some_reads.fastq",
         "some-prefix",
