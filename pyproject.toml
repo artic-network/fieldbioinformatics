@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "artic"
-version = "1.7.5"
+version = "1.8.0"
 authors = [
     { name = "Nick Loman", email = "n.j.loman@bham.ac.uk" },
 ]
