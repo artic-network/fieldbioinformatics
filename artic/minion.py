@@ -5,6 +5,7 @@ import os
 import sys
 import time
 from artic.utils import get_scheme, choose_model
+from primalbedtools.scheme import Scheme
 
 
 def run(parser, args):
@@ -121,7 +122,8 @@ def run(parser, args):
         raise SystemExit(1)
 
     ## collect the primer pools
-    pools = set([row["PoolName"] for row in read_bed_file(bed)] + ["unmatched"])
+    scheme = Scheme.from_file(bed)
+    pools = set([row.pool for row in scheme.bedlines] + ["unmatched"])
 
     ## create a holder to keep the pipeline commands in
     cmds = []
