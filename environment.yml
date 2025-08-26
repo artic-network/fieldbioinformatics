@@ -16,9 +16,10 @@ dependencies:
   - pandas
   - pip
   - pysam
-  - pytest 
+  - pytest
   - cyvcf2
   - requests
   - samtools
   - tqdm
   - seqtk
+  - align_trim

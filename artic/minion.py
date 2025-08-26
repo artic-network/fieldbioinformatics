@@ -141,26 +141,26 @@ def run(parser, args):
     normalise_string = f"--normalise {args.normalise}" if args.normalise else ""
 
     incorrect_pairs_string = (
-        "--remove-incorrect-pairs" if not args.allow_mismatched_primers else ""
+        "--allow-incorrect-pairs" if args.allow_mismatched_primers else ""
     )
 
     cmds.append(
-        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} {incorrect_pairs_string} --min-mapq {args.min_mapq} --report {args.sample}.alignreport.csv < {args.sample}.sorted.bam > {args.sample}.trimmed.rg.sam"
+        f"align_trim {normalise_string} {bed} --no-trim-primers --primer-match-threshold {args.primer_match_threshold} {incorrect_pairs_string} --min-mapq {args.min_mapq} --report {args.sample}.alignreport.tsv --samfile {args.sample}.sorted.bam -o {args.sample}.trimmed.rg.bam"
     )
 
     cmds.append(
-        f"samtools sort -T {args.sample} {args.sample}.trimmed.rg.sam -o {args.sample}.trimmed.rg.sorted.bam"
+        f"samtools sort -T {args.sample} {args.sample}.trimmed.rg.bam -o {args.sample}.trimmed.rg.sorted.bam"
     )
-    cmds.append(f"rm {args.sample}.trimmed.rg.sam")
+    cmds.append(f"rm {args.sample}.trimmed.rg.bam")
 
     cmds.append(
-        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --min-mapq {args.min_mapq} {incorrect_pairs_string} --trim-primers --report {args.sample}.alignreport.csv --amp-depth-report {args.sample}.amplicon_depths.tsv < {args.sample}.sorted.bam > {args.sample}.primertrimmed.rg.sam"
+        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --min-mapq {args.min_mapq} {incorrect_pairs_string} --report {args.sample}.alignreport.tsv --amp-depth-report {args.sample}.amplicon_depths.tsv --samfile {args.sample}.sorted.bam -o {args.sample}.primertrimmed.rg.bam"
     )
 
     cmds.append(
-        f"samtools sort -T {args.sample} {args.sample}.primertrimmed.rg.sam -o {args.sample}.primertrimmed.rg.sorted.bam"
+        f"samtools sort -T {args.sample} {args.sample}.primertrimmed.rg.bam -o {args.sample}.primertrimmed.rg.sorted.bam"
     )
-    cmds.append(f"rm {args.sample}.primertrimmed.rg.sam")
+    cmds.append(f"rm {args.sample}.primertrimmed.rg.bam")
 
     cmds.append(f"samtools index {args.sample}.trimmed.rg.sorted.bam")
     cmds.append(f"samtools index {args.sample}.primertrimmed.rg.sorted.bam")
