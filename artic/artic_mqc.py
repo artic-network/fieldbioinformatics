@@ -3,7 +3,9 @@ import json
 import re
 import sys
 
-from artic.utils import read_bed_file
+from primalbedtools.scheme import Scheme
+from primalbedtools.bedfiles import BedLine, merge_primers
+from primalbedtools.amplicons import Amplicon, create_amplicons
 
 # Alignment_Length_Threshold drops binned reads that are <X% of amplicon length)
 Alignment_Length_Threshold = 0.95
@@ -71,13 +73,18 @@ def getSchemeAmplicons(schemeFile):
         A dict of amplicon names -> zeroed counter
     """
     amplicons = {}
-    primer_scheme = read_bed_file(schemeFile)
-    for primer in primer_scheme:
+
+    scheme = Scheme.from_file(schemeFile)
+
+    # Merge the primers
+    scheme.bedlines = merge_primers(scheme.bedlines)
+
+    for primer in scheme.bedlines:
         amplicon = ""
-        if primer["direction"] == "+":
-            amplicon = primer["Primer_ID"].split("_LEFT")[0]
+        if primer.strand == "+":
+            amplicon = primer.primername.split("_LEFT")[0]
         else:
-            amplicon = primer["Primer_ID"].split("_RIGHT")[0]
+            amplicon = primer.primername.split("_RIGHT")[0]
         if amplicon not in amplicons:
             amplicons[amplicon] = 0
         amplicons[amplicon] += 1

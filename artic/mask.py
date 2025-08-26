@@ -3,21 +3,9 @@
 from Bio import SeqIO
 from cyvcf2 import VCF
 import argparse
-import pandas as pd
 
-
-def read_3col_bed(fn):
-    # read the primer scheme into a pandas dataframe and run type, length and null checks
-    bedfile = pd.read_csv(
-        fn,
-        sep="\t",
-        header=None,
-        names=["chrom", "start", "end"],
-        dtype={"chrom": str, "start": int, "end": int},
-        usecols=(0, 1, 2),
-        skiprows=0,
-    )
-    return bedfile
+from primalbedtools.scheme import Scheme
+from primalbedtools.bedfiles import merge_primers
 
 
 def go(args):
@@ -26,10 +14,13 @@ def go(args):
     for k in seqs.keys():
         cons[k] = list(seqs[k].seq)
 
-    bedfile = read_3col_bed(args.maskfile)
-    for _, region in bedfile.iterrows():
-        for n in range(region["start"], region["end"]):
-            cons[region["chrom"]][n] = "N"
+    scheme = Scheme.from_file(args.maskfile)
+
+    scheme.bedlines = merge_primers(scheme.bedlines)
+
+    for region in scheme.bedlines:
+        for n in range(region.start, region.end):
+            cons[region.chrom][n] = "N"
 
     vcf_reader = VCF(args.maskvcf)
     for record in vcf_reader:

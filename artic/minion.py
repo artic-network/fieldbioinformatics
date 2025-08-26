@@ -4,7 +4,7 @@ from clint.textui import colored
 import os
 import sys
 import time
-from artic.utils import read_bed_file, get_scheme, choose_model
+from artic.utils import get_scheme, choose_model
 
 
 def run(parser, args):

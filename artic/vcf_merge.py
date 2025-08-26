@@ -2,17 +2,23 @@ from cyvcf2 import VCF, Writer
 import sys
 from operator import attrgetter
 from collections import defaultdict
-from artic.utils import read_bed_file
+
+from primalbedtools.scheme import Scheme
+from primalbedtools.bedfiles import merge_primers
 
 
 def vcf_merge(args):
-    bed = read_bed_file(args.bedfile)
+
+    scheme = Scheme.from_file(args.bedfile)
+
+    # Merge the primers
+    scheme.bedlines = merge_primers(scheme.bedlines)
 
     primer_map = defaultdict(dict)
 
-    for p in bed:
-        for n in range(p["start"], p["end"] + 1):
-            primer_map[p["PoolName"]][n] = p["Primer_ID"]
+    for p in scheme.bedlines:
+        for n in range(p.start, p.end + 1):
+            primer_map[p.pool][n] = p.primername
 
     template_vcf = None
 
