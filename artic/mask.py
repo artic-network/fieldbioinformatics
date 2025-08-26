@@ -11,16 +11,16 @@ def read_3col_bed(fn):
     with open(fn, "rt") as f:
         reader = csv.DictReader(f, fieldnames=["chrom", "start", "end"], delimiter="\t")
 
-    bedlines = []
-    for row in reader:
-        try:
-            row["start"] = int(row["start"])
-            row["end"] = int(row["end"])
-        except ValueError:
-            raise ValueError(
-                "The depth mask bedfile appears to be malformed, the start or end position cannot be converted to an integer"
-            )
-        bedlines.append(row)
+        bedlines = []
+        for row in reader:
+            try:
+                row["start"] = int(row["start"])
+                row["end"] = int(row["end"])
+            except ValueError:
+                raise ValueError(
+                    "The depth mask bedfile appears to be malformed, the start or end position cannot be converted to an integer"
+                )
+            bedlines.append(row)
 
     return bedlines
 
