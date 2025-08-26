@@ -3,21 +3,26 @@
 from Bio import SeqIO
 from cyvcf2 import VCF
 import argparse
-import pandas as pd
+import csv
 
 
 def read_3col_bed(fn):
     # read the primer scheme into a pandas dataframe and run type, length and null checks
-    bedfile = pd.read_csv(
-        fn,
-        sep="\t",
-        header=None,
-        names=["chrom", "start", "end"],
-        dtype={"chrom": str, "start": int, "end": int},
-        usecols=(0, 1, 2),
-        skiprows=0,
-    )
-    return bedfile
+    with open(fn, "rt") as f:
+        reader = csv.DictReader(f, fieldnames=["chrom", "start", "end"], delimiter="\t")
+
+        bedlines = []
+        for row in reader:
+            try:
+                row["start"] = int(row["start"])
+                row["end"] = int(row["end"])
+            except ValueError:
+                raise ValueError(
+                    "The depth mask bedfile appears to be malformed, the start or end position cannot be converted to an integer"
+                )
+            bedlines.append(row)
+
+    return bedlines
 
 
 def go(args):
@@ -27,9 +32,9 @@ def go(args):
         cons[k] = list(seqs[k].seq)
 
     bedfile = read_3col_bed(args.maskfile)
-    for _, region in bedfile.iterrows():
-        for n in range(region["start"], region["end"]):
-            cons[region["chrom"]][n] = "N"
+    for bedline in bedfile:
+        for n in range(bedline["start"], bedline["end"]):
+            cons[bedline["chrom"]][n] = "N"
 
     vcf_reader = VCF(args.maskvcf)
     for record in vcf_reader:

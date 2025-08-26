@@ -43,34 +43,6 @@ class Clair3Filter:
         return True
 
 
-# class MedakaFilter:
-#     def __init__(self, no_frameshifts, min_depth):
-#         self.no_frameshifts = no_frameshifts
-#         self.min_depth = min_depth
-#         self.min_variant_quality = 20
-
-#     def check_filter(self, v, min_depth):
-#         try:
-#             # We don't really care about the depth here, just skip it if it isn't there
-#             depth = v.INFO["DP"]
-#         except KeyError:
-#             depth = v.format("DP")[0][0]
-
-#         if depth < min_depth:
-#             return False
-
-#         if self.no_frameshifts and not in_frame(v):
-#             return False
-
-#         if v.num_het:
-#             return False
-
-#         if v.QUAL < self.min_variant_quality:
-#             return False
-
-#         return True
-
-
 def go(args):
     vcf_reader = VCF(args.inputvcf)
     vcf_writer = Writer(args.output_pass_vcf, vcf_reader, "w")
