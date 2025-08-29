@@ -147,15 +147,6 @@ def run(parser, args):
     )
 
     cmds.append(
-        f"align_trim {normalise_string} {bed} --no-trim-primers --primer-match-threshold {args.primer_match_threshold} {incorrect_pairs_string} --min-mapq {args.min_mapq} --report {args.sample}.alignreport.tsv --samfile {args.sample}.sorted.bam -o {args.sample}.trimmed.rg.bam"
-    )
-
-    cmds.append(
-        f"samtools sort -T {args.sample} {args.sample}.trimmed.rg.bam -o {args.sample}.trimmed.rg.sorted.bam"
-    )
-    cmds.append(f"rm {args.sample}.trimmed.rg.bam")
-
-    cmds.append(
         f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --min-mapq {args.min_mapq} {incorrect_pairs_string} --report {args.sample}.alignreport.tsv --amp-depth-report {args.sample}.amplicon_depths.tsv --samfile {args.sample}.sorted.bam -o {args.sample}.primertrimmed.rg.bam"
     )
 
@@ -164,7 +155,6 @@ def run(parser, args):
     )
     cmds.append(f"rm {args.sample}.primertrimmed.rg.bam")
 
-    cmds.append(f"samtools index {args.sample}.trimmed.rg.sorted.bam")
     cmds.append(f"samtools index {args.sample}.primertrimmed.rg.sorted.bam")
 
     # 6) do variant calling on each read group
@@ -174,13 +164,13 @@ def run(parser, args):
 
         # Split the BAM by read group
         cmds.append(
-            f"samtools view -b -r {p} {args.sample}.trimmed.rg.sorted.bam -o {args.sample}.{p}.trimmed.rg.sorted.bam"
+            f"samtools view -b -r {p} {args.sample}.primertrimmed.rg.sorted.bam -o {args.sample}.{p}.primertrimmed.rg.sorted.bam"
         )
 
-        cmds.append(f"samtools index {args.sample}.{p}.trimmed.rg.sorted.bam")
+        cmds.append(f"samtools index {args.sample}.{p}.primertrimmed.rg.sorted.bam")
 
         cmds.append(
-            f"run_clair3.sh --enable_long_indel --chunk_size=10000 --haploid_precise --no_phasing_for_fa --bam_fn='{args.sample}.{p}.trimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs"
+            f"run_clair3.sh --enable_long_indel --chunk_size=10000 --haploid_precise --no_phasing_for_fa --bam_fn='{args.sample}.{p}.primertrimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs"
         )
 
         cmds.append(
