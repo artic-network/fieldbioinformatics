@@ -22,5 +22,5 @@ dependencies:
   - samtools
   - tqdm
   - seqtk
-  - align_trim
+  - align_trim>=1.0.2
   - primalbedtools>=0.10.1
