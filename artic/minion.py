@@ -170,7 +170,7 @@ def run(parser, args):
         cmds.append(f"samtools index {args.sample}.{p}.primertrimmed.rg.sorted.bam")
 
         cmds.append(
-            f"run_clair3.sh --enable_long_indel --chunk_size=10000 --haploid_precise --no_phasing_for_fa --bam_fn='{args.sample}.{p}.primertrimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs"
+            f"run_clair3.sh --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --bam_fn='{args.sample}.{p}.primertrimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs"
         )
 
         cmds.append(
