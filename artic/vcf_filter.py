@@ -22,11 +22,17 @@ class Clair3Filter:
         self.min_depth = min_depth
         self.min_variant_quality = 10
         self.min_frameshift_quality = 30
+        self.min_allele_frequency = 0.6
 
     def check_filter(self, v):
         qual = v.QUAL
 
         if qual < self.min_variant_quality:
+            return False
+
+        # Filter out low allele frequency variants
+        allele_freq = v.INFO.get("AF")
+        if allele_freq and allele_freq < self.min_allele_frequency:
             return False
 
         if not in_frame(v):
