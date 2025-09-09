@@ -21,6 +21,7 @@ class Clair3Filter:
         self.no_frameshifts = no_frameshifts
         self.min_depth = min_depth
         self.min_variant_quality = 10
+        self.min_frameshift_quality = 30
 
     def check_filter(self, v):
         qual = v.QUAL
@@ -28,8 +29,12 @@ class Clair3Filter:
         if qual < self.min_variant_quality:
             return False
 
-        if self.no_frameshifts and not in_frame(v):
-            return False
+        if not in_frame(v):
+            if self.no_frameshifts:
+                return False
+            # require a higher quality for frameshifting indels, they're far more likely to be errors
+            if qual < self.min_frameshift_quality:
+                return False
 
         try:
             # We don't really care about the depth here, just skip it if it isn't there
