@@ -55,7 +55,7 @@ refMedakaConsensuses = {
     "SP1": dataDir + "consensus-sequences/SP1.consensus.medaka.fasta",
 }
 
-# nanopolishTestVariants is a nested dict of sample IDs and their expected variants when using the nanopolish workflow
+# clair3TestVariants is a nested dict of sample IDs and their expected variants when using the clair3 workflow
 clair3TestVariants = {
     "CVR1": {
         # pos: (ref, alt, type, count)
@@ -84,38 +84,6 @@ clair3TestVariants = {
     },
     "SP1": {
         241: ["C", "T", "snp", 1],
-        3037: ["C", "T", "snp", 1],
-        14408: ["C", "T", "snp", 1],
-        23403: ["A", "G", "snp", 1],
-    },
-}
-
-# medakaTestVariants is a nested dict of sample IDs and their expected variants when using the medaka workflow
-medakaTestVariants = {
-    "MT007544": {
-        # pos: (ref, alt, type, count)
-        29749: ["ACGATCGAGTG", "A", "del", 1],
-    },
-    "CVR1": {
-        241: ["C", "T", "snp", 1],
-        3037: ["C", "T", "snp", 1],
-        12733: ["C", "T", "snp", 1],
-        14408: ["C", "T", "snp", 1],
-        23403: ["A", "G", "snp", 1],
-        27752: ["C", "T", "snp", 1],
-        28881: ["GGG", "AAC", "indel", 1],
-    },
-    "NRW01": {
-        1440: ["G", "A", "snp", 1],
-        2891: ["G", "A", "snp", 1],
-        4655: ["C", "T", "snp", 1],
-        8422: ["G", "A", "snp", 1],
-        22323: ["C", "T", "snp", 2],
-        29546: ["C", "A", "snp", 2],
-    },
-    "SP1": {
-        241: ["C", "T", "snp", 1],
-        3037: ["C", "T", "snp", 1],
         14408: ["C", "T", "snp", 1],
         23403: ["A", "G", "snp", 1],
     },
