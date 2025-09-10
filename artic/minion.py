@@ -177,6 +177,8 @@ def run(parser, args):
             f"bgzip -dc {args.sample}_rg_{p}/merge_output.vcf.gz > {args.sample}.{p}.vcf"
         )
 
+        cmds.append(f"rm {args.sample}.{p}.primertrimmed.rg.sorted.bam")
+
     # 7) merge the called variants for each read group
     merge_vcf_cmd = "artic_vcf_merge %s %s 2> %s.primersitereport.txt" % (
         args.sample,
