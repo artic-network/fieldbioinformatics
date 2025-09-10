@@ -21,6 +21,8 @@ class Clair3Filter:
         self.no_frameshifts = no_frameshifts
         self.min_depth = min_depth
         self.min_variant_quality = 10
+        self.min_frameshift_quality = 50
+        self.min_allele_frequency = 0.6
 
     def check_filter(self, v):
         qual = v.QUAL
@@ -28,14 +30,30 @@ class Clair3Filter:
         if qual < self.min_variant_quality:
             return False
 
-        if self.no_frameshifts and not in_frame(v):
+        # Filter out low allele frequency variants
+        try:
+            allele_freq = v.format("AF")[0][0]
+        except Exception:
+            print(
+                f"ERROR: Could not find AF for variant at {v.CHROM}:{v.POS}, cannot filter on allele frequency"
+            )
+            raise SystemExit(1)
+
+        if allele_freq < self.min_allele_frequency:
             return False
+
+        if not in_frame(v):
+            if self.no_frameshifts:
+                return False
+            # require a higher quality for frameshifting indels, they're far more likely to be errors
+            if qual < self.min_frameshift_quality:
+                return False
 
         try:
             # We don't really care about the depth here, just skip it if it isn't there
-            depth = v.INFO["DP"]
-        except KeyError:
             depth = v.format("DP")[0][0]
+        except Exception:
+            pass
 
         if depth < self.min_depth:
             return False

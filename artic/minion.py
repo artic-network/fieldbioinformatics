@@ -170,12 +170,14 @@ def run(parser, args):
         cmds.append(f"samtools index {args.sample}.{p}.primertrimmed.rg.sorted.bam")
 
         cmds.append(
-            f"run_clair3.sh --enable_long_indel --chunk_size=10000 --haploid_precise --no_phasing_for_fa --bam_fn='{args.sample}.{p}.primertrimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs"
+            f"run_clair3.sh --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --bam_fn='{args.sample}.{p}.primertrimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail"
         )
 
         cmds.append(
             f"bgzip -dc {args.sample}_rg_{p}/merge_output.vcf.gz > {args.sample}.{p}.vcf"
         )
+
+        cmds.append(f"rm {args.sample}.{p}.primertrimmed.rg.sorted.bam")
 
     # 7) merge the called variants for each read group
     merge_vcf_cmd = "artic_vcf_merge %s %s 2> %s.primersitereport.txt" % (
