@@ -31,8 +31,15 @@ class Clair3Filter:
             return False
 
         # Filter out low allele frequency variants
-        allele_freq = v.INFO.get("AF")
-        if allele_freq and allele_freq < self.min_allele_frequency:
+        try:
+            allele_freq = v.format("AF")[0][0]
+        except Exception:
+            print(
+                f"ERROR: Could not find AF for variant at {v.CHROM}:{v.POS}, cannot filter on allele frequency"
+            )
+            raise SystemExit(1)
+
+        if allele_freq < self.min_allele_frequency:
             return False
 
         if not in_frame(v):
@@ -44,9 +51,9 @@ class Clair3Filter:
 
         try:
             # We don't really care about the depth here, just skip it if it isn't there
-            depth = v.INFO["DP"]
-        except KeyError:
             depth = v.format("DP")[0][0]
+        except Exception:
+            pass
 
         if depth < self.min_depth:
             return False
