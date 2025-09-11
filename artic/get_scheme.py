@@ -37,13 +37,16 @@ def main():
     )
     args = parser.parse_args()
 
-    get_scheme(
+    bed, ref, version = get_scheme(
         scheme_name=args.scheme_name,
         scheme_version=args.scheme_version,
         scheme_directory=args.scheme_directory,
         scheme_length=args.scheme_length,
         read_file=args.read_file,
     )
+
+    os.system(f"cp {bed} primer.bed")
+    os.system(f"cp {ref} reference.fasta")
 
 
 if __name__ == "__main__":

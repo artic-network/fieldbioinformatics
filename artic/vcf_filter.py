@@ -52,11 +52,12 @@ class Clair3Filter:
         try:
             # We don't really care about the depth here, just skip it if it isn't there
             depth = v.format("DP")[0][0]
+
+            if depth < self.min_depth:
+                return False
+
         except Exception:
             pass
-
-        if depth < self.min_depth:
-            return False
 
         return True
 
