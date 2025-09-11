@@ -98,6 +98,9 @@ def run(parser, args):
             read_file=args.read_file,
         )
 
+        os.system(f"cp {bed} {args.sample}.primer.bed")
+        os.system(f"cp {ref} {args.sample}.reference.fasta")
+
     if not os.path.exists(bed) or not os.path.exists(ref):
         print(
             colored.red(
