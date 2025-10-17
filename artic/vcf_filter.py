@@ -7,6 +7,12 @@ def in_frame(v):
         print("This code does not support multiple genotypes!")
         raise SystemExit
     ref = v.REF
+
+    if not v.ALT:  # No ALT alleles (e.g. a deletion)
+        if len(ref) % 3 == 0:
+            return True
+        return False
+
     alt = v.ALT[0]
     bases = len(alt) - len(ref)
     if not bases:
