@@ -247,7 +247,7 @@ def run(parser, args):
             "message": "Process ran out of memory, please try running on a machine with more memory available.",
         },
         143: {
-            "message": "Process was terminated, this is likely due to a user interrupt (Ctrl-C)",
+            "message": "Process was terminated, this is likely due to a user or system interrupt.",
         },
         127: {
             "message": "A required tool was not found, please ensure all dependencies are installed and available in your PATH.",
