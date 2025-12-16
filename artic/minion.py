@@ -2,6 +2,7 @@
 
 from clint.textui import colored
 import os
+import subprocess
 import sys
 import time
 from artic.utils import get_scheme, choose_model
@@ -257,7 +258,7 @@ def run(parser, args):
         "align_trim": [
             {
                 "input_exit_code": 1,
-                "message": "No reads aligned to the reference sequence, this could be due to an incorrect reference / primer scheme, or very low input data. Please check your input files.",
+                "message": "No reads aligned to the reference sequence, this could be due to an incorrect reference / primer scheme, or very low depth input data. Please check your input files.",
                 "output_exit_code": 2,
             }
         ]
@@ -270,16 +271,22 @@ def run(parser, args):
         print(colored.green("Running: ") + cmd, file=sys.stderr)
         if not args.dry_run:
             timerStart = time.perf_counter()
-            retval = os.system(cmd)
-            if retval != 0:
+            subprocess_return = subprocess.run(cmd, shell=True, capture_output=True)
+            if subprocess_return.returncode != 0:
                 ## Check for general anticipated errors
-                if retval in general_error_codes:
+                if subprocess_return.returncode in general_error_codes:
                     print(
-                        colored.red(general_error_codes[retval]["message"]),
+                        colored.yellow(
+                            general_error_codes[subprocess_return.returncode]["message"]
+                        ),
                         file=sys.stderr,
                     )
-                    print(colored.red("Command failed:") + cmd, file=sys.stderr)
-                    raise SystemExit(retval)
+                    print(colored.red("Command failed: ") + cmd, file=sys.stderr)
+                    print(
+                        colored.red("Command stderr: ")
+                        + subprocess_return.stderr.decode()
+                    )
+                    raise SystemExit(subprocess_return.returncode)
 
                 ## check for anticipated tool-specific errors
                 cmd_parts = []
@@ -293,23 +300,37 @@ def run(parser, args):
                 if cmd_parts:
                     base_cmd = " ".join(cmd_parts)
 
-                    if base_cmd in anticipated_tool_specific_error_codes[base_cmd]:
+                    if base_cmd in anticipated_tool_specific_error_codes:
                         for error_case in anticipated_tool_specific_error_codes[
                             base_cmd
                         ]:
-                            if retval == error_case["input_exit_code"]:
+                            if (
+                                subprocess_return.returncode
+                                == error_case["input_exit_code"]
+                            ):
                                 print(
-                                    colored.red(error_case["message"]),
+                                    colored.yellow(error_case["message"]),
                                     file=sys.stderr,
                                 )
                                 print(
-                                    colored.red("Command failed:") + cmd,
+                                    colored.red("Command failed: ") + cmd,
                                     file=sys.stderr,
+                                )
+                                print(
+                                    colored.red("Command stderr: ")
+                                    + subprocess_return.stderr.decode()
                                 )
                                 raise SystemExit(error_case["output_exit_code"])
 
-                print(colored.red("Unexpected command failure:") + cmd, file=sys.stderr)
-                raise SystemExit(retval)
+                print(
+                    colored.red("Unexpected command failure: ") + cmd, file=sys.stderr
+                )
+                print(
+                    colored.red("Command stderr: ") + subprocess_return.stderr.decode(),
+                    file=sys.stderr,
+                )
+
+                raise SystemExit(subprocess_return.returncode)
             timerStop = time.perf_counter()
 
             ## print the executed command and the runtime to the log file
