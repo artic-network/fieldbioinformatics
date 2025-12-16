@@ -284,7 +284,7 @@ def run(parser, args):
                     print(colored.red("Command failed: ") + cmd, file=sys.stderr)
                     print(
                         colored.red("Command stderr: ")
-                        + subprocess_return.stderr.decode()
+                        + subprocess_return.stderr.decode(errors="replace"),
                     )
                     raise SystemExit(subprocess_return.returncode)
 
@@ -318,7 +318,7 @@ def run(parser, args):
                                 )
                                 print(
                                     colored.red("Command stderr: ")
-                                    + subprocess_return.stderr.decode()
+                                    + subprocess_return.stderr.decode(errors="replace"),
                                 )
                                 raise SystemExit(error_case["output_exit_code"])
 
@@ -326,7 +326,8 @@ def run(parser, args):
                     colored.red("Unexpected command failure: ") + cmd, file=sys.stderr
                 )
                 print(
-                    colored.red("Command stderr: ") + subprocess_return.stderr.decode(),
+                    colored.red("Command stderr: ")
+                    + subprocess_return.stderr.decode(errors="replace"),
                     file=sys.stderr,
                 )
 
