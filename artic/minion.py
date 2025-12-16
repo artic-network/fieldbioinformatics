@@ -244,7 +244,7 @@ def run(parser, args):
     # define anticipated error codes and messages
     general_error_codes = {
         137: {
-            "message": "Process ran out of memory, please try running with fewer threads or on a machine with more memory",
+            "message": "Process ran out of memory, please try running on a machine with more memory available.",
         },
         143: {
             "message": "Process was terminated, this is likely due to a user interrupt (Ctrl-C)",
