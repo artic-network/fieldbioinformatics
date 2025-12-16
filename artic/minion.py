@@ -131,18 +131,18 @@ def run(parser, args):
     ## create a holder to keep the pipeline commands in
     cmds = []
 
-    # 2) check the reference fasta has an index and create one if not
+    # check the reference fasta has an index and create one if not
     if not os.path.exists("%s.fai" % (ref)):
         cmds.append("samtools faidx %s" % (ref))
 
-    # 3) index the ref & align with minimap
+    # index the ref & align with minimap
     cmds.append(
         f"minimap2 -a -x map-ont -t {args.threads} {ref} {read_file} | samtools view -bS -F 4 - | samtools sort -o {args.sample}.sorted.bam -"
     )
 
     cmds.append(f"samtools index {args.sample}.sorted.bam")
 
-    # 4) trim the alignments to the primer start sites and normalise the coverage to save time
+    # trim the alignments to the primer start sites and normalise the coverage to save time
     normalise_string = f"--normalise {args.normalise}" if args.normalise else ""
 
     incorrect_pairs_string = (
@@ -160,7 +160,7 @@ def run(parser, args):
 
     cmds.append(f"samtools index {args.sample}.primertrimmed.rg.sorted.bam")
 
-    # 6) do variant calling on each read group
+    # do variant calling on each read group
     for p in pools:
         if os.path.exists("%s.%s.hdf" % (args.sample, p)):
             os.remove("%s.%s.hdf" % (args.sample, p))
@@ -182,7 +182,7 @@ def run(parser, args):
 
         cmds.append(f"rm {args.sample}.{p}.primertrimmed.rg.sorted.bam")
 
-    # 7) merge the called variants for each read group
+    # merge the called variants for each read group
     merge_vcf_cmd = "artic_vcf_merge %s %s 2> %s.primersitereport.txt" % (
         args.sample,
         bed,
@@ -203,7 +203,7 @@ def run(parser, args):
         f"artic_vcf_filter {fs_str} {indel_str} --min-depth {args.min_depth} {pre_filter_vcf}.gz {args.sample}.pass.vcf {args.sample}.fail.vcf"
     )
 
-    # 9) get the depth of coverage for each readgroup, create a coverage mask and plots, and add failed variants to the coverage mask (artic_mask must be run before bcftools consensus)
+    # get the depth of coverage for each readgroup, create a coverage mask and plots, and add failed variants to the coverage mask (artic_mask must be run before bcftools consensus)
     cmds.append(
         f"artic_make_depth_mask --depth {args.min_depth} {ref} {args.sample}.primertrimmed.rg.sorted.bam {args.sample}.coverage_mask.txt"
     )
@@ -214,7 +214,7 @@ def run(parser, args):
 
     post_filter_vcf_file = f"{args.sample}.pass.vcf"
 
-    # 10) generate the consensus sequence
+    # generate the consensus sequence
     cmds.append(f"bgzip -kf {post_filter_vcf_file}")
     cmds.append(f"tabix -f -p vcf {post_filter_vcf_file}.gz")
 
@@ -223,13 +223,12 @@ def run(parser, args):
     cmds.append(
         f"bcftools norm --check-ref x --fasta-ref {args.sample}.preconsensus.fasta -O z -o {post_normalisation_vcf_file} {post_filter_vcf_file}.gz"
     )
-    # cmds.append(f"bgzip -kf {post_normalisation_vcf_file}")
     cmds.append(f"tabix -f -p vcf {post_normalisation_vcf_file}")
     cmds.append(
         f"bcftools consensus -f {args.sample}.preconsensus.fasta {post_normalisation_vcf_file} -m {args.sample}.coverage_mask.txt -o {args.sample}.consensus.fasta"
     )
 
-    # 11) apply the header to the consensus sequence and run alignment against the reference sequence
+    # apply the header to the consensus sequence and run alignment against the reference sequence
     caller = "clair3"
     linearise_fasta = "--linearise-fasta" if args.linearise_fasta else ""
     cmds.append(
@@ -241,7 +240,18 @@ def run(parser, args):
             f"mafft --6merpair --addfragments {args.sample}.consensus.fasta {ref} > {args.sample}.aligned.fasta"
         )
 
-    # 13) setup the log file and run the pipeline commands
+    # define anticipated error codes and messages
+    anticipated_error_codes = {
+        "align_trim": [
+            {
+                "input_exit_code": 1,
+                "message": "No reads aligned to the reference sequence, this could be due to an incorrect reference / primer scheme, or very low input data. Please check your input files.",
+                "output_exit_code": 2,
+            }
+        ]
+    }
+
+    # setup the log file and run the pipeline commands
     log = "%s.minion.log.txt" % (args.sample)
     logfh = open(log, "w")
     for cmd in cmds:
@@ -250,7 +260,32 @@ def run(parser, args):
             timerStart = time.perf_counter()
             retval = os.system(cmd)
             if retval != 0:
-                print(colored.red("Command failed:") + cmd, file=sys.stderr)
+                ## check for anticipated errors
+                cmd_parts = []
+                for cmd_part in cmd.split(" "):
+                    if "-" not in cmd_part:
+                        cmd_parts.append(cmd_part)
+                        continue
+
+                    break
+
+                if cmd_parts:
+                    base_cmd = " ".join(cmd_parts)
+
+                    if base_cmd in anticipated_error_codes[base_cmd]:
+                        for error_case in anticipated_error_codes[base_cmd]:
+                            if retval == error_case["input_exit_code"]:
+                                print(
+                                    colored.red(error_case["message"]),
+                                    file=sys.stderr,
+                                )
+                                print(
+                                    colored.red("Command failed:") + cmd,
+                                    file=sys.stderr,
+                                )
+                                raise SystemExit(error_case["output_exit_code"])
+
+                print(colored.red("Unexpected command failure:") + cmd, file=sys.stderr)
                 raise SystemExit(20)
             timerStop = time.perf_counter()
 
