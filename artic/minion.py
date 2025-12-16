@@ -241,7 +241,19 @@ def run(parser, args):
         )
 
     # define anticipated error codes and messages
-    anticipated_error_codes = {
+    general_error_codes = {
+        137: {
+            "message": "Process ran out of memory, please try running with fewer threads or on a machine with more memory",
+        },
+        143: {
+            "message": "Process was terminated, this is likely due to a user interrupt (Ctrl-C)",
+        },
+        127: {
+            "message": "A required tool was not found, please ensure all dependencies are installed and available in your PATH.",
+        },
+    }
+
+    anticipated_tool_specific_error_codes = {
         "align_trim": [
             {
                 "input_exit_code": 1,
@@ -260,7 +272,16 @@ def run(parser, args):
             timerStart = time.perf_counter()
             retval = os.system(cmd)
             if retval != 0:
-                ## check for anticipated errors
+                ## Check for general anticipated errors
+                if retval in general_error_codes:
+                    print(
+                        colored.red(general_error_codes[retval]["message"]),
+                        file=sys.stderr,
+                    )
+                    print(colored.red("Command failed:") + cmd, file=sys.stderr)
+                    raise SystemExit(retval)
+
+                ## check for anticipated tool-specific errors
                 cmd_parts = []
                 for cmd_part in cmd.split(" "):
                     if "-" not in cmd_part:
@@ -272,8 +293,10 @@ def run(parser, args):
                 if cmd_parts:
                     base_cmd = " ".join(cmd_parts)
 
-                    if base_cmd in anticipated_error_codes[base_cmd]:
-                        for error_case in anticipated_error_codes[base_cmd]:
+                    if base_cmd in anticipated_tool_specific_error_codes[base_cmd]:
+                        for error_case in anticipated_tool_specific_error_codes[
+                            base_cmd
+                        ]:
                             if retval == error_case["input_exit_code"]:
                                 print(
                                     colored.red(error_case["message"]),
@@ -286,7 +309,7 @@ def run(parser, args):
                                 raise SystemExit(error_case["output_exit_code"])
 
                 print(colored.red("Unexpected command failure:") + cmd, file=sys.stderr)
-                raise SystemExit(20)
+                raise SystemExit(retval)
             timerStop = time.perf_counter()
 
             ## print the executed command and the runtime to the log file
