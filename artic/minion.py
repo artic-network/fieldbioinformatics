@@ -290,7 +290,7 @@ def run(parser, args):
 
                 ## check for anticipated tool-specific errors
                 cmd_parts = []
-                for cmd_part in cmd.split(" "):
+                for cmd_part in cmd.split(" ")[0:1]:
                     if "-" not in cmd_part:
                         cmd_parts.append(cmd_part)
                         continue
