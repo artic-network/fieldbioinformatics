@@ -94,7 +94,7 @@ class TestNonZeroExit(TestCase):
         stderr = StringIO()
         with pytest.raises(SystemExit) as cm, contextlib.redirect_stderr(stderr):
             minion.run(parser, args)
-            print(stderr, file=sys.stderr)
+            print(stderr)
 
         assert cm.value.code == 137, "expected exit code 137 for OOM error"
         assert (
