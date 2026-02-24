@@ -9,6 +9,7 @@ import tqdm
 import sys
 from io import StringIO
 import contextlib
+from types import SimpleNamespace
 
 from artic import pipeline, minion
 
@@ -62,20 +63,31 @@ class TestNonZeroExit(TestCase):
 
         subprocess_mock.return_value.returncode = 137
 
-        parser = pipeline.init_pipeline_parser()
-        dummyCLI = [
-            "minion",
-            "--model",
-            "r1041_e82_400bps_sup_v420",
-            "--read-file",
-            "test-data/MT007544/MT007544.fastq",
-            "--scheme-name",
-            "artic-pan-dengue",
-            "--scheme-version",
-            "v1.0.0",
-            "some-prefix",
-        ]
-        args = parser.parse_args(dummyCLI)
+        parser = False
+
+        args = SimpleNamespace(
+            model="r1041_e82_400bps_sup_v420",
+            read_file="test-data/MT007544/MT007544.fastq",
+            scheme_name="artic-pan-dengue",
+            scheme_version="v1.0.0",
+            sample="some-prefix",
+            threads=1,
+            min_depth=20,
+            allow_mismatched_primers=False,
+            primer_match_threshold=4,
+            normalise=200,
+            model_dir=None,
+            bed=False,
+            ref=False,
+            scheme_length=False,
+            scheme_directory=".",
+            min_mapq=20,
+            no_frameshifts=False,
+            no_indels=False,
+            linearise_fasta=False,
+            align_consensus=False,
+            dry_run=False,
+        )
 
         stderr = StringIO()
         with pytest.raises(SystemExit) as cm, contextlib.redirect_stderr(stderr):
