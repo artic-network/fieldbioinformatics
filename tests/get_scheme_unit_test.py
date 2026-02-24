@@ -26,7 +26,7 @@ class get_scheme_unit_test(unittest.TestCase):
 
         with self.assertRaises(SystemExit) as cm:
             bed, ref, scheme_version = get_scheme(
-                scheme_name="hav",
+                scheme_name="hbv",
                 scheme_version="v1.0.0",
                 scheme_directory=f"{os.getcwd()}/primer-schemes",
             )

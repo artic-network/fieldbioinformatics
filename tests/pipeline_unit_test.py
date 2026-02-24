@@ -76,9 +76,11 @@ class TestNonZeroExit(TestCase):
             "some-prefix",
         ]
         args = parser.parse_args(dummyCLI)
+
         stderr = StringIO()
         with pytest.raises(SystemExit) as cm, contextlib.redirect_stderr(stderr):
             minion.run(parser, args)
+
         assert cm.value.code == 137, "expected exit code 137 for OOM error"
         assert (
             "Process ran out of memory, please try running on a machine with more memory available."
