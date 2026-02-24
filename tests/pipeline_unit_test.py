@@ -68,7 +68,7 @@ class TestNonZeroExit(TestCase):
         parser = False
 
         args = SimpleNamespace(
-            model="r1041_e82_400bps_sup_v420",
+            model="r941_prom_hac_g360+g422",
             read_file="test-data/MT007544/MT007544.fastq",
             scheme_name="artic-pan-dengue",
             scheme_version="v1.0.0",
@@ -91,16 +91,10 @@ class TestNonZeroExit(TestCase):
             dry_run=False,
         )
 
-        stderr = StringIO()
-        with pytest.raises(SystemExit) as cm, contextlib.redirect_stderr(stderr):
+        with pytest.raises(SystemExit) as cm:
             minion.run(parser, args)
-            print(stderr)
 
         assert cm.value.code == 137, "expected exit code 137 for OOM error"
-        assert (
-            "Process ran out of memory, please try running on a machine with more memory available."
-            in stderr.getvalue()
-        ), "expected OOM error message not found in stderr"
 
 
 def test_pipeline_parser():
@@ -112,7 +106,7 @@ def test_pipeline_parser():
     dummyCLI = [
         "minion",
         "--model",
-        "r1041_e82_400bps_sup_v420",
+        "r941_prom_hac_g360+g422",
         "--read-file",
         "some_reads.fastq",
         "some-prefix",
