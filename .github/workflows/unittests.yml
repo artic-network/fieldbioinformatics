@@ -25,7 +25,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          pytest -s tests/*_unit_test.py
+          pytest tests/*_unit_test.py
         shell: micromamba-shell {0}
 
       - name: Run clair3 test
@@ -37,4 +37,3 @@ jobs:
         run: |
           pytest -s tests/minion_validator.py
         shell: micromamba-shell {0}
-

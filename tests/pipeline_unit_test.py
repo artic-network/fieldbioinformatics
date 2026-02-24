@@ -23,8 +23,10 @@ def download(url, dataDir):
         if total is None:
             f.write(response.content)
         else:
-            with tqdm(total=total, unit="B", unit_scale=True, desc=filename) as pbar:
-                for data in tqdm(response.iter_content(chunk_size=1024)):
+            with tqdm.tqdm(
+                total=total, unit="B", unit_scale=True, desc=filename
+            ) as pbar:
+                for data in tqdm.tqdm(response.iter_content(chunk_size=1024)):
                     f.write(data)
                     pbar.update(1024)
 
@@ -55,7 +57,7 @@ class TestNonZeroExit(TestCase):
         else:
             print("\tfound data dir for {}".format("MT007544"))
 
-    print("validation datasets ready\n")
+    print("validation datasets ready")
 
     def test_pipeline_oom(self):
         patcher = mock.patch("artic.minion.subprocess.run")
