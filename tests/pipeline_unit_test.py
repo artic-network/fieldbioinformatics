@@ -1,8 +1,89 @@
 # pipeline_unit_test.py contains a test for the pipeline parser
-import argparse
+import pathlib
+import tarfile
 import pytest
+from unittest import TestCase, mock
+import os
+import requests
+import tqdm
+import sys
+from io import StringIO
+import contextlib
 
-from artic import pipeline
+from artic import pipeline, minion
+
+
+# download will download and untar a test dataset
+def download(url, dataDir):
+    filename = url.rsplit("/", 1)[1]
+    with open(f"{dataDir}/{filename}", "wb+") as f:
+        response = requests.get(url, stream=True)
+        total = int(response.headers.get("content-length"))
+        if total is None:
+            f.write(response.content)
+        else:
+            with tqdm(total=total, unit="B", unit_scale=True, desc=filename) as pbar:
+                for data in tqdm(response.iter_content(chunk_size=1024)):
+                    f.write(data)
+                    pbar.update(1024)
+
+    tar = tarfile.open(dataDir + "/" + filename, "r:gz")
+    tar.extractall(dataDir)
+    tar.close()
+    os.remove(dataDir + "/" + filename)
+
+
+class TestNonZeroExit(TestCase):
+    """Test that the pipeline properly calls an OOM error."""
+
+    def setUp(self):
+        testfile_url = "https://raw.githubusercontent.com/artic-network/fieldbioinformatics/master/test-data/MT007544/MT007544.fastq"
+        dataDir = str(pathlib.Path(__file__).parent.parent) + "/test-data/"
+
+        targetPath = dataDir + "MT007544"
+        if not os.path.exists(targetPath):
+            print("\tno data for {}".format("MT007544"))
+            print("\tmaking dir at {}".format(targetPath))
+            os.mkdir(targetPath)
+            print("\tdownloading from {}".format(testfile_url))
+            try:
+                download(testfile_url, dataDir)
+            except Exception as e:
+                print("download failed: ", e)
+                sys.exit(1)
+        else:
+            print("\tfound data dir for {}".format("MT007544"))
+
+    print("validation datasets ready\n")
+
+    def test_pipeline_oom(self):
+        patcher = mock.patch("artic.minion.subprocess.run")
+        subprocess_mock = patcher.start()
+
+        subprocess_mock.return_value.returncode = 137
+
+        parser = pipeline.init_pipeline_parser()
+        dummyCLI = [
+            "minion",
+            "--model",
+            "r1041_e82_400bps_sup_v420",
+            "--read-file",
+            "test-data/MT007544/MT007544.fastq",
+            "--scheme-name",
+            "artic-pan-dengue",
+            "--scheme-version",
+            "v1.0.0",
+            "some-prefix",
+        ]
+        args = parser.parse_args(dummyCLI)
+        stderr = StringIO()
+        with pytest.raises(SystemExit) as cm, contextlib.redirect_stderr(stderr):
+            minion.run(parser, args)
+        assert cm.value.code == 137, "expected exit code 137 for OOM error"
+        assert (
+            "Process ran out of memory, please try running on a machine with more memory available."
+            in stderr.getvalue()
+        ), "expected OOM error message not found in stderr"
 
 
 def test_pipeline_parser():
