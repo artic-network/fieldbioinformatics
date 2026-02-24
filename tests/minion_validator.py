@@ -164,6 +164,8 @@ def genCommand(sampleID, workflow):
     cmd.append("SARS-CoV-2")
     cmd.append("--scheme-version")
     cmd.append("v1.0.0")
+    cmd.append("--scheme-length")
+    cmd.append("400")
     cmd.append(sampleID)
     return cmd
 

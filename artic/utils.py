@@ -322,7 +322,7 @@ def get_scheme(
     scheme_version: str,
     scheme_directory: str,
     scheme_length: int = False,
-    read_file: str = False,
+    read_file: str = "",
 ):
     """Get the primer scheme and reference fasta file from the manifest
 
