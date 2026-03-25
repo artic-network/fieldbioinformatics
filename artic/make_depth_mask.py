@@ -57,7 +57,9 @@ def collect_depths(bamfile, refName, minDepth, ignoreDeletions, warnRGcov):
     # iterate reads once via fetch — each read's RG tag is looked up a single time
     # and numpy slice assignment updates all covered positions in C, avoiding the
     # O(ref_length × coverage) Python loop that pileup() would require
-    for read in bamFile.fetch(refName):
+    for read in bamFile.fetch():
+        if read.reference_name != refName:
+            continue
         if read.is_unmapped or read.cigartuples is None:
             continue
 
