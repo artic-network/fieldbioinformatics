@@ -54,12 +54,17 @@ def collect_depths(bamfile, refName, minDepth, ignoreDeletions, warnRGcov):
     # create the dict to hold the depths for each readgroup
     rgDepths = {rg["ID"]: np.zeros(ref_len, dtype=np.int32) for rg in bamFile.header["RG"]}
 
-    # iterate reads once via fetch — each read's RG tag is looked up a single time
+    # iterate reads once — each read's RG tag is looked up a single time
     # and numpy slice assignment updates all covered positions in C, avoiding the
-    # O(ref_length × coverage) Python loop that pileup() would require
-    for read in bamFile:
-        if read.reference_name != refName:
-            continue
+    # O(ref_length × coverage) Python loop that pileup() would require.
+    # use fetch(refName) when an index is available (faster for multi-contig refs);
+    # fall back to a full sequential scan with reference filtering when no index is present.
+    try:
+        _reads = bamFile.fetch(refName)
+    except ValueError:
+        _reads = (r for r in bamFile if r.reference_name == refName)
+
+    for read in _reads:
         if read.is_unmapped or read.cigartuples is None:
             continue
 
