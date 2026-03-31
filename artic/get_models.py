@@ -77,10 +77,19 @@ def main():
 
     for model in models:
 
-        if (
-            not os.path.exists(Path(args.model_dir, model["name"]))
-            or len(os.listdir(Path(args.model_dir, model["name"]))) == 0
-        ):
+        model_path = Path(args.model_dir, model["name"])
+
+        if model.get("pytorch"):
+            needs_download = not all(
+                Path(model_path, f).exists()
+                for f in ["pileup.pt", "full_alignment.pt"]
+            )
+        else:
+            needs_download = (
+                not model_path.exists() or len(os.listdir(model_path)) == 0
+            )
+
+        if needs_download:
             if model.get("pytorch"):
                 get_pytorch_model(
                     model_dir=args.model_dir,
@@ -95,7 +104,6 @@ def main():
                     model_name=model["name"],
                 )
             print(f"Downloaded model: {model['name']}", file=sys.stderr)
-
         else:
             print(
                 f"Model {model['name']} already exists, skipping download",
