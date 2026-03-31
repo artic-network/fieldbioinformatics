@@ -20,6 +20,8 @@ from tqdm import tqdm
 import glob
 import os
 import pathlib
+import shutil
+import tempfile
 import unittest
 import requests
 import sys
@@ -336,3 +338,50 @@ class TestMinion(unittest.TestCase):
 
     def test_Clair3_SP1(self):
         runner("clair3", "SP1")
+
+    def test_Clair3_mixed_model_dir(self):
+        """Clair3 must complete successfully when the model directory contains both
+        PyTorch .pt files and TF checkpoint files (the migration scenario where a
+        user has previously downloaded TF models into the same directory)."""
+        conda_prefix = os.getenv("CONDA_PREFIX")
+        if not conda_prefix:
+            self.skipTest("CONDA_PREFIX not set")
+
+        model_name = "r941_prom_hac_g360+g422"
+        src_model_dir = os.path.join(conda_prefix, "bin", "models", model_name)
+        if not os.path.isdir(src_model_dir):
+            self.skipTest(f"Model {model_name} not found at {src_model_dir}")
+
+        with tempfile.TemporaryDirectory() as tmp_models:
+            # Copy the real PyTorch model files into the temp model dir
+            dest_model_dir = os.path.join(tmp_models, model_name)
+            shutil.copytree(src_model_dir, dest_model_dir)
+
+            # Inject dummy TF checkpoint files alongside the real .pt files
+            for fname in [
+                "pileup.data-00000-of-00001",
+                "pileup.index",
+                "full_alignment.data-00000-of-00001",
+                "full_alignment.index",
+            ]:
+                open(os.path.join(dest_model_dir, fname), "w").close()
+
+            sampleID = "CVR1"
+            cmd = genCommand(sampleID, "clair3") + ["--model-dir", tmp_models]
+
+            parser = pipeline.init_pipeline_parser()
+            args = parser.parse_args(cmd)
+
+            try:
+                args.func(parser, args)
+            except SystemExit:
+                self.fail(
+                    "artic minion exited early — clair3 failed with a mixed TF/PyTorch model directory"
+                )
+
+            consensus = f"{sampleID}.consensus.fasta"
+            self.assertTrue(
+                os.path.exists(consensus),
+                "No consensus produced when running clair3 with a mixed TF/PyTorch model directory",
+            )
+            cleanUp(sampleID)
