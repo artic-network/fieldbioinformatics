@@ -23,6 +23,11 @@ jobs:
           python3 -m pip install -e .
         shell: micromamba-shell {0}
 
+      - name: get models
+        run: |
+          python3 -m artic_get_models
+        shell: micromamba-shell {0}
+
       - name: Run unit tests
         run: |
           pytest tests/*_unit_test.py
