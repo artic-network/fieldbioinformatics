@@ -44,6 +44,17 @@ def get_model(
     return model_path
 
 
+def get_pytorch_model(model_dir: Path, model_name: str, model_url: str):
+    model_path = Path(model_dir, model_name)
+    os.makedirs(model_path, exist_ok=True)
+
+    base_url = model_url.rstrip("/")
+    for fname in ["pileup.pt", "full_alignment.pt"]:
+        download_file(f"{base_url}/{fname}", Path(model_path, fname))
+
+    return model_path
+
+
 def main():
     import argparse
 
@@ -70,12 +81,19 @@ def main():
             not os.path.exists(Path(args.model_dir, model["name"]))
             or len(os.listdir(Path(args.model_dir, model["name"]))) == 0
         ):
-            get_model(
-                model_dir=args.model_dir,
-                model_fname=model["model_fname"],
-                model_url=model["model_url"],
-                model_name=model["name"],
-            )
+            if model.get("pytorch"):
+                get_pytorch_model(
+                    model_dir=args.model_dir,
+                    model_name=model["name"],
+                    model_url=model["model_url"],
+                )
+            else:
+                get_model(
+                    model_dir=args.model_dir,
+                    model_fname=model["model_fname"],
+                    model_url=model["model_url"],
+                    model_name=model["name"],
+                )
             print(f"Downloaded model: {model['name']}", file=sys.stderr)
 
         else:

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "artic"
-version = "1.9.0"
+version = "1.9.2"
 authors = [
     { name = "Nick Loman", email = "n.j.loman@bham.ac.uk" },
 ]
@@ -16,7 +16,7 @@ maintainers = [
 description = "``artic`` is a pipeline for working with viral amplicon sequencing data"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
@@ -48,3 +48,19 @@ license-files = [
 
 [tool.setuptools.packages.find]
 namespaces = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["*_unit_test.py", "*_validator.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: integration tests that download data",
+]
+
+[tool.coverage.run]
+source = ["artic"]
+omit = ["artic/deprecated/*"]
+
+[tool.coverage.report]
+show_missing = true
