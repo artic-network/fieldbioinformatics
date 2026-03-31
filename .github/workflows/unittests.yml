@@ -25,7 +25,7 @@ jobs:
 
       - name: get models
         run: |
-          python3 -m artic_get_models
+          artic_get_models
         shell: micromamba-shell {0}
 
       - name: Run unit tests
