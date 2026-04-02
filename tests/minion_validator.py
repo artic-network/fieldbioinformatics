@@ -471,12 +471,28 @@ class TestMinionSpacedPaths(unittest.TestCase):
             except SystemExit:
                 self.fail("Failed to parse minion command with spaced paths")
 
+            import io
+            import contextlib
+            stderr_buf = io.StringIO()
             try:
-                args.func(parser, args)
+                with contextlib.redirect_stderr(stderr_buf):
+                    args.func(parser, args)
             except SystemExit as e:
+                stderr_text = stderr_buf.getvalue()
+
+                # Also attach the pipeline log if it was written before the failure.
+                log_file = f"{sample_prefix}.minion.log.txt"
+                if os.path.exists(log_file):
+                    with open(log_file) as lf:
+                        log_text = lf.read()
+                else:
+                    log_text = "(log file not written)"
+
                 self.fail(
                     f"artic minion exited with code {e.code} — "
-                    "pipeline failed with spaces in paths"
+                    "pipeline failed with spaces in paths\n\n"
+                    f"--- stderr ---\n{stderr_text}\n"
+                    f"--- log ({log_file}) ---\n{log_text}"
                 )
 
             self.assertTrue(
