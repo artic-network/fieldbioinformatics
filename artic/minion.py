@@ -219,7 +219,7 @@ def run(parser, args):
 
         # Split the BAM by read group
         cmds.append(
-            f"samtools view -b -r {shlex.quote(p)}"
+            f"samtools view -b -r {shlex.quote(str(p))}"
             f" {sp('.primertrimmed.rg.sorted.bam')}"
             f" -o {pool_rg_bam}"
         )
