@@ -10,9 +10,9 @@ date: 2024-11-11
 
 # The test suite
 
-All of the `artic` tests are run as part of the as github actions. To run any of the tests yourself, it is assumed that you have downloaded the codebase and are using an appropiate environment:
+All tests run as part of CI via GitHub Actions. To run them locally, clone the repository and activate the conda environment:
 
-```
+```sh
 git clone https://github.com/artic-network/fieldbioinformatics
 cd fieldbioinformatics
 conda env create -f environment.yml
@@ -21,26 +21,43 @@ conda activate artic
 
 ## Unit tests
 
-We have begun writing unit tests for the ARTIC Python modules. These currently includes tests for the `align_trim` module, which performs amplicon soft clipping and alignment filtering, and `vcftagprimersites` which processes the ARTIC primer scheme. To run all available unit tests:
+Unit tests cover the core Python modules. Tests are located in `tests/` and are discovered automatically via the `pyproject.toml` configuration. To run all unit tests:
 
+```sh
+pytest
 ```
-pytest -s artic/*_unit_test.py
+
+To exclude slow tests (see below):
+
+```sh
+pytest -m "not slow"
 ```
+
+The unit tests cover:
+
+- `align_trim` — amplicon soft clipping and alignment filtering
+- `artic_vcf_filter` — variant quality and allele frequency filtering
+- `artic_mask` — coverage masking
+- `artic_get_models` — model download logic
+- `utils` — scheme fetching, model selection, primer direction, and related utilities
+- `pipeline` — CLI argument parsing and pipeline exit code handling
 
 ## Pipeline tests
 
-To test the core pipeline, you can use the `test-runner.sh` bash script:
+To test the full pipeline end-to-end, use the `test-runner.sh` script:
 
-```
+```sh
 ./test-runner.sh clair3
 ```
 
-The pipeline tests use a small subset of an Ebola virus amplicon sequencing run (flongle) which is downloaded from [here](http://artic.s3.climb.ac.uk/run-folders/EBOV_Amplicons_flongle.tar.gz) when the test is called.
+This downloads a small subset of an Ebola virus amplicon sequencing run (flongle) from [artic.s3.climb.ac.uk](http://artic.s3.climb.ac.uk/run-folders/EBOV_Amplicons_flongle.tar.gz) and runs the complete pipeline against it.
 
 ## Variant validation tests
 
-Finally, we have also included some validation tests that will download several reference SARS-CoV-2 datasets, run the workflow, and then validate the reported variants and consensus sequences. To run all of the available validation datasets:
+The validation tests download reference SARS-CoV-2 datasets, run the full workflow, and validate the reported variants and consensus sequences against known truth sets. These tests require internet access and are marked `slow` in the pytest configuration, so they are excluded from the default `pytest` run.
 
-```
-pytest -s artic/minion_validator.py
+To run them explicitly:
+
+```sh
+pytest -m slow
 ```

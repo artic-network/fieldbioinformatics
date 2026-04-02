@@ -41,7 +41,8 @@ def _write_fastq_gz(path, records):
 
 
 def _make_args(directory, prefix="sample", min_length=None, max_length=None,
-               quality=7.0, skip_quality_check=False, sample=1.0, output=None):
+               quality=7.0, skip_quality_check=False, sample=1.0, output=None,
+               threads=1):
     return SimpleNamespace(
         directory=str(directory),
         prefix=prefix,
@@ -51,11 +52,17 @@ def _make_args(directory, prefix="sample", min_length=None, max_length=None,
         skip_quality_check=skip_quality_check,
         sample=sample,
         output=output,
+        threads=threads,
     )
 
 
 def _read_output_fastq(path):
     with open(str(path)) as fh:
+        return list(SeqIO.parse(fh, "fastq"))
+
+
+def _read_output_fastq_gz(path):
+    with gzip.open(str(path), "rt") as fh:
         return list(SeqIO.parse(fh, "fastq"))
 
 
@@ -224,5 +231,81 @@ class TestRun:
         _write_fastq(subdir / "reads.fastq", [rec])
         args = _make_args(subdir, prefix="mysample", quality=7.0, output=None)
         run(None, args)
-        expected = "mysample_barcode01.fastq" 
+        expected = "mysample_barcode01.fastq"
         assert (subdir.parent / expected).exists() or True  # output is in cwd
+
+
+# ---------------------------------------------------------------------------
+# Gzip output
+# ---------------------------------------------------------------------------
+
+class TestGzipOutput:
+    def test_gz_output_written(self, tmp_path):
+        """Output path ending in .gz produces a valid gzip-compressed FASTQ."""
+        rec = _make_record("read1", "ACGT" * 25, [30] * 100)
+        _write_fastq(tmp_path / "reads.fastq", [rec])
+        out = str(tmp_path / "out.fastq.gz")
+        args = _make_args(tmp_path, quality=7.0, output=out)
+        run(None, args)
+        assert (tmp_path / "out.fastq.gz").exists()
+        result = _read_output_fastq_gz(out)
+        assert len(result) == 1
+        assert result[0].id == "read1"
+
+    def test_gz_output_filters_correctly(self, tmp_path):
+        """Quality filtering still works when writing gzip output."""
+        low_q = _make_record("lowq", "ACGT" * 10, [5] * 40)
+        high_q = _make_record("highq", "ACGT" * 10, [30] * 40)
+        _write_fastq(tmp_path / "reads.fastq", [low_q, high_q])
+        out = str(tmp_path / "out.fastq.gz")
+        args = _make_args(tmp_path, quality=20.0, output=out)
+        run(None, args)
+        result = _read_output_fastq_gz(out)
+        assert len(result) == 1
+        assert result[0].id == "highq"
+
+    def test_gz_output_deduplication(self, tmp_path):
+        """Duplicate reads are still deduplicated when writing gzip output."""
+        rec1 = _make_record("dup_read", "ACGT" * 10, [30] * 40)
+        rec2 = _make_record("dup_read", "TTTT" * 10, [30] * 40)
+        _write_fastq(tmp_path / "reads.fastq", [rec1, rec2])
+        out = str(tmp_path / "out.fastq.gz")
+        args = _make_args(tmp_path, quality=7.0, output=out)
+        run(None, args)
+        result = _read_output_fastq_gz(out)
+        assert len(result) == 1
+
+
+# ---------------------------------------------------------------------------
+# Multiprocessing
+# ---------------------------------------------------------------------------
+
+class TestMultiprocessing:
+    def test_threads_2_produces_same_output(self, tmp_path):
+        """Using threads=2 produces the same set of reads as threads=1."""
+        records = [_make_record(f"read{i}", "ACGT" * 10, [30] * 40) for i in range(4)]
+        _write_fastq(tmp_path / "pool1.fastq", records[:2])
+        _write_fastq(tmp_path / "pool2.fastq", records[2:])
+
+        out1 = str(tmp_path / "out1.fastq")
+        out2 = str(tmp_path / "out2.fastq")
+
+        run(None, _make_args(tmp_path, quality=7.0, output=out1, threads=1))
+        run(None, _make_args(tmp_path, quality=7.0, output=out2, threads=2))
+
+        ids1 = {r.id for r in _read_output_fastq(out1)}
+        ids2 = {r.id for r in _read_output_fastq(out2)}
+        assert ids1 == ids2
+
+    def test_threads_2_gz_input(self, tmp_path):
+        """Parallel processing handles gzip-compressed input files."""
+        rec1 = _make_record("gz1", "ACGT" * 20, [30] * 80)
+        rec2 = _make_record("gz2", "ACGT" * 20, [30] * 80)
+        _write_fastq_gz(tmp_path / "pool1.fastq.gz", [rec1])
+        _write_fastq_gz(tmp_path / "pool2.fastq.gz", [rec2])
+
+        out = str(tmp_path / "out.fastq")
+        args = _make_args(tmp_path, quality=7.0, output=out, threads=2)
+        run(None, args)
+        result = _read_output_fastq(out)
+        assert {r.id for r in result} == {"gz1", "gz2"}

@@ -9,10 +9,15 @@ from primalbedtools.bedfiles import merge_primers
 
 def vcf_merge(args):
 
-    scheme = Scheme.from_file(args.bedfile)
-
-    # Merge the primers
-    scheme.bedlines = merge_primers(scheme.bedlines)
+    try:
+        scheme = Scheme.from_file(args.bedfile)
+        scheme.bedlines = merge_primers(scheme.bedlines)
+    except (ValueError, TypeError) as e:
+        print(
+            f"Failed to parse primer scheme BED file '{args.bedfile}': {e}",
+            file=sys.stderr,
+        )
+        raise SystemExit(3)
 
     primer_map = defaultdict(dict)
 

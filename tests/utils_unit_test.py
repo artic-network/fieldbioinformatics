@@ -302,6 +302,74 @@ class TestChooseModel:
             choose_model(fastq)
         assert exc.value.code == 6
 
+    def test_choose_model_empty_fastq_exits(self, tmp_path):
+        """Empty FASTQ file → sys.exit(4)"""
+        fastq = str(tmp_path / "empty.fastq")
+        open(fastq, "w").close()
+        with pytest.raises(SystemExit) as exc:
+            choose_model(fastq)
+        assert exc.value.code == 4
+
+    def test_choose_model_empty_fastq_gz_exits(self, tmp_path):
+        """Empty gzipped FASTQ file → sys.exit(4)"""
+        import gzip as _gzip
+        fastq_gz = str(tmp_path / "empty.fastq.gz")
+        with _gzip.open(fastq_gz, "wt"):
+            pass
+        with pytest.raises(SystemExit) as exc:
+            choose_model(fastq_gz)
+        assert exc.value.code == 4
+
+
+# ---------------------------------------------------------------------------
+# choose_model — all Dorado DNA models from the official list
+# https://software-docs.nanoporetech.com/dorado/latest/models/list/
+# ---------------------------------------------------------------------------
+
+# Dorado DNA models with an exact-version Clair3 counterpart on HKU.
+_DORADO_DNA_EXACT = [
+    ("dna_r10.4.1_e8.2_400bps_hac@v4.2.0", "r1041_e82_400bps_hac_v420"),
+    ("dna_r10.4.1_e8.2_400bps_sup@v4.2.0", "r1041_e82_400bps_sup_v420"),
+    ("dna_r10.4.1_e8.2_400bps_hac@v4.3.0", "r1041_e82_400bps_hac_v430"),
+    ("dna_r10.4.1_e8.2_400bps_sup@v4.3.0", "r1041_e82_400bps_sup_v430"),
+    ("dna_r10.4.1_e8.2_400bps_hac@v5.0.0", "r1041_e82_400bps_hac_v500"),
+    ("dna_r10.4.1_e8.2_400bps_sup@v5.0.0", "r1041_e82_400bps_sup_v500"),
+    ("dna_r10.4.1_e8.2_400bps_hac@v5.2.0", "r1041_e82_400bps_hac_v520"),
+    ("dna_r10.4.1_e8.2_400bps_sup@v5.2.0", "r1041_e82_400bps_sup_v520"),
+]
+
+# Dorado fast models have no versioned (v-prefix) Clair3 counterpart on HKU —
+# only Guppy-era (g-prefix) fast models exist, which must not be used silently
+# with Dorado data as they can produce severely incorrect variant calls.
+_DORADO_DNA_FAST_NO_MODEL = [
+    "dna_r10.4.1_e8.2_400bps_fast@v4.2.0",
+    "dna_r10.4.1_e8.2_400bps_fast@v4.3.0",
+    "dna_r10.4.1_e8.2_400bps_fast@v5.0.0",
+    "dna_r10.4.1_e8.2_400bps_fast@v5.2.0",
+]
+
+
+@pytest.mark.parametrize("dorado_model,expected_clair3", _DORADO_DNA_EXACT)
+def test_choose_model_dorado_dna_exact(tmp_path, dorado_model, expected_clair3):
+    """choose_model maps Dorado hac/sup models to their exact Clair3 counterpart."""
+    fastq = str(tmp_path / "reads.fastq")
+    _write_fastq(fastq, "read1", f"read1 basecall_model_version_id={dorado_model}")
+    result = choose_model(fastq)
+    assert result["name"] == expected_clair3, (
+        f"Dorado model {dorado_model!r} → expected Clair3 {expected_clair3!r}, got {result['name']!r}"
+    )
+
+
+@pytest.mark.parametrize("dorado_model", _DORADO_DNA_FAST_NO_MODEL)
+def test_choose_model_dorado_fast_no_versioned_model_exits(tmp_path, dorado_model):
+    """Dorado fast models have no versioned Clair3 counterpart — must exit(6) rather
+    than silently falling back to an incompatible Guppy-era model."""
+    fastq = str(tmp_path / "reads.fastq")
+    _write_fastq(fastq, "read1", f"read1 basecall_model_version_id={dorado_model}")
+    with pytest.raises(SystemExit) as exc:
+        choose_model(fastq)
+    assert exc.value.code == 6
+
 
 # ---------------------------------------------------------------------------
 # get_scheme (mocked network)

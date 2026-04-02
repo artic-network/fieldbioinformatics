@@ -1,6 +1,7 @@
 # Written by Nick Loman (@pathogenomenick)
 
 from clint.textui import colored
+import gzip
 import os
 import subprocess
 import sys
@@ -125,9 +126,35 @@ def run(parser, args):
         )
         raise SystemExit(1)
 
+    if read_file.endswith(".gz"):
+        with gzip.open(read_file, "rb") as fh:
+            has_content = bool(fh.read(1))
+    else:
+        has_content = os.path.getsize(read_file) > 0
+    if not has_content:
+        print(
+            colored.red(
+                f"Read file '{read_file}' is empty — cannot continue. "
+                f"If you used artic guppyplex to produce this file, check that "
+                f"your --min-length / --max-length and --quality settings are not "
+                f"filtering out all reads, and that the source directory contained "
+                f"FASTQ files. If you provided the file directly, ensure that  your"
+                f"FASTQ file is not empty and is properly formatted."
+            ),
+            file=sys.stderr,
+        )
+        raise SystemExit(4)
+
     ## collect the primer pools
-    scheme = Scheme.from_file(bed)
-    pools = set([row.pool for row in scheme.bedlines] + ["unmatched"])
+    try:
+        scheme = Scheme.from_file(bed)
+        pools = set([row.pool for row in scheme.bedlines] + ["unmatched"])
+    except (ValueError, TypeError) as e:
+        print(
+            colored.red(f"Failed to parse primer scheme BED file '{bed}': {e}"),
+            file=sys.stderr,
+        )
+        raise SystemExit(3)
 
     ## create a holder to keep the pipeline commands in
     cmds = []

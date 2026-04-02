@@ -717,11 +717,30 @@ def choose_model(read_file: str) -> dict:
             "rt",
         ) as handle:
             reads = SeqIO.parse(handle, "fastq")
-
-            read = next(reads)
+            try:
+                read = next(reads)
+            except StopIteration:
+                print(
+                    colored.red(
+                        f"Input file '{read_file}' contains no reads — cannot select a Clair3 model automatically. "
+                        f"Please check the file is not empty, or provide a model with --model."
+                    ),
+                    file=sys.stderr,
+                )
+                sys.exit(4)
     else:
         reads = SeqIO.parse(read_file, "fastq")
-        read = next(reads)
+        try:
+            read = next(reads)
+        except StopIteration:
+            print(
+                colored.red(
+                    f"Input file '{read_file}' contains no reads — cannot select a Clair3 model automatically. "
+                    f"Please check the file is not empty, or provide a model with --model."
+                ),
+                file=sys.stderr,
+            )
+            sys.exit(4)
 
     split_description = read.description.split()
     split_description = [x.split("=") for x in split_description if "=" in x]
@@ -861,13 +880,33 @@ def choose_model(read_file: str) -> dict:
     except NameError:
         pass
 
-    print(
-        colored.red(
-            f"Multiple potential models found, please provide the appropriate model from the following with the '--model' parameter:\n{' '.join([str(x['name']) for x in possible_models])}"
-        ),
-        file=sys.stderr,
-    )
-
+    # No versioned Clair3 model matches this Dorado basecall model.
+    # Candidate names that start with 'g' are Guppy-era models and must NOT be
+    # used as a silent fallback for Dorado data — doing so risks severely
+    # incorrect variant calling.
+    guppy_candidates = [x for x in possible_models if "_g" in x["name"].split("_")[-1]]
+    if guppy_candidates:
+        print(
+            colored.red(
+                f"No versioned Clair3 model found for Dorado basecall model "
+                f"{tags['basecall_model_version_id']!r}. The only candidates "
+                f"({', '.join(x['name'] for x in guppy_candidates)}) are "
+                f"Guppy-era models (g-prefix) and are incompatible with Dorado "
+                f"data. Please re-basecall with hac or sup, or provide an "
+                f"appropriate model with --model."
+            ),
+            file=sys.stderr,
+        )
+    else:
+        print(
+            colored.red(
+                f"Multiple potential models found for basecall model id "
+                f"{tags['basecall_model_version_id']!r}, please provide the "
+                f"appropriate model with --model:\n"
+                f"{' '.join(x['name'] for x in possible_models)}"
+            ),
+            file=sys.stderr,
+        )
     sys.exit(6)
 
 
