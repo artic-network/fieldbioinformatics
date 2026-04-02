@@ -222,8 +222,13 @@ def run(parser, args):
         # in its --output path.  Use a space-free temp directory keyed on a
         # hash of the sample prefix and pool so it is unique across concurrent
         # runs and deterministic within a single pipeline invocation.
+        # On WSL, TMPDIR may point at a Windows path containing spaces, so
+        # fall back to /tmp (POSIX) or C:\Temp (Windows) if needed.
+        _tmp_base = tempfile.gettempdir()
+        if " " in _tmp_base:
+            _tmp_base = "C:\\Temp" if sys.platform == "win32" else "/tmp"
         _clair3_out_path = os.path.join(
-            tempfile.gettempdir(),
+            _tmp_base,
             "artic_clair3_" + hashlib.md5(f"{args.sample}_{p}".encode()).hexdigest()[:16],
         )
         clair3_out = shlex.quote(_clair3_out_path)
