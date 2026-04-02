@@ -2,10 +2,12 @@
 
 from clint.textui import colored
 import gzip
+import hashlib
 import os
 import shlex
 import subprocess
 import sys
+import tempfile
 import time
 from artic.utils import get_scheme, choose_model
 from primalbedtools.scheme import Scheme
@@ -215,7 +217,16 @@ def run(parser, args):
             os.remove("%s.%s.hdf" % (args.sample, p))
 
         pool_rg_bam = shlex.quote(f"{args.sample}.{p}.primertrimmed.rg.sorted.bam")
-        clair3_out = shlex.quote(f"{args.sample}_rg_{p}")
+
+        # run_clair3.sh is an external shell script that may not handle spaces
+        # in its --output path.  Use a space-free temp directory keyed on a
+        # hash of the sample prefix and pool so it is unique across concurrent
+        # runs and deterministic within a single pipeline invocation.
+        _clair3_out_path = os.path.join(
+            tempfile.gettempdir(),
+            "artic_clair3_" + hashlib.md5(f"{args.sample}_{p}".encode()).hexdigest()[:16],
+        )
+        clair3_out = shlex.quote(_clair3_out_path)
 
         # Split the BAM by read group
         cmds.append(
@@ -240,10 +251,11 @@ def run(parser, args):
         )
 
         cmds.append(
-            f"bgzip -dc {shlex.quote(f'{args.sample}_rg_{p}/merge_output.vcf.gz')}"
+            f"bgzip -dc {shlex.quote(os.path.join(_clair3_out_path, 'merge_output.vcf.gz'))}"
             f" > {shlex.quote(f'{args.sample}.{p}.vcf')}"
         )
 
+        cmds.append(f"rm -rf {clair3_out}")
         cmds.append(f"rm {pool_rg_bam}")
 
     # merge the called variants for each read group

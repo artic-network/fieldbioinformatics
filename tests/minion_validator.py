@@ -178,7 +178,10 @@ def cleanUp(sampleID):
     fileList = glob.glob("{}*".format(sampleID))
     for filePath in fileList:
         try:
-            os.remove(filePath)
+            if os.path.isdir(filePath):
+                shutil.rmtree(filePath)
+            else:
+                os.remove(filePath)
         except Exception:
             sys.stderr.write(f"Error while deleting file : {filePath}")
 
