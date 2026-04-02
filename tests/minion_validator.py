@@ -20,6 +20,7 @@ from tqdm import tqdm
 import glob
 import os
 import pathlib
+import pytest
 import shutil
 import tempfile
 import unittest
@@ -385,3 +386,104 @@ class TestMinion(unittest.TestCase):
                 "No consensus produced when running clair3 with a mixed TF/PyTorch model directory",
             )
             cleanUp(sampleID)
+
+
+@pytest.mark.slow
+class TestMinionSpacedPaths(unittest.TestCase):
+    """Regression: the full pipeline must complete when every path argument
+    contains spaces — a common failure mode on WSL and Windows where user home
+    directories or data directories often include spaces.
+
+    Skipped automatically when the CVR1 test dataset or the clair3 model is
+    not present (i.e. on a machine that hasn't been set up for validation).
+    """
+
+    MODEL_NAME = "r941_prom_hac_g360+g422"
+
+    def setUp(self):
+        dataChecker()
+
+    def _find_model_dir(self):
+        conda_prefix = os.getenv("CONDA_PREFIX")
+        if not conda_prefix:
+            self.skipTest("CONDA_PREFIX not set — cannot locate clair3 models")
+        model_dir = os.path.join(conda_prefix, "bin", "models")
+        if not os.path.isdir(os.path.join(model_dir, self.MODEL_NAME)):
+            self.skipTest(
+                f"Clair3 model '{self.MODEL_NAME}' not found at {model_dir} — "
+                "run 'artic_get_models' first"
+            )
+        return model_dir
+
+    def test_clair3_spaced_paths(self):
+        """artic minion produces a consensus and VCF when every path — read
+        file, primer scheme, model directory, and sample prefix — contains a
+        space character.  This exercises every shlex.quote() call in minion.py.
+        """
+        model_dir = self._find_model_dir()
+
+        sample_id = "CVR1"
+        src_fastq = os.path.join(dataDir, sample_id, f"{sample_id}.fastq")
+        if not os.path.exists(src_fastq):
+            self.skipTest(f"CVR1 FASTQ not found at {src_fastq}")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create directories whose names contain spaces.
+            data_dir    = os.path.join(tmpdir, "artic data")
+            output_dir  = os.path.join(tmpdir, "artic output")
+            scheme_dir  = os.path.join(tmpdir, "primer schemes")
+            models_dir  = os.path.join(tmpdir, "clair3 models")
+            for d in (data_dir, output_dir, scheme_dir, models_dir):
+                os.makedirs(d)
+
+            # Symlink the clair3 model into the spaced models directory so we
+            # don't have to copy the (potentially large) model files.
+            os.symlink(
+                os.path.join(model_dir, self.MODEL_NAME),
+                os.path.join(models_dir, self.MODEL_NAME),
+            )
+
+            # Copy the FASTQ to a filename that contains a space.
+            spaced_fastq = os.path.join(data_dir, "sample reads.fastq")
+            shutil.copy2(src_fastq, spaced_fastq)
+
+            # Sample prefix: directory and basename both contain spaces.
+            sample_prefix = os.path.join(output_dir, "my sample")
+
+            cmd = [
+                "minion",
+                "--model",            self.MODEL_NAME,
+                "--model-dir",        models_dir,
+                "--read-file",        spaced_fastq,
+                "--scheme-name",      "SARS-CoV-2",
+                "--scheme-version",   "v1.0.0",
+                "--scheme-length",    "400",
+                "--scheme-directory", scheme_dir,
+                "--threads",          "2",
+                "--linearise-fasta",
+                "--no-frameshifts",
+                sample_prefix,
+            ]
+
+            parser = pipeline.init_pipeline_parser()
+            try:
+                args = parser.parse_args(cmd)
+            except SystemExit:
+                self.fail("Failed to parse minion command with spaced paths")
+
+            try:
+                args.func(parser, args)
+            except SystemExit as e:
+                self.fail(
+                    f"artic minion exited with code {e.code} — "
+                    "pipeline failed with spaces in paths"
+                )
+
+            self.assertTrue(
+                os.path.exists(f"{sample_prefix}.consensus.fasta"),
+                "No consensus produced when running with spaced paths",
+            )
+            self.assertTrue(
+                os.path.exists(f"{sample_prefix}.normalised.vcf.gz"),
+                "No VCF produced when running with spaced paths",
+            )

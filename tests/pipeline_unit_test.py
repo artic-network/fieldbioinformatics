@@ -1,6 +1,7 @@
 # pipeline_unit_test.py contains a test for the pipeline parser
 import gzip
 import os
+import shlex
 import tempfile
 
 import pytest
@@ -199,3 +200,100 @@ def test_pipeline_parser():
 
     # for arg, val in vars(args).items():
     #    print(arg, val)
+
+
+# ---------------------------------------------------------------------------
+# Spaces in paths
+# ---------------------------------------------------------------------------
+
+class TestSpacesInPaths:
+    """Regression: shell commands must handle paths/sample names containing spaces.
+
+    Uses dry_run=True so no real tools are executed; the generated log is
+    inspected to verify every path argument is properly shell-quoted.
+    """
+
+    MODEL = "r941_prom_hac_g360+g422"
+
+    def _args(self, sample, read_file, bed, ref, model_dir):
+        return SimpleNamespace(
+            model=self.MODEL,
+            read_file=read_file,
+            sample=sample,
+            scheme_name=None,
+            scheme_version=None,
+            scheme_length=None,
+            scheme_directory=".",
+            bed=bed,
+            ref=ref,
+            threads=1,
+            min_depth=20,
+            allow_mismatched_primers=False,
+            primer_match_threshold=4,
+            normalise=200,
+            model_dir=model_dir,
+            min_mapq=20,
+            no_frameshifts=False,
+            no_indels=False,
+            linearise_fasta=False,
+            align_consensus=False,
+            dry_run=True,
+        )
+
+    def _dry_run(self, tmp_path, sample_name="my sample"):
+        """Run minion in dry-run mode with space-containing paths; return log lines."""
+        spaced_dir = tmp_path / "path with space"
+        spaced_dir.mkdir()
+
+        read_file = str(spaced_dir / "my reads.fastq")
+        bed = str(spaced_dir / "primer scheme.bed")
+        ref = str(spaced_dir / "ref sequence.fasta")
+        model_dir = str(spaced_dir / "clair3 models")
+        sample = str(tmp_path / sample_name)
+
+        mock_scheme = mock.MagicMock()
+        mock_scheme.bedlines = [mock.MagicMock(pool="pool1")]
+
+        with mock.patch("artic.minion.os.path.exists", return_value=True), \
+             mock.patch("artic.minion.os.path.getsize", return_value=100), \
+             mock.patch("artic.minion.os.remove"), \
+             mock.patch("artic.minion.Scheme.from_file", return_value=mock_scheme):
+            minion.run(None, self._args(sample, read_file, bed, ref, model_dir))
+
+        log_file = sample + ".minion.log.txt"
+        with open(log_file) as f:
+            lines = f.readlines()
+        return lines, read_file, bed, ref, sample, model_dir
+
+    def test_dry_run_completes_with_spaced_paths(self, tmp_path):
+        """Pipeline must complete without error when all paths contain spaces."""
+        lines, *_ = self._dry_run(tmp_path)
+        assert lines, "Expected non-empty dry-run log"
+
+    def test_minimap2_quotes_read_file_and_ref(self, tmp_path):
+        lines, read_file, _, ref, _, _ = self._dry_run(tmp_path)
+        cmd = next(line for line in lines if line.startswith("minimap2"))
+        assert shlex.quote(read_file) in cmd, f"read_file not quoted in: {cmd!r}"
+        assert shlex.quote(ref) in cmd, f"ref not quoted in: {cmd!r}"
+
+    def test_align_trim_quotes_bed(self, tmp_path):
+        lines, _, bed, _, _, _ = self._dry_run(tmp_path)
+        cmd = next(line for line in lines if line.startswith("align_trim"))
+        assert shlex.quote(bed) in cmd, f"bed not quoted in: {cmd!r}"
+
+    def test_samtools_index_quotes_sample_bam(self, tmp_path):
+        lines, _, _, _, sample, _ = self._dry_run(tmp_path)
+        cmd = next(line for line in lines if line.startswith("samtools index"))
+        assert shlex.quote(sample + ".sorted.bam") in cmd, f"sample bam not quoted in: {cmd!r}"
+
+    def test_clair3_quotes_model_path(self, tmp_path):
+        lines, _, _, _, _, model_dir = self._dry_run(tmp_path)
+        cmd = next(line for line in lines if line.startswith("run_clair3.sh"))
+        full_model = f"{model_dir}/{self.MODEL}"
+        assert shlex.quote(full_model) in cmd, f"model path not quoted in: {cmd!r}"
+
+    def test_merge_vcf_quotes_sample_and_bed(self, tmp_path):
+        lines, _, bed, _, sample, _ = self._dry_run(tmp_path)
+        cmd = next(line for line in lines if line.startswith("artic_vcf_merge"))
+        assert shlex.quote(sample) in cmd, f"sample not quoted in: {cmd!r}"
+        assert shlex.quote(bed) in cmd, f"bed not quoted in: {cmd!r}"

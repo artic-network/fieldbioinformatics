@@ -309,3 +309,59 @@ class TestMultiprocessing:
         run(None, args)
         result = _read_output_fastq(out)
         assert {r.id for r in result} == {"gz1", "gz2"}
+
+
+# ---------------------------------------------------------------------------
+# Spaces in paths
+# ---------------------------------------------------------------------------
+
+class TestSpacesInPaths:
+    """Regression: file operations must handle directories and output paths containing spaces."""
+
+    def test_input_directory_with_space(self, tmp_path):
+        """Reads are collected correctly from a directory path containing spaces."""
+        spaced_dir = tmp_path / "path with space"
+        spaced_dir.mkdir()
+        rec = _make_record("read1", "ACGT" * 25, [30] * 100)
+        _write_fastq(spaced_dir / "reads.fastq", [rec])
+        out = str(tmp_path / "out.fastq")
+        args = _make_args(spaced_dir, quality=7.0, output=out)
+        run(None, args)
+        result = _read_output_fastq(out)
+        assert len(result) == 1
+        assert result[0].id == "read1"
+
+    def test_output_path_with_space(self, tmp_path):
+        """Reads are written to an output path containing spaces."""
+        rec = _make_record("read1", "ACGT" * 25, [30] * 100)
+        _write_fastq(tmp_path / "reads.fastq", [rec])
+        out = str(tmp_path / "my output file.fastq")
+        args = _make_args(tmp_path, quality=7.0, output=out)
+        run(None, args)
+        result = _read_output_fastq(out)
+        assert len(result) == 1
+        assert result[0].id == "read1"
+
+    def test_gz_output_path_with_space(self, tmp_path):
+        """Gzip output is written correctly to a path containing spaces."""
+        rec = _make_record("read1", "ACGT" * 25, [30] * 100)
+        _write_fastq(tmp_path / "reads.fastq", [rec])
+        out = str(tmp_path / "my output file.fastq.gz")
+        args = _make_args(tmp_path, quality=7.0, output=out)
+        run(None, args)
+        result = _read_output_fastq_gz(out)
+        assert len(result) == 1
+        assert result[0].id == "read1"
+
+    def test_gz_input_in_directory_with_space(self, tmp_path):
+        """Gzip-compressed input files in a directory with spaces are read correctly."""
+        spaced_dir = tmp_path / "path with space"
+        spaced_dir.mkdir()
+        rec = _make_record("gz_read", "ACGT" * 25, [30] * 100)
+        _write_fastq_gz(spaced_dir / "reads.fastq.gz", [rec])
+        out = str(tmp_path / "out.fastq")
+        args = _make_args(spaced_dir, quality=7.0, output=out)
+        run(None, args)
+        result = _read_output_fastq(out)
+        assert len(result) == 1
+        assert result[0].id == "gz_read"
