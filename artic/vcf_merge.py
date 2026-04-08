@@ -33,7 +33,7 @@ def vcf_merge(args):
 
     pool_map = {}
     for param in args.vcflist:
-        pool_name, file_name = param.split(":")
+        pool_name, file_name = param.split(":", 1)
         pool_map[file_name] = pool_name
         if not template_header:
             if _has_variants(file_name):
@@ -44,6 +44,12 @@ def vcf_merge(args):
                     f"Not using {file_name} as VCF template since it has no variants",
                     file=sys.stderr,
                 )
+
+    if template_header is None:
+        # All input VCFs were empty — grab the header from the first file.
+        first_file = next(iter(pool_map))
+        with pysam.VariantFile(first_file) as vcf_reader:
+            template_header = vcf_reader.header.copy()
 
     template_header.info.add("Pool", 1, "String", "The pool name")
 
