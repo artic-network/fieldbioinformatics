@@ -15,8 +15,10 @@ The pipeline uses [Clair3](https://github.com/HKU-BAL/Clair3) for variant callin
 ## Downloading models
 
 ```sh
-artic_get_models
+artic_get_models --models r1041_e82_400bps_sup_v400 r1041_e82_400bps_sup_v420 ...
 ```
+
+Will fetch the models provided as a space-delimited list to the `--models` parameter, if no `--models` parameter is provided all models will be fetched.
 
 Models are stored in `$CONDA_PREFIX/bin/models/` by default. For a custom location:
 
@@ -57,8 +59,8 @@ These models correspond to data basecalled with [Dorado](https://github.com/nano
 
 #### R10.4.1 — 400 bps
 
-| Clair3 model                | Dorado basecall model                 |
-| --------------------------- | ------------------------------------- |
+| Clair3 model                | Dorado basecall model                |
+| --------------------------- | ------------------------------------ |
 | `r1041_e82_400bps_hac_v520` | `dna_r10.4.1_e8.2_400bps_hac@v5.2.0` |
 | `r1041_e82_400bps_sup_v520` | `dna_r10.4.1_e8.2_400bps_sup@v5.2.0` |
 | `r1041_e82_400bps_hac_v500` | `dna_r10.4.1_e8.2_400bps_hac@v5.0.0` |
@@ -77,8 +79,8 @@ These models correspond to data basecalled with [Dorado](https://github.com/nano
 
 #### R10.4.1 — 260 bps
 
-| Clair3 model                | Dorado basecall model                 |
-| --------------------------- | ------------------------------------- |
+| Clair3 model                | Dorado basecall model                |
+| --------------------------- | ------------------------------------ |
 | `r1041_e82_260bps_hac_v410` | `dna_r10.4.1_e8.2_260bps_hac@v4.1.0` |
 | `r1041_e82_260bps_sup_v410` | `dna_r10.4.1_e8.2_260bps_sup@v4.1.0` |
 | `r1041_e82_260bps_hac_v400` | `dna_r10.4.1_e8.2_260bps_hac@v4.0.0` |
@@ -86,10 +88,10 @@ These models correspond to data basecalled with [Dorado](https://github.com/nano
 
 #### R9.4.1
 
-| Clair3 model              | Dorado basecall model      |
-| ------------------------- | -------------------------- |
-| `r941_prom_hac_g360+g422` | `dna_r9.4.1_e8_hac@vX.X`  |
-| `r941_prom_sup_g5014`     | `dna_r9.4.1_e8_sup@vX.X`  |
+| Clair3 model              | Dorado basecall model    |
+| ------------------------- | ------------------------ |
+| `r941_prom_hac_g360+g422` | `dna_r9.4.1_e8_hac@vX.X` |
+| `r941_prom_sup_g5014`     | `dna_r9.4.1_e8_sup@vX.X` |
 
 R9.4.1 has only two models (one per preset). Auto-selection returns the correct model for any R9.4.1 hac or sup tag regardless of basecaller version.
 
