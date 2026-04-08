@@ -40,6 +40,8 @@ class Clair3Filter:
         # Filter out low allele frequency variants
         try:
             allele_freq = list(v.samples.values())[0]["AF"]
+            if isinstance(allele_freq, tuple):
+                allele_freq = allele_freq[0]
         except Exception:
             print(
                 f"ERROR: Could not find AF for variant at {v.chrom}:{v.pos + 1}, cannot filter on allele frequency"

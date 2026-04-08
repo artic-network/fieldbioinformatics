@@ -65,6 +65,12 @@ def main():
         default=f"{os.getenv('CONDA_PREFIX')}/bin/models/",
         help="Directory to download the model to, default is: %(default)s",
     )
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        metavar="MODEL",
+        help="Only download the specified model(s) by name. Downloads all models if omitted.",
+    )
     args = parser.parse_args()
 
     if not os.getenv("CONDA_PREFIX"):
@@ -74,6 +80,11 @@ def main():
         )
 
     models = CLAIR3_MANIFEST
+    if args.models:
+        models = [m for m in models if m["name"] in args.models]
+        unknown = set(args.models) - {m["name"] for m in models}
+        for name in unknown:
+            print(f"Warning: unknown model '{name}' — skipping", file=sys.stderr)
 
     for model in models:
 
