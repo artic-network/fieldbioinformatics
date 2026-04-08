@@ -103,9 +103,7 @@ def run(parser, args):
             read_file=args.read_file,
         )
 
-        os.system(
-            f"cp {shlex.quote(bed)} {shlex.quote(args.sample + '.primer.bed')}"
-        )
+        os.system(f"cp {shlex.quote(bed)} {shlex.quote(args.sample + '.primer.bed')}")
         os.system(
             f"cp {shlex.quote(ref)} {shlex.quote(args.sample + '.reference.fasta')}"
         )
@@ -218,18 +216,14 @@ def run(parser, args):
 
         pool_rg_bam = shlex.quote(f"{args.sample}.{p}.primertrimmed.rg.sorted.bam")
 
-        # run_clair3.sh is an external shell script that may not handle spaces
-        # in its --output path.  Use a space-free temp directory keyed on a
-        # hash of the sample prefix and pool so it is unique across concurrent
-        # runs and deterministic within a single pipeline invocation.
-        # On WSL, TMPDIR may point at a Windows path containing spaces, so
-        # fall back to /tmp (POSIX) or C:\Temp (Windows) if needed.
+        # Clair3 does not behave properly when provided paths with spaces. Use a space-free temp directory keyed on a hash of the sample prefix and pool. On WSL, TMPDIR may point at a Windows path containing spaces, so fall back to /tmp (POSIX) or C:\Temp (Windows) if needed.
         _tmp_base = tempfile.gettempdir()
         if " " in _tmp_base:
             _tmp_base = "C:\\Temp" if sys.platform == "win32" else "/tmp"
         _clair3_out_path = os.path.join(
             _tmp_base,
-            "artic_clair3_" + hashlib.md5(f"{args.sample}_{p}".encode()).hexdigest()[:16],
+            "artic_clair3_"
+            + hashlib.md5(f"{args.sample}_{p}".encode()).hexdigest()[:16],
         )
         clair3_out = shlex.quote(_clair3_out_path)
 
@@ -325,7 +319,6 @@ def run(parser, args):
     )
 
     # apply the header to the consensus sequence and run alignment against the reference sequence
-    caller = "clair3"
     linearise_fasta = "--linearise-fasta" if args.linearise_fasta else ""
     cmds.append(
         f"artic_fasta_header {linearise_fasta} {sp('.consensus.fasta')} {shlex.quote(args.sample)}"

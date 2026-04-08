@@ -27,7 +27,7 @@ This guide walks through a complete end-to-end run of the artic pipeline, from r
 artic_get_models
 ```
 
-This downloads all supported Clair3 models to `$CONDA_PREFIX/bin/models/`. Only needs to be run once per environment. Skip this step if you are using the Docker image — models are pre-bundled.
+This downloads all supported Clair3 models to `$CONDA_PREFIX/bin/models/`. Only needs to be run once per environment. Skip this step if you are using the `latest-models-included` Docker image — models are pre-bundled. The default `latest` Docker image does not include models; mount a pre-downloaded model directory with `--model-dir` instead.
 
 ## 2. Aggregate reads with guppyplex
 

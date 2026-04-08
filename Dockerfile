@@ -21,7 +21,8 @@ USER root
 
 RUN python3 -m pip install ./fieldbioinformatics
 
-RUN artic_get_models
+ARG INCLUDE_MODELS=false
+RUN if [ "$INCLUDE_MODELS" = "true" ]; then artic_get_models; fi
 
 USER $MAMBA_USER
 

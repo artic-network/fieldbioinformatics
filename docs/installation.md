@@ -14,16 +14,44 @@ The pipeline is available as a Docker image, a conda package, or can be installe
 
 ## Via Docker
 
-A Docker image is available at [quay.io/artic/fieldbioinformatics](https://quay.io/repository/artic/fieldbioinformatics). All Clair3 models are pre-bundled — `artic_get_models` does not need to be run separately.
+Images are published to [quay.io/artic/fieldbioinformatics](https://quay.io/repository/artic/fieldbioinformatics) for both `amd64` and `aarch64` in two variants:
+
+| Tag | Clair3 models | Use when |
+| --- | --- | --- |
+| `latest` / `vX.Y.Z` | Not included | You will mount a pre-downloaded model directory |
+| `latest-models-included` / `vX.Y.Z-models-included` | Bundled | You want a fully self-contained image |
+
+### With models pre-bundled
+
+```sh
+docker pull quay.io/artic/fieldbioinformatics:latest-models-included
+
+docker run --rm \
+  -v $(pwd):/data \
+  -w /data \
+  quay.io/artic/fieldbioinformatics:latest-models-included \
+  artic minion \
+    --scheme-name artic-inrb-mpox \
+    --scheme-version v1.0.0 \
+    --scheme-length 2500 \
+    --read-file my_sample.fastq \
+    my_sample
+```
+
+### Without models (bring your own)
+
+Download models first (see [Clair3 Models](./clair3-models.md)), then mount the directory at run time:
 
 ```sh
 docker pull quay.io/artic/fieldbioinformatics
 
 docker run --rm \
   -v $(pwd):/data \
+  -v /path/to/models:/models \
   -w /data \
   quay.io/artic/fieldbioinformatics:latest \
   artic minion \
+    --model-dir /models \
     --scheme-name artic-inrb-mpox \
     --scheme-version v1.0.0 \
     --scheme-length 2500 \

@@ -24,7 +24,7 @@ Models are stored in `$CONDA_PREFIX/bin/models/` by default. For a custom locati
 artic_get_models --model-dir /path/to/models
 ```
 
-The Docker image bundles all models — `artic_get_models` is only needed for conda or source installs.
+The `*-models-included` Docker image variant bundles all models. The default Docker image does not include models — use `--model-dir` to mount a pre-downloaded model directory. `artic_get_models` is needed for conda/source installs and to prepare models for use with the default Docker image.
 
 ## Automatic model selection
 
