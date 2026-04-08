@@ -290,7 +290,7 @@ def runner(workflow, sampleID):
     obs_variants = {}
     # open the VCF and check the reported variants match the expected
     for record in pysam.VariantFile(vcfFile):
-        pos = record.pos + 1
+        pos = record.pos
         alt = (record.alts or (".",))[0]
         obs_variants[pos] = [record.ref, alt, _var_type(record)]
         if pos in expVariants:
@@ -314,20 +314,20 @@ def runner(workflow, sampleID):
                 )
 
                 # also check that the VCF record is correctly labelled as DEL
-                assert (
-                    _is_deletion(record)
+                assert _is_deletion(
+                    record
                 ), "deletion for {} not formatted correctly in VCF".format(sampleID)
 
             # if this is an expected indel, check that the VCF record is correctly labelled as INDEL
             if expVariants[pos][2] == "indel":
-                assert (
-                    _is_indel(record)
+                assert _is_indel(
+                    record
                 ), "indel for {} not formatted correctly in VCF".format(sampleID)
 
             # else, check that the VCF record is correctly labelled as SNP
             if expVariants[pos][2] == "snp":
-                assert (
-                    _is_snp(record)
+                assert _is_snp(
+                    record
                 ), "snp for {} not formatted correctly in VCF".format(sampleID)
 
             # decrement/remove the variant from the expected list, so we can keep track of checked variants
@@ -336,8 +336,9 @@ def runner(workflow, sampleID):
             #     del expVariants[record.POS]
 
         else:
-            sys.stderr.write(
-                f"unexpected variant found for {sampleID}: {alt} at {pos}"
+            print(
+                f"unexpected variant found for {sampleID}: {alt} at {pos}",
+                file=sys.stderr,
             )
             assert False
 
@@ -459,10 +460,10 @@ class TestMinionSpacedPaths(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create directories whose names contain spaces.
-            data_dir    = os.path.join(tmpdir, "artic data")
-            output_dir  = os.path.join(tmpdir, "artic output")
-            scheme_dir  = os.path.join(tmpdir, "primer schemes")
-            models_dir  = os.path.join(tmpdir, "clair3 models")
+            data_dir = os.path.join(tmpdir, "artic data")
+            output_dir = os.path.join(tmpdir, "artic output")
+            scheme_dir = os.path.join(tmpdir, "primer schemes")
+            models_dir = os.path.join(tmpdir, "clair3 models")
             for d in (data_dir, output_dir, scheme_dir, models_dir):
                 os.makedirs(d)
 
@@ -482,14 +483,22 @@ class TestMinionSpacedPaths(unittest.TestCase):
 
             cmd = [
                 "minion",
-                "--model",            self.MODEL_NAME,
-                "--model-dir",        models_dir,
-                "--read-file",        spaced_fastq,
-                "--scheme-name",      "SARS-CoV-2",
-                "--scheme-version",   "v1.0.0",
-                "--scheme-length",    "400",
-                "--scheme-directory", scheme_dir,
-                "--threads",          "2",
+                "--model",
+                self.MODEL_NAME,
+                "--model-dir",
+                models_dir,
+                "--read-file",
+                spaced_fastq,
+                "--scheme-name",
+                "SARS-CoV-2",
+                "--scheme-version",
+                "v1.0.0",
+                "--scheme-length",
+                "400",
+                "--scheme-directory",
+                scheme_dir,
+                "--threads",
+                "2",
                 "--linearise-fasta",
                 "--no-frameshifts",
                 sample_prefix,
@@ -503,6 +512,7 @@ class TestMinionSpacedPaths(unittest.TestCase):
 
             import io
             import contextlib
+
             stderr_buf = io.StringIO()
             try:
                 with contextlib.redirect_stderr(stderr_buf):

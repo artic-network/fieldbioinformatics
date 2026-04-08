@@ -53,8 +53,12 @@ def vcf_merge(args):
 
     template_header.info.add("Pool", 1, "String", "The pool name")
 
-    vcf_writer = pysam.VariantFile(f"{args.prefix}.merged.vcf", "w", header=template_header)
-    vcf_writer_primers = pysam.VariantFile(f"{args.prefix}.primers.vcf", "w", header=template_header)
+    vcf_writer = pysam.VariantFile(
+        f"{args.prefix}.merged.vcf", "w", header=template_header
+    )
+    vcf_writer_primers = pysam.VariantFile(
+        f"{args.prefix}.primers.vcf", "w", header=template_header
+    )
 
     variants = []
     for file_name, pool_name in pool_map.items():
@@ -71,11 +75,11 @@ def vcf_merge(args):
     variants.sort(key=lambda v: (v.chrom, v.pos))
 
     for v in variants:
-        if v.pos + 1 in primer_map[v.info["Pool"]]:
+        if v.pos in primer_map[v.info["Pool"]]:
             vcf_writer_primers.write(v)
             print(
                 "found primer binding site mismatch: %s"
-                % (primer_map[v.info["Pool"]][v.pos + 1]),
+                % (primer_map[v.info["Pool"]][v.pos]),
                 file=sys.stderr,
             )
         else:

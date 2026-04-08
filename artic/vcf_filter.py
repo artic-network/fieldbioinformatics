@@ -44,7 +44,7 @@ class Clair3Filter:
                 allele_freq = allele_freq[0]
         except Exception:
             print(
-                f"ERROR: Could not find AF for variant at {v.chrom}:{v.pos + 1}, cannot filter on allele frequency"
+                f"ERROR: Could not find AF for variant at {v.chrom}:{v.pos}, cannot filter on allele frequency"
             )
             raise SystemExit(1)
 
@@ -74,14 +74,16 @@ class Clair3Filter:
 def go(args):
     vcf_reader = pysam.VariantFile(args.inputvcf)
     vcf_writer = pysam.VariantFile(args.output_pass_vcf, "w", header=vcf_reader.header)
-    vcf_writer_filtered = pysam.VariantFile(args.output_fail_vcf, "w", header=vcf_reader.header)
+    vcf_writer_filtered = pysam.VariantFile(
+        args.output_fail_vcf, "w", header=vcf_reader.header
+    )
     filter = Clair3Filter(args.no_frameshifts, args.min_depth)
 
     variants = [v for v in vcf_reader]
 
     group_variants = defaultdict(list)
     for v in variants:
-        indx = "%s-%s" % (v.chrom, v.pos + 1)
+        indx = "%s-%s" % (v.chrom, v.pos)
         group_variants[indx].append(v)
 
     for v in variants:
@@ -89,7 +91,7 @@ def go(args):
         # quick pre-filter to remove rubbish that we don't want adding to the mask
         try:
             if v.info["DP"] <= 1:
-                print(f"Suppress variant {v.pos + 1} due to low depth")
+                print(f"Suppress variant {v.pos} due to low depth")
                 continue
 
         except KeyError:
@@ -101,7 +103,7 @@ def go(args):
         else:
             variant_passes = False
 
-            indx = "%s-%s" % (v.chrom, v.pos + 1)
+            indx = "%s-%s" % (v.chrom, v.pos)
             if len(group_variants[indx]) > 1:
                 for check_variant in group_variants[indx]:
                     if filter.check_filter(check_variant):
@@ -111,7 +113,7 @@ def go(args):
                 vcf_writer_filtered.write(v)
 
             else:
-                print("Suppress variant %s\n" % (v.pos + 1))
+                print("Suppress variant %s\n" % (v.pos))
 
 
 def main():

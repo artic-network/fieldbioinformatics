@@ -11,7 +11,7 @@ def read_vcf(fn):
     vcfinfo = {}
     with pysam.VariantFile(fn) as vcf_reader:
         for record in vcf_reader:
-            vcfinfo[record.pos + 1] = record
+            vcfinfo[record.pos] = record
     return vcfinfo
 
 
@@ -44,9 +44,9 @@ def main():
                 for record in vcf_reader:
                     alt = (record.alts or (".",))[0]
                     if len(alt) == 1 and len(record.ref) == 1:
-                        positions[record.pos + 1] = "snp"
+                        positions[record.pos] = "snp"
                     else:
-                        positions[record.pos + 1] = "indel"
+                        positions[record.pos] = "indel"
 
     print("pos\tset\tsample\tvartype\tdepth\tsupportfraction\tbasecalledfrequency")
 

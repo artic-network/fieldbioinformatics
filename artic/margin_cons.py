@@ -33,7 +33,7 @@ class Reporter:
         self.depths = depths
 
     def report(self, r, status, allele):
-        pos = r.pos + 1
+        pos = r.pos
         idfile = os.path.basename(self.vcffile).split(".")[0]
         print("%s\t%s\tstatus\t%s" % (idfile, pos, status), file=sys.stderr)
         print(
@@ -79,7 +79,7 @@ def go(args):
     sett = set()
     with pysam.VariantFile(args.vcffile) as vcf_reader:
         for record in vcf_reader:
-            pos = record.pos + 1  # convert to 1-based
+            pos = record.pos
             alt = (record.alts or (".",))[0]
             if alt != ".":
                 # variant call
@@ -101,9 +101,7 @@ def go(args):
                 ALT = str(alt)
 
                 if len(ALT) > len(REF):
-                    print(
-                        "Skipping insertion at position: %s" % (pos), file=sys.stderr
-                    )
+                    print("Skipping insertion at position: %s" % (pos), file=sys.stderr)
                     continue
 
                 if qual >= 200 and total_reads >= 20:
