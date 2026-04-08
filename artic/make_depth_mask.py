@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from Bio import SeqIO
 import itertools
+import numpy as np
 import os
 import pysam
 import sys
@@ -28,10 +29,10 @@ def collect_depths(bamfile, refName, minDepth, ignoreDeletions, warnRGcov):
 
     Returns
     -------
-    list
+    numpy.ndarray
         Index is the reference position, value is the corresponding coverage depth
     dict
-        Key is readgroup, value is a list of coverage depths where index is the reference position
+        Key is readgroup, value is a numpy array of coverage depths where index is the reference position
     """
     # check the BAM file exists
     if not os.path.exists(bamfile):
@@ -45,77 +46,75 @@ def collect_depths(bamfile, refName, minDepth, ignoreDeletions, warnRGcov):
     if tid == -1:
         raise Exception("bamfile does not contain specified reference (%s)" % refName)
 
+    ref_len = bamFile.get_reference_length(refName)
+
     # create a depth vector to hold the depths at each reference position
-    depths = [0] * bamFile.get_reference_length(refName)
+    depths = np.zeros(ref_len, dtype=np.int32)
 
     # create the dict to hold the depths for each readgroup
-    rgDepths = {}
+    rgDepths = {rg["ID"]: np.zeros(ref_len, dtype=np.int32) for rg in bamFile.header["RG"]}
 
-    # get the read groups and init the depth vectors
-    for rg in bamFile.header["RG"]:
-        rgDepths[rg["ID"]] = [0] * bamFile.get_reference_length(refName)
+    # iterate reads once — each read's RG tag is looked up a single time
+    # and numpy slice assignment updates all covered positions in C, avoiding the
+    # O(ref_length × coverage) Python loop that pileup() would require.
+    # use fetch(refName) when an index is available (faster for multi-contig refs);
+    # fall back to a full sequential scan with reference filtering when no index is present.
+    try:
+        _reads = bamFile.fetch(refName)
+    except ValueError:
+        _reads = (r for r in bamFile if r.reference_name == refName)
 
-    # flag to state if BAM file has low readgroup coverage
-    lowRGcov = False
+    for read in _reads:
+        if read.is_unmapped or read.cigartuples is None:
+            continue
 
-    # vector to keep track of low readgroup coverage regions
-    lowRGvec = []
+        rg = read.get_tag("RG")
+        assert rg in rgDepths, "alignment readgroup not in BAM header: %s" % rg
 
-    # generate the pileup
-    for pileupcolumn in bamFile.pileup(
-        refName,
-        start=0,
-        stop=bamFile.get_reference_length(refName),
-        max_depth=100000000,
-        truncate=False,
-        min_base_quality=0,
-    ):
-        # process the pileup column
-        for pileupread in pileupcolumn.pileups:
+        rg_arr = rgDepths[rg]
+        ref_pos = read.reference_start
 
-            # get the read group for this pileup read and check it's in the BAM header
-            rg = pileupread.alignment.get_tag("RG")
-            assert rg in rgDepths, "alignment readgroup not in BAM header: %s" % rg
-
-            # process the pileup read
-            if pileupread.is_refskip:
-                continue
-
-            if pileupread.is_del:
+        for op, length in read.cigartuples:
+            if op in (0, 7, 8):
+                # M, =, X — match/mismatch: consumes reference, count depth
+                depths[ref_pos:ref_pos + length] += 1
+                rg_arr[ref_pos:ref_pos + length] += 1
+                ref_pos += length
+            elif op == 2:
+                # D — deletion: consumes reference, count unless ignoreDeletions
                 if not ignoreDeletions:
-                    depths[pileupcolumn.pos] += 1
-                    rgDepths[rg][pileupcolumn.pos] += 1
+                    depths[ref_pos:ref_pos + length] += 1
+                    rg_arr[ref_pos:ref_pos + length] += 1
+                ref_pos += length
+            elif op == 3:
+                # N — reference skip (splice/amplicon gap): consumes reference, do not count
+                ref_pos += length
+            elif op in (1, 4, 5, 6):
+                # I, S, H, P — do not consume reference, skip
+                pass
 
-            elif not pileupread.is_del:
-                depths[pileupcolumn.pos] += 1
-                rgDepths[rg][pileupcolumn.pos] += 1
+    # vectorized post-processing: apply depth masking and per-RG coverage check
 
-            else:
-                raise Exception("unhandled pileup read encountered")
+    # stack all per-RG arrays into a 2D matrix for vectorized operations
+    rg_matrix = np.stack(list(rgDepths.values()))  # shape: (num_rg, ref_len)
 
-        # if final depth for pileup column < minDepth, report 0 and update the mask_vector
-        if depths[pileupcolumn.pos] < minDepth:
-            depths[pileupcolumn.pos] = 0
+    # mask positions where combined depth < minDepth
+    low_combined = depths < minDepth
+    depths[low_combined] = 0
 
-        # if pileupcolumn depth is okay, check that at least one of the readgroups > minDepth
-        else:
-            rgCovCheck = 0
-            for rg in rgDepths:
-                if rgDepths[rg][pileupcolumn.pos] >= minDepth:
-                    rgCovCheck += 1
-            if rgCovCheck == 0:
+    # mask positions where combined depth is adequate but no single RG has >= minDepth
+    any_rg_ok = np.any(rg_matrix >= minDepth, axis=0)
+    low_rg_mask = ~low_combined & ~any_rg_ok
 
-                # mask the region if it has low coverage in all readgroups
-                depths[pileupcolumn.pos] = 0
-
-                # also record the region so that we can report it if requested
-                lowRGcov = True
-                lowRGvec.append(pileupcolumn.pos)
+    lowRGcov = False
+    lowRGvec = []
+    if np.any(low_rg_mask):
+        depths[low_rg_mask] = 0
+        lowRGvec = np.where(low_rg_mask)[0].tolist()
+        lowRGcov = True
 
     # if requested, warn if there are regions with low readgroup coverage that pass the combined depth threshold
     if warnRGcov and lowRGcov:
-
-        # get the regions and print warning
         regions = list(intervals_extract(lowRGvec))
         sys.stderr.write(
             "alignment has unmasked regions where individual readgroup depth < {}: {}\n".format(
@@ -171,10 +170,7 @@ def go(args):
                 fh.close()
 
         # create a mask_vector that records reference positions where depth < minDepth
-        mask_vector = []
-        for pos, depth in enumerate(depths):
-            if depth == 0:
-                mask_vector.append(pos)
+        mask_vector = np.where(depths == 0)[0].tolist()
 
         # get the intervals from the mask_vector
         intervals = list(intervals_extract(mask_vector))
