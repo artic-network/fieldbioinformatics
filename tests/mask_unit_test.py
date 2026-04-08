@@ -82,16 +82,19 @@ def _write_bed(path, lines):
 
 
 def _make_vcf_record(chrom, pos, ref):
+    """pos is 1-based (genomics convention); stored as 0-based to match pysam."""
     v = MagicMock()
-    v.CHROM = chrom
-    v.POS = pos
-    v.REF = ref
+    v.chrom = chrom
+    v.pos = pos - 1  # pysam is 0-based
+    v.ref = ref
     return v
 
 
 def _mock_vcf_reader(records):
     reader = MagicMock()
     reader.__iter__ = MagicMock(return_value=iter(records))
+    reader.__enter__ = MagicMock(return_value=reader)
+    reader.__exit__ = MagicMock(return_value=False)
     return reader
 
 
@@ -114,7 +117,7 @@ class TestGo:
         )
         return args, str(output), vcf_records or []
 
-    @patch("artic.mask.VCF")
+    @patch("artic.mask.pysam.VariantFile")
     def test_go_masks_bed_regions(self, mock_vcf_cls, tmp_path):
         seq = "A" * 100
         args, output, vcf_records = self._build_args(
@@ -136,7 +139,7 @@ class TestGo:
         assert consensus[0:10] == "A" * 10
         assert consensus[20:30] == "A" * 10
 
-    @patch("artic.mask.VCF")
+    @patch("artic.mask.pysam.VariantFile")
     def test_go_masks_vcf_variants(self, mock_vcf_cls, tmp_path):
         seq = "A" * 100
         args, output, _ = self._build_args(
@@ -157,7 +160,7 @@ class TestGo:
         assert consensus[48] == "A"
         assert consensus[52] == "A"
 
-    @patch("artic.mask.VCF")
+    @patch("artic.mask.pysam.VariantFile")
     def test_go_combined_masking(self, mock_vcf_cls, tmp_path):
         seq = "A" * 100
         args, output, _ = self._build_args(
@@ -177,7 +180,7 @@ class TestGo:
         assert consensus[79] == "N"          # VCF masked (POS=80, 0-based index 79)
         assert consensus[5] == "A"           # between masks
 
-    @patch("artic.mask.VCF")
+    @patch("artic.mask.pysam.VariantFile")
     def test_go_output_written(self, mock_vcf_cls, tmp_path):
         seq = "ACGT" * 25  # 100 bases
         args, output, _ = self._build_args(
@@ -194,7 +197,7 @@ class TestGo:
             content = fh.read()
         assert ">MN908947.3" in content
 
-    @patch("artic.mask.VCF")
+    @patch("artic.mask.pysam.VariantFile")
     def test_go_multiple_sequences(self, mock_vcf_cls, tmp_path):
         seq_a = "A" * 50
         seq_b = "C" * 50
@@ -212,7 +215,7 @@ class TestGo:
         assert ">seqA" in content
         assert ">seqB" in content
 
-    @patch("artic.mask.VCF")
+    @patch("artic.mask.pysam.VariantFile")
     def test_go_empty_bed_no_masking(self, mock_vcf_cls, tmp_path):
         seq = "ACGT" * 10
         args, output, _ = self._build_args(

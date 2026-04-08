@@ -27,7 +27,32 @@ import unittest
 import requests
 import sys
 import tarfile
-from cyvcf2 import VCF
+import pysam
+
+
+def _var_type(rec):
+    ref = rec.ref
+    alt = (rec.alts or (".",))[0]
+    if alt == ".":
+        return "unknown"
+    if len(ref) == 1 and len(alt) == 1:
+        return "snp"
+    return "indel"
+
+
+def _is_snp(rec):
+    alt = (rec.alts or (".",))[0]
+    return len(rec.ref) == 1 and len(alt) == 1
+
+
+def _is_indel(rec):
+    alt = (rec.alts or (".",))[0]
+    return len(rec.ref) != len(alt)
+
+
+def _is_deletion(rec):
+    alt = (rec.alts or (".",))[0]
+    return len(rec.ref) > len(alt)
 
 
 from artic import pipeline
@@ -264,43 +289,45 @@ def runner(workflow, sampleID):
 
     obs_variants = {}
     # open the VCF and check the reported variants match the expected
-    for record in VCF(vcfFile):
-        obs_variants[record.POS] = [record.REF, str(record.ALT[0]), record.var_type]
-        if record.POS in expVariants:
+    for record in pysam.VariantFile(vcfFile):
+        pos = record.pos + 1
+        alt = (record.alts or (".",))[0]
+        obs_variants[pos] = [record.ref, alt, _var_type(record)]
+        if pos in expVariants:
             assert (
-                record.REF == expVariants[record.POS][0]
+                record.ref == expVariants[pos][0]
             ), "incorrect REF reported in VCF for {} at position {}".format(
-                sampleID, record.POS
+                sampleID, pos
             )
             assert (
-                str(record.ALT[0]) == expVariants[record.POS][1]
+                alt == expVariants[pos][1]
             ), "incorrect ALT reported in VCF for {} at position {}".format(
-                sampleID, record.POS
+                sampleID, pos
             )
 
             # if this is an expected deletion, check the consensus sequence for it's absence
-            if expVariants[record.POS][2] == "del":
+            if expVariants[pos][2] == "del":
                 assert (
-                    checkConsensus(consensusFile, record.REF) == 0
+                    checkConsensus(consensusFile, record.ref) == 0
                 ), "expected deletion for {} was reported but was left in consensus".format(
                     sampleID
                 )
 
                 # also check that the VCF record is correctly labelled as DEL
                 assert (
-                    record.is_deletion
+                    _is_deletion(record)
                 ), "deletion for {} not formatted correctly in VCF".format(sampleID)
 
             # if this is an expected indel, check that the VCF record is correctly labelled as INDEL
-            if expVariants[record.POS][2] == "indel":
+            if expVariants[pos][2] == "indel":
                 assert (
-                    record.is_indel
+                    _is_indel(record)
                 ), "indel for {} not formatted correctly in VCF".format(sampleID)
 
             # else, check that the VCF record is correctly labelled as SNP
-            if expVariants[record.POS][2] == "snp":
+            if expVariants[pos][2] == "snp":
                 assert (
-                    record.is_snp
+                    _is_snp(record)
                 ), "snp for {} not formatted correctly in VCF".format(sampleID)
 
             # decrement/remove the variant from the expected list, so we can keep track of checked variants
@@ -310,7 +337,7 @@ def runner(workflow, sampleID):
 
         else:
             sys.stderr.write(
-                f"unexpected variant found for {sampleID}: {str(record.ALT[0])} at {record.POS}"
+                f"unexpected variant found for {sampleID}: {alt} at {pos}"
             )
             assert False
 

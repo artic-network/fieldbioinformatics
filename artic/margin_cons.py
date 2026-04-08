@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from Bio import SeqIO
 import sys
-from cyvcf2 import VCF
+import pysam
 import subprocess
 from collections import defaultdict
 import os.path
@@ -33,24 +33,25 @@ class Reporter:
         self.depths = depths
 
     def report(self, r, status, allele):
+        pos = r.pos + 1
         idfile = os.path.basename(self.vcffile).split(".")[0]
-        print("%s\t%s\tstatus\t%s" % (idfile, r.POS, status), file=sys.stderr)
+        print("%s\t%s\tstatus\t%s" % (idfile, pos, status), file=sys.stderr)
         print(
-            "%s\t%s\tdepth\t%s" % (idfile, r.POS, r.INFO.get("TotalReads", ["n/a"])),
+            "%s\t%s\tdepth\t%s" % (idfile, pos, r.info.get("TotalReads", ["n/a"])),
             file=sys.stderr,
         )
         print(
             "%s\t%s\tbasecalledfrac\t%s"
-            % (idfile, r.POS, r.INFO.get("BaseCalledFraction", ["n/a"])),
+            % (idfile, pos, r.info.get("BaseCalledFraction", ["n/a"])),
             file=sys.stderr,
         )
         print(
             "%s\t%s\tsupportfrac\t%s"
-            % (idfile, r.POS, r.INFO.get("SupportFraction", ["n/a"])),
+            % (idfile, pos, r.info.get("SupportFraction", ["n/a"])),
             file=sys.stderr,
         )
-        print("%s\t%s\tallele\t%s" % (idfile, r.POS, allele), file=sys.stderr)
-        print("%s\t%s\tref\t%s" % (idfile, r.POS, r.REF), file=sys.stderr)
+        print("%s\t%s\tallele\t%s" % (idfile, pos, allele), file=sys.stderr)
+        print("%s\t%s\tref\t%s" % (idfile, pos, r.ref), file=sys.stderr)
 
 
 def go(args):
@@ -76,60 +77,62 @@ def go(args):
         cons[mask - 1] = "N"
 
     sett = set()
-    vcf_reader = VCF(args.vcffile)
-    for record in vcf_reader:
-        if record.ALT[0] != ".":
-            # variant call
+    with pysam.VariantFile(args.vcffile) as vcf_reader:
+        for record in vcf_reader:
+            pos = record.pos + 1  # convert to 1-based
+            alt = (record.alts or (".",))[0]
+            if alt != ".":
+                # variant call
 
-            if record.POS in MASKED_POSITIONS:
-                reporter.report(record, "masked_manual", "n")
-                continue
-
-            if "PRIMER" in record.INFO:
-                reporter.report(record, "primer_binding_site", "n")
-                cons[record.POS - 1] = "N"
-                continue
-
-            support = float(record.INFO["SupportFraction"])
-            total_reads = int(record.INFO["TotalReads"])
-            qual = record.QUAL
-
-            REF = record.REF
-            ALT = str(record.ALT[0])
-
-            if len(ALT) > len(REF):
-                print(
-                    "Skipping insertion at position: %s" % (record.POS), file=sys.stderr
-                )
-                continue
-
-            if qual >= 200 and total_reads >= 20:
-                if len(REF) > len(ALT):
-                    print(
-                        "N-masking confident deletion at %s" % (record.POS),
-                        file=sys.stderr,
-                    )
-                    for n in range(len(REF)):
-                        cons[record.POS - 1 + n] = "N"
+                if pos in MASKED_POSITIONS:
+                    reporter.report(record, "masked_manual", "n")
                     continue
 
-                reporter.report(record, "variant", ALT)
-                sett.add(record.POS)
-                if len(REF) > len(ALT):
-                    print("deletion", file=sys.stderr)
+                if "PRIMER" in record.info:
+                    reporter.report(record, "primer_binding_site", "n")
+                    cons[pos - 1] = "N"
                     continue
+
+                support = float(record.info["SupportFraction"])
+                total_reads = int(record.info["TotalReads"])
+                qual = record.qual
+
+                REF = record.ref
+                ALT = str(alt)
 
                 if len(ALT) > len(REF):
-                    print("insertion", file=sys.stderr)
+                    print(
+                        "Skipping insertion at position: %s" % (pos), file=sys.stderr
+                    )
                     continue
 
-                cons[record.POS - 1] = str(ALT)
-            elif len(REF) > len(ALT):
-                continue
-            else:
-                reporter.report(record, "low_qual_variant", "n")
-                cons[record.POS - 1] = "N"
-                continue
+                if qual >= 200 and total_reads >= 20:
+                    if len(REF) > len(ALT):
+                        print(
+                            "N-masking confident deletion at %s" % (pos),
+                            file=sys.stderr,
+                        )
+                        for n in range(len(REF)):
+                            cons[pos - 1 + n] = "N"
+                        continue
+
+                    reporter.report(record, "variant", ALT)
+                    sett.add(pos)
+                    if len(REF) > len(ALT):
+                        print("deletion", file=sys.stderr)
+                        continue
+
+                    if len(ALT) > len(REF):
+                        print("insertion", file=sys.stderr)
+                        continue
+
+                    cons[pos - 1] = str(ALT)
+                elif len(REF) > len(ALT):
+                    continue
+                else:
+                    reporter.report(record, "low_qual_variant", "n")
+                    cons[pos - 1] = "N"
+                    continue
 
     print(">%s" % (sys.argv[3]))
     print("".join(cons))

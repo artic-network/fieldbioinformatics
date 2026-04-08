@@ -13,32 +13,40 @@ from artic.vcf_filter import in_frame, Clair3Filter
 # ---------------------------------------------------------------------------
 
 def _variant(ref, alt):
-    """Minimal variant-like object for in_frame tests."""
-    return SimpleNamespace(REF=ref, ALT=alt)
+    """Minimal variant-like object for in_frame tests (pysam-style attributes)."""
+    return SimpleNamespace(ref=ref, alts=alt)
+
+
+def _mock_sample(af, dp, af_raises=False, dp_raises=False):
+    """Build a mock pysam sample object supporting dict-style access."""
+    sample = MagicMock()
+
+    def _getitem(key):
+        if key == "AF":
+            if af_raises:
+                raise KeyError("AF")
+            return af
+        if key == "DP":
+            if dp_raises:
+                raise KeyError("DP")
+            return dp
+        raise KeyError(key)
+
+    sample.__getitem__ = MagicMock(side_effect=_getitem)
+    return sample
 
 
 def _mock_variant(ref="A", alt=None, qual=50.0, af=0.9, dp=100,
                   af_raises=False, dp_raises=False):
-    """Full mock variant for Clair3Filter.check_filter tests."""
+    """Full mock variant for Clair3Filter.check_filter tests (pysam-style)."""
     if alt is None:
-        alt = ["T"]
+        alt = ("T",)
     v = MagicMock()
-    v.REF = ref
-    v.ALT = alt
-    v.QUAL = qual
-
-    def _format(field):
-        if field == "AF":
-            if af_raises:
-                raise KeyError("AF")
-            return [[af]]
-        if field == "DP":
-            if dp_raises:
-                raise KeyError("DP")
-            return [[dp]]
-        raise KeyError(field)
-
-    v.format = MagicMock(side_effect=_format)
+    v.ref = ref
+    v.alts = alt
+    v.qual = qual
+    sample = _mock_sample(af, dp, af_raises=af_raises, dp_raises=dp_raises)
+    v.samples = {"sample1": sample}
     return v
 
 
