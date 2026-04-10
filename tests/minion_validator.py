@@ -20,11 +20,39 @@ from tqdm import tqdm
 import glob
 import os
 import pathlib
+import pytest
+import shutil
+import tempfile
 import unittest
 import requests
 import sys
 import tarfile
-from cyvcf2 import VCF
+import pysam
+
+
+def _var_type(rec):
+    ref = rec.ref
+    alt = (rec.alts or (".",))[0]
+    if alt == ".":
+        return "unknown"
+    if len(ref) == 1 and len(alt) == 1:
+        return "snp"
+    return "indel"
+
+
+def _is_snp(rec):
+    alt = (rec.alts or (".",))[0]
+    return len(rec.ref) == 1 and len(alt) == 1
+
+
+def _is_indel(rec):
+    alt = (rec.alts or (".",))[0]
+    return len(rec.ref) != len(alt)
+
+
+def _is_deletion(rec):
+    alt = (rec.alts or (".",))[0]
+    return len(rec.ref) > len(alt)
 
 
 from artic import pipeline
@@ -175,7 +203,10 @@ def cleanUp(sampleID):
     fileList = glob.glob("{}*".format(sampleID))
     for filePath in fileList:
         try:
-            os.remove(filePath)
+            if os.path.isdir(filePath):
+                shutil.rmtree(filePath)
+            else:
+                os.remove(filePath)
         except Exception:
             sys.stderr.write(f"Error while deleting file : {filePath}")
 
@@ -258,43 +289,45 @@ def runner(workflow, sampleID):
 
     obs_variants = {}
     # open the VCF and check the reported variants match the expected
-    for record in VCF(vcfFile):
-        obs_variants[record.POS] = [record.REF, str(record.ALT[0]), record.var_type]
-        if record.POS in expVariants:
+    for record in pysam.VariantFile(vcfFile):
+        pos = record.pos
+        alt = (record.alts or (".",))[0]
+        obs_variants[pos] = [record.ref, alt, _var_type(record)]
+        if pos in expVariants:
             assert (
-                record.REF == expVariants[record.POS][0]
+                record.ref == expVariants[pos][0]
             ), "incorrect REF reported in VCF for {} at position {}".format(
-                sampleID, record.POS
+                sampleID, pos
             )
             assert (
-                str(record.ALT[0]) == expVariants[record.POS][1]
+                alt == expVariants[pos][1]
             ), "incorrect ALT reported in VCF for {} at position {}".format(
-                sampleID, record.POS
+                sampleID, pos
             )
 
             # if this is an expected deletion, check the consensus sequence for it's absence
-            if expVariants[record.POS][2] == "del":
+            if expVariants[pos][2] == "del":
                 assert (
-                    checkConsensus(consensusFile, record.REF) == 0
+                    checkConsensus(consensusFile, record.ref) == 0
                 ), "expected deletion for {} was reported but was left in consensus".format(
                     sampleID
                 )
 
                 # also check that the VCF record is correctly labelled as DEL
-                assert (
-                    record.is_deletion
+                assert _is_deletion(
+                    record
                 ), "deletion for {} not formatted correctly in VCF".format(sampleID)
 
             # if this is an expected indel, check that the VCF record is correctly labelled as INDEL
-            if expVariants[record.POS][2] == "indel":
-                assert (
-                    record.is_indel
+            if expVariants[pos][2] == "indel":
+                assert _is_indel(
+                    record
                 ), "indel for {} not formatted correctly in VCF".format(sampleID)
 
             # else, check that the VCF record is correctly labelled as SNP
-            if expVariants[record.POS][2] == "snp":
-                assert (
-                    record.is_snp
+            if expVariants[pos][2] == "snp":
+                assert _is_snp(
+                    record
                 ), "snp for {} not formatted correctly in VCF".format(sampleID)
 
             # decrement/remove the variant from the expected list, so we can keep track of checked variants
@@ -303,8 +336,9 @@ def runner(workflow, sampleID):
             #     del expVariants[record.POS]
 
         else:
-            sys.stderr.write(
-                f"unexpected variant found for {sampleID}: {str(record.ALT[0])} at {record.POS}"
+            print(
+                f"unexpected variant found for {sampleID}: {alt} at {pos}",
+                file=sys.stderr,
             )
             assert False
 
@@ -336,3 +370,176 @@ class TestMinion(unittest.TestCase):
 
     def test_Clair3_SP1(self):
         runner("clair3", "SP1")
+
+    def test_Clair3_mixed_model_dir(self):
+        """Clair3 must complete successfully when the model directory contains both
+        PyTorch .pt files and TF checkpoint files (the migration scenario where a
+        user has previously downloaded TF models into the same directory)."""
+        conda_prefix = os.getenv("CONDA_PREFIX")
+        if not conda_prefix:
+            self.skipTest("CONDA_PREFIX not set")
+
+        model_name = "r941_prom_hac_g360+g422"
+        src_model_dir = os.path.join(conda_prefix, "bin", "models", model_name)
+        if not os.path.isdir(src_model_dir):
+            self.skipTest(f"Model {model_name} not found at {src_model_dir}")
+
+        with tempfile.TemporaryDirectory() as tmp_models:
+            # Copy the real PyTorch model files into the temp model dir
+            dest_model_dir = os.path.join(tmp_models, model_name)
+            shutil.copytree(src_model_dir, dest_model_dir)
+
+            # Inject dummy TF checkpoint files alongside the real .pt files
+            for fname in [
+                "pileup.data-00000-of-00001",
+                "pileup.index",
+                "full_alignment.data-00000-of-00001",
+                "full_alignment.index",
+            ]:
+                open(os.path.join(dest_model_dir, fname), "w").close()
+
+            sampleID = "CVR1"
+            cmd = genCommand(sampleID, "clair3") + ["--model-dir", tmp_models]
+
+            parser = pipeline.init_pipeline_parser()
+            args = parser.parse_args(cmd)
+
+            try:
+                args.func(parser, args)
+            except SystemExit:
+                self.fail(
+                    "artic minion exited early — clair3 failed with a mixed TF/PyTorch model directory"
+                )
+
+            consensus = f"{sampleID}.consensus.fasta"
+            self.assertTrue(
+                os.path.exists(consensus),
+                "No consensus produced when running clair3 with a mixed TF/PyTorch model directory",
+            )
+            cleanUp(sampleID)
+
+
+@pytest.mark.slow
+class TestMinionSpacedPaths(unittest.TestCase):
+    """Regression: the full pipeline must complete when every path argument
+    contains spaces — a common failure mode on WSL and Windows where user home
+    directories or data directories often include spaces.
+
+    Skipped automatically when the CVR1 test dataset or the clair3 model is
+    not present (i.e. on a machine that hasn't been set up for validation).
+    """
+
+    MODEL_NAME = "r941_prom_hac_g360+g422"
+
+    def setUp(self):
+        dataChecker()
+
+    def _find_model_dir(self):
+        conda_prefix = os.getenv("CONDA_PREFIX")
+        if not conda_prefix:
+            self.skipTest("CONDA_PREFIX not set — cannot locate clair3 models")
+        model_dir = os.path.join(conda_prefix, "bin", "models")
+        if not os.path.isdir(os.path.join(model_dir, self.MODEL_NAME)):
+            self.skipTest(
+                f"Clair3 model '{self.MODEL_NAME}' not found at {model_dir} — "
+                "run 'artic_get_models' first"
+            )
+        return model_dir
+
+    def test_clair3_spaced_paths(self):
+        """artic minion produces a consensus and VCF when every path — read
+        file, primer scheme, model directory, and sample prefix — contains a
+        space character.  This exercises every shlex.quote() call in minion.py.
+        """
+        model_dir = self._find_model_dir()
+
+        sample_id = "CVR1"
+        src_fastq = os.path.join(dataDir, sample_id, f"{sample_id}.fastq")
+        if not os.path.exists(src_fastq):
+            self.skipTest(f"CVR1 FASTQ not found at {src_fastq}")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create directories whose names contain spaces.
+            data_dir = os.path.join(tmpdir, "artic data")
+            output_dir = os.path.join(tmpdir, "artic output")
+            scheme_dir = os.path.join(tmpdir, "primer schemes")
+            models_dir = os.path.join(tmpdir, "clair3 models")
+            for d in (data_dir, output_dir, scheme_dir, models_dir):
+                os.makedirs(d)
+
+            # Symlink the clair3 model into the spaced models directory so we
+            # don't have to copy the (potentially large) model files.
+            os.symlink(
+                os.path.join(model_dir, self.MODEL_NAME),
+                os.path.join(models_dir, self.MODEL_NAME),
+            )
+
+            # Copy the FASTQ to a filename that contains a space.
+            spaced_fastq = os.path.join(data_dir, "sample reads.fastq")
+            shutil.copy2(src_fastq, spaced_fastq)
+
+            # Sample prefix: directory and basename both contain spaces.
+            sample_prefix = os.path.join(output_dir, "my sample")
+
+            cmd = [
+                "minion",
+                "--model",
+                self.MODEL_NAME,
+                "--model-dir",
+                models_dir,
+                "--read-file",
+                spaced_fastq,
+                "--scheme-name",
+                "SARS-CoV-2",
+                "--scheme-version",
+                "v1.0.0",
+                "--scheme-length",
+                "400",
+                "--scheme-directory",
+                scheme_dir,
+                "--threads",
+                "2",
+                "--linearise-fasta",
+                "--no-frameshifts",
+                sample_prefix,
+            ]
+
+            parser = pipeline.init_pipeline_parser()
+            try:
+                args = parser.parse_args(cmd)
+            except SystemExit:
+                self.fail("Failed to parse minion command with spaced paths")
+
+            import io
+            import contextlib
+
+            stderr_buf = io.StringIO()
+            try:
+                with contextlib.redirect_stderr(stderr_buf):
+                    args.func(parser, args)
+            except SystemExit as e:
+                stderr_text = stderr_buf.getvalue()
+
+                # Also attach the pipeline log if it was written before the failure.
+                log_file = f"{sample_prefix}.minion.log.txt"
+                if os.path.exists(log_file):
+                    with open(log_file) as lf:
+                        log_text = lf.read()
+                else:
+                    log_text = "(log file not written)"
+
+                self.fail(
+                    f"artic minion exited with code {e.code} — "
+                    "pipeline failed with spaces in paths\n\n"
+                    f"--- stderr ---\n{stderr_text}\n"
+                    f"--- log ({log_file}) ---\n{log_text}"
+                )
+
+            self.assertTrue(
+                os.path.exists(f"{sample_prefix}.consensus.fasta"),
+                "No consensus produced when running with spaced paths",
+            )
+            self.assertTrue(
+                os.path.exists(f"{sample_prefix}.normalised.vcf.gz"),
+                "No VCF produced when running with spaced paths",
+            )

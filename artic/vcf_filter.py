@@ -1,19 +1,20 @@
-from cyvcf2 import VCF, Writer
+import pysam
 from collections import defaultdict
 
 
 def in_frame(v):
-    if len(v.ALT) > 1:
+    alts = v.alts or ()
+    if len(alts) > 1:
         print("This code does not support multiple genotypes!")
         raise SystemExit
-    ref = v.REF
+    ref = v.ref
 
-    if not v.ALT:  # No ALT alleles (e.g. a deletion)
+    if not alts:  # No ALT alleles (e.g. a deletion)
         if len(ref) % 3 == 0:
             return True
         return False
 
-    alt = v.ALT[0]
+    alt = alts[0]
     bases = len(alt) - len(ref)
     if not bases:
         return True
@@ -31,17 +32,19 @@ class Clair3Filter:
         self.min_allele_frequency = 0.6
 
     def check_filter(self, v):
-        qual = v.QUAL
+        qual = v.qual
 
         if qual < self.min_variant_quality:
             return False
 
         # Filter out low allele frequency variants
         try:
-            allele_freq = v.format("AF")[0][0]
+            allele_freq = list(v.samples.values())[0]["AF"]
+            if isinstance(allele_freq, tuple):
+                allele_freq = allele_freq[0]
         except Exception:
             print(
-                f"ERROR: Could not find AF for variant at {v.CHROM}:{v.POS}, cannot filter on allele frequency"
+                f"ERROR: Could not find AF for variant at {v.chrom}:{v.pos}, cannot filter on allele frequency"
             )
             raise SystemExit(1)
 
@@ -57,7 +60,7 @@ class Clair3Filter:
 
         try:
             # We don't really care about the depth here, just skip it if it isn't there
-            depth = v.format("DP")[0][0]
+            depth = list(v.samples.values())[0]["DP"]
 
             if depth < self.min_depth:
                 return False
@@ -69,26 +72,26 @@ class Clair3Filter:
 
 
 def go(args):
-    vcf_reader = VCF(args.inputvcf)
-    vcf_writer = Writer(args.output_pass_vcf, vcf_reader, "w")
-    vcf_writer.write_header()
-    vcf_writer_filtered = Writer(args.output_fail_vcf, vcf_reader, "w")
-    vcf_writer_filtered.write_header()
+    vcf_reader = pysam.VariantFile(args.inputvcf)
+    vcf_writer = pysam.VariantFile(args.output_pass_vcf, "w", header=vcf_reader.header)
+    vcf_writer_filtered = pysam.VariantFile(
+        args.output_fail_vcf, "w", header=vcf_reader.header
+    )
     filter = Clair3Filter(args.no_frameshifts, args.min_depth)
 
     variants = [v for v in vcf_reader]
 
     group_variants = defaultdict(list)
     for v in variants:
-        indx = "%s-%s" % (v.CHROM, v.POS)
+        indx = "%s-%s" % (v.chrom, v.pos)
         group_variants[indx].append(v)
 
     for v in variants:
 
         # quick pre-filter to remove rubbish that we don't want adding to the mask
         try:
-            if v.INFO["DP"] <= 1:
-                print(f"Suppress variant {v.POS} due to low depth")
+            if v.info["DP"] <= 1:
+                print(f"Suppress variant {v.pos} due to low depth")
                 continue
 
         except KeyError:
@@ -96,21 +99,21 @@ def go(args):
 
         # now apply the filter to send variants to PASS or FAIL file
         if filter.check_filter(v):
-            vcf_writer.write_record(v)
+            vcf_writer.write(v)
         else:
             variant_passes = False
 
-            indx = "%s-%s" % (v.CHROM, v.POS)
+            indx = "%s-%s" % (v.chrom, v.pos)
             if len(group_variants[indx]) > 1:
                 for check_variant in group_variants[indx]:
                     if filter.check_filter(check_variant):
                         variant_passes = True
 
             if not variant_passes:
-                vcf_writer_filtered.write_record(v)
+                vcf_writer_filtered.write(v)
 
             else:
-                print("Suppress variant %s\n" % (v.POS))
+                print("Suppress variant %s\n" % (v.pos))
 
 
 def main():

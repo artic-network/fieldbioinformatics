@@ -7,17 +7,15 @@ dependencies:
   - bcftools
   - biopython
   - bwa
-  - clair3>=1.0.0,<2.0.0
+  - clair3>=2.0.0
   - clint
   - htslib
   - minimap2
-  - multiqc
   - mafft
   - pandas
   - pip
   - pysam
   - pytest
-  - cyvcf2
   - requests
   - samtools
   - tqdm

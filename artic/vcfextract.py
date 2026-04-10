@@ -4,14 +4,14 @@ import sys
 import subprocess
 import os
 from collections import defaultdict
-from cyvcf2 import VCF
+import pysam
 
 
 def read_vcf(fn):
     vcfinfo = {}
-    vcf_reader = VCF(fn)
-    for record in vcf_reader:
-        vcfinfo[record.POS] = record
+    with pysam.VariantFile(fn) as vcf_reader:
+        for record in vcf_reader:
+            vcfinfo[record.pos] = record
     return vcfinfo
 
 
@@ -40,12 +40,13 @@ def main():
 
             print(vcffn, file=sys.stderr)
 
-            vcf_reader = VCF(vcffn)
-            for record in vcf_reader:
-                if len(record.ALT[0]) == 1 and len(record.REF) == 1:
-                    positions[record.POS] = "snp"
-                else:
-                    positions[record.POS] = "indel"
+            with pysam.VariantFile(vcffn) as vcf_reader:
+                for record in vcf_reader:
+                    alt = (record.alts or (".",))[0]
+                    if len(alt) == 1 and len(record.ref) == 1:
+                        positions[record.pos] = "snp"
+                    else:
+                        positions[record.pos] = "indel"
 
     print("pos\tset\tsample\tvartype\tdepth\tsupportfraction\tbasecalledfrequency")
 
@@ -62,7 +63,7 @@ def main():
             bamfn = "%s.primertrimmed.sorted.bam" % (sample_tag)
             depths = collect_depths(bamfn)
 
-            # 1-based pyvcf
+            # 1-based positions
             for pos, variant_type in positions.items():
                 if pos - 1 in depths:
                     depth = depths[pos - 1]
@@ -70,7 +71,7 @@ def main():
                     depth = 0
 
                 if pos in vcffile:
-                    info = vcffile[pos].INFO
+                    info = vcffile[pos].info
                     print(
                         "%s\t%s\t%s\t%s\t%s\t%s\t%s"
                         % (

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from Bio import SeqIO
-from cyvcf2 import VCF
+import pysam
 import argparse
 import csv
 
@@ -36,10 +36,10 @@ def go(args):
         for n in range(bedline["start"], bedline["end"]):
             cons[bedline["chrom"]][n] = "N"
 
-    vcf_reader = VCF(args.maskvcf)
-    for record in vcf_reader:
-        for n in range(0, len(record.REF)):
-            cons[record.CHROM][record.POS - 1 + n] = "N"
+    with pysam.VariantFile(args.maskvcf) as vcf_reader:
+        for record in vcf_reader:
+            for n in range(0, len(record.ref)):
+                cons[record.chrom][record.pos + n] = "N"
 
     fh = open(args.output, "w")
     for k in seqs.keys():

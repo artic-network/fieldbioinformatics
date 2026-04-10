@@ -15,140 +15,147 @@ import json
 
 
 CLAIR3_MANIFEST = [
+    # R10.4.1 / R10.4 models — PyTorch, from clair3_models_rerio_pytorch
     {
         "name": "r1041_e82_260bps_fast_g632",
-        "model_fname": "r1041_e82_260bps_fast_g632.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_fast_g632.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_260bps_fast_g632/",
+        "pytorch": True,
+    },
+    {
+        "name": "r1041_e82_400bps_fast_g615",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_fast_g615/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_fast_g632",
-        "model_fname": "r1041_e82_400bps_fast_g632.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_fast_g632.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_fast_g632/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_sup_g615",
-        "model_fname": "r1041_e82_400bps_sup_g615.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_g615.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_sup_g615/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_260bps_hac_g632",
-        "model_fname": "r1041_e82_260bps_hac_g632.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_hac_g632.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_260bps_hac_g632/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_hac_g615",
-        "model_fname": "r1041_e82_400bps_hac_g615.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_g615.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_hac_g615/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_sup_v400",
-        "model_fname": "r1041_e82_400bps_sup_v400.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v400.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_sup_v400/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_260bps_hac_v400",
-        "model_fname": "r1041_e82_260bps_hac_v400.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_hac_v400.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_260bps_hac_v400/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_hac_g632",
-        "model_fname": "r1041_e82_400bps_hac_g632.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_g632.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_hac_g632/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_sup_v410",
-        "model_fname": "r1041_e82_400bps_sup_v410.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v410.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_sup_v410/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_260bps_hac_v410",
-        "model_fname": "r1041_e82_260bps_hac_v410.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_hac_v410.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_260bps_hac_v410/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_hac_v400",
-        "model_fname": "r1041_e82_400bps_hac_v400.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v400.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_hac_v400/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_sup_v420",
-        "model_fname": "r1041_e82_400bps_sup_v420.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v420.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_sup_v420/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_260bps_sup_g632",
-        "model_fname": "r1041_e82_260bps_sup_g632.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_sup_g632.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_260bps_sup_g632/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_hac_v410",
-        "model_fname": "r1041_e82_400bps_hac_v410.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v410.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_hac_v410/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_sup_v430",
-        "model_fname": "r1041_e82_400bps_sup_v430.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v430.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_sup_v430/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_260bps_sup_v400",
-        "model_fname": "r1041_e82_260bps_sup_v400.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_sup_v400.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_260bps_sup_v400/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_hac_v420",
-        "model_fname": "r1041_e82_400bps_hac_v420.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v420.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_hac_v420/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_sup_v500",
-        "model_fname": "r1041_e82_400bps_sup_v500.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v500.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_sup_v500/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_260bps_sup_v410",
-        "model_fname": "r1041_e82_260bps_sup_v410.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_260bps_sup_v410.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_260bps_sup_v410/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_hac_v430",
-        "model_fname": "r1041_e82_400bps_hac_v430.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v430.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_hac_v430/",
+        "pytorch": True,
     },
     {
         "name": "r104_e81_hac_g5015",
-        "model_fname": "r104_e81_hac_g5015.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r104_e81_hac_g5015.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r104_e81_hac_g5015/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_hac_v500",
-        "model_fname": "r1041_e82_400bps_hac_v500.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v500.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_hac_v500/",
+        "pytorch": True,
     },
     {
         "name": "r104_e81_sup_g5015",
-        "model_fname": "r104_e81_sup_g5015.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r104_e81_sup_g5015.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r104_e81_sup_g5015/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_hac_v520",
-        "model_fname": "r1041_e82_400bps_hac_v520.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_hac_v520.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_hac_v520/",
+        "pytorch": True,
     },
     {
         "name": "r1041_e82_400bps_sup_v520",
-        "model_fname": "r1041_e82_400bps_sup_v520.tar.gz",
-        "model_url": "https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/r1041_e82_400bps_sup_v520.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_sup_v520/",
+        "pytorch": True,
     },
+    # R9.4.1 and multi-platform models — PyTorch, from clair3_models_pytorch
     {
         "name": "r941_prom_sup_g5014",
-        "model_fname": "r941_prom_sup_g5014.tar.gz",
-        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models/r941_prom_sup_g5014.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_pytorch/r941_prom_sup_g5014/",
+        "pytorch": True,
     },
     {
         "name": "r941_prom_hac_g360+g422",
-        "model_fname": "r941_prom_hac_g360+g422.tar.gz",
-        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models/r941_prom_hac_g360+g422.tar.gz",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_pytorch/r941_prom_hac_g360+g422/",
+        "pytorch": True,
     },
 ]
 
@@ -710,11 +717,30 @@ def choose_model(read_file: str) -> dict:
             "rt",
         ) as handle:
             reads = SeqIO.parse(handle, "fastq")
-
-            read = next(reads)
+            try:
+                read = next(reads)
+            except StopIteration:
+                print(
+                    colored.red(
+                        f"Input file '{read_file}' contains no reads — cannot select a Clair3 model automatically. "
+                        f"Please check the file is not empty, or provide a model with --model."
+                    ),
+                    file=sys.stderr,
+                )
+                sys.exit(4)
     else:
         reads = SeqIO.parse(read_file, "fastq")
-        read = next(reads)
+        try:
+            read = next(reads)
+        except StopIteration:
+            print(
+                colored.red(
+                    f"Input file '{read_file}' contains no reads — cannot select a Clair3 model automatically. "
+                    f"Please check the file is not empty, or provide a model with --model."
+                ),
+                file=sys.stderr,
+            )
+            sys.exit(4)
 
     split_description = read.description.split()
     split_description = [x.split("=") for x in split_description if "=" in x]
@@ -854,13 +880,33 @@ def choose_model(read_file: str) -> dict:
     except NameError:
         pass
 
-    print(
-        colored.red(
-            f"Multiple potential models found, please provide the appropriate model from the following with the '--model' parameter:\n{' '.join([str(x['name']) for x in possible_models])}"
-        ),
-        file=sys.stderr,
-    )
-
+    # No versioned Clair3 model matches this Dorado basecall model.
+    # Candidate names that start with 'g' are Guppy-era models and must NOT be
+    # used as a silent fallback for Dorado data — doing so risks severely
+    # incorrect variant calling.
+    guppy_candidates = [x for x in possible_models if "_g" in x["name"].split("_")[-1]]
+    if guppy_candidates:
+        print(
+            colored.red(
+                f"No versioned Clair3 model found for Dorado basecall model "
+                f"{tags['basecall_model_version_id']!r}. The only candidates "
+                f"({', '.join(x['name'] for x in guppy_candidates)}) are "
+                f"Guppy-era models (g-prefix) and are incompatible with Dorado "
+                f"data. Please re-basecall with hac or sup, or provide an "
+                f"appropriate model with --model."
+            ),
+            file=sys.stderr,
+        )
+    else:
+        print(
+            colored.red(
+                f"Multiple potential models found for basecall model id "
+                f"{tags['basecall_model_version_id']!r}, please provide the "
+                f"appropriate model with --model:\n"
+                f"{' '.join(x['name'] for x in possible_models)}"
+            ),
+            file=sys.stderr,
+        )
     sys.exit(6)
 
 

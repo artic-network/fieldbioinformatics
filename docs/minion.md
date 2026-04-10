@@ -14,99 +14,136 @@ date: 2024-11-11
 
 This page describes the core pipeline which is run via the `artic minion` command.
 
-At the end of each stage, we list here the "useful" stage output files which are kept. There will also be some additional files leftover at the end of the pipeline but these can be ignored (and are hopefully quite intuitively named).
+Output files are grouped below into **outputs** (files you should use downstream) and **intermediates** (files left on disk after the run which may be useful for troubleshooting but are not intended as primary outputs).
 
 ## Stages
 
 ### Input validation
 
-As of version 1.2.0, the pipeline will try and download the reference and scheme from the [artic primer scheme](https://github.com/artic-network/primer-schemes) repository if it is not found/provided. It will be downloaded to the directory provided by `--scheme-directory` which defaults to a subfolder of the current working directory `primer-schemes/`
+The pipeline fetches primer scheme and reference files from the [Quick-lab primerschemes repository](https://github.com/quick-lab/primerschemes) when `--scheme-name`, `--scheme-version`, and (where required) `--scheme-length` are provided. Downloaded files are cached in the directory given by `--scheme-directory` (default: `./primer-schemes`).
 
-This is done using the `--scheme-name` `--scheme-length` and `--scheme-version` parameters, for example, to fetch the [artic-inrb-mpox/2500/v1.0.0](https://github.com/quick-lab/primerschemes/tree/main/primerschemes/artic-inrb-mpox/2500/v1.0.0) scheme you should provide the following arguments:
-* `--scheme-name artic-inrb-mpox`
-* `--scheme-length 2500`
-* `--scheme-version v1.0.0`
+For example, to fetch the [artic-inrb-mpox/2500/v1.0.0](https://github.com/quick-lab/primerschemes/tree/main/primerschemes/artic-inrb-mpox/2500/v1.0.0) scheme:
 
-Alternatively you may provide the `--bed` and `--ref` arguments to point directly towards the primer bed file and reference fasta you wish to use.
+```
+--scheme-name artic-inrb-mpox
+--scheme-length 2500
+--scheme-version v1.0.0
+```
+
+Alternatively, provide `--bed` and `--ref` to use a local primer BED file and reference FASTA directly.
+
+For further detail on scheme fetching, aliases, and automatic reference selection, see [Primer Schemes](./primer-schemes.md).
 
 ### Reference alignment and post-processing
 
-The pipeline will then perform a reference alignment of the basecalled reads against the specified reference sequence. By default [minimap](https://github.com/lh3/minimap2) is used but [bwa](https://github.com/lh3/bwa) can be chosen as an alternative. Both aligners use their respective ONT presets. The alignments are filtered to keep only mapped reads, and then sorted and indexed.
+The pipeline aligns basecalled reads against the reference using [minimap2](https://github.com/lh3/minimap2) with the ONT preset (`map-ont`). Alignments are filtered to remove unmapped reads, then sorted and indexed with samtools.
 
-We then use the `align_trim` module to post-process the aligments.
+The `align_trim` module then post-processes the alignments to:
 
-The purpose of alignment post-processing is:
+- assign each read to a derived amplicon
+- assign each read a **read group** based on its primer pool
+- softmask alignments within their amplicon boundaries
 
-- assign each read alignment to a derived amplicon
-- using the derived amplicon, assign each read a **read group** based on the primer pool
-- softmask read alignments within their derived amplicon
+Optionally it can also:
 
-Also, there is the option to:
+- remove primer sequence by further softmasking (`--primer-match-threshold` controls fuzzy matching)
+- downsample reads per amplicon to `--normalise` depth (set to `0` to disable)
+- remove reads with mismatched primer pairs, e.g. from amplicon read-through (use `--allow-mismatched-primers` to retain these)
 
-- remove primer sequence by further softmasking the read alignments
-- normalise/reduce the number of read alignments to each amplicon
-- remove reads with imperfect primer pairing, e.g. from amplicon read through
+Softmasking adjusts the CIGAR of each [alignment segment](https://samtools.github.io/hts-specs/SAMv1.pdf) so that soft clips replace any reference- or query-consuming operations outside primer boundaries. The leftmost mapping position is updated accordingly.
 
-By softmasking, we refer to the process of adjusting the CIGAR of each [alignment segment](https://samtools.github.io/hts-specs/SAMv1.pdf) such that **soft clips** replace any reference or query consuming operations in regions of an alignment that fall outside of primer boundaries. The leftmost mapping position of alignments are also updated during softmasking.
+More information on how the primer scheme is used to infer amplicons can be found in [Primer Schemes](./primer-schemes.md).
 
-More information on how the primer scheme is used to infer amplicons can be found [here](./primer-schemes.md#querying-schemes).
+#### Outputs
 
-#### stage output
+| File | Description |
+| ---- | ----------- |
+| `$SAMPLE.sorted.bam` / `.bai` | Raw alignment of reads to the reference |
+| `$SAMPLE.primertrimmed.rg.sorted.bam` / `.bai` | Primer-trimmed, read-group-annotated alignment used for all downstream steps |
 
-| file name                             | description                                                                          |
-| ------------------------------------- | ------------------------------------------------------------------------------------ |
-| `$SAMPLE.sorted.bam`                  | the raw alignment of sample reads to reference genome                                |
-| `$SAMPLE.trimmed.rg.sorted.bam`       | the post-processed alignment                                                         |
-| `$SAMPLE.primertrimmed.rg.sorted.bam` | the post-processed alignment with additional softmasking to exclude primer sequences |
+#### Intermediates
+
+| File | Description |
+| ---- | ----------- |
+| `$SAMPLE.alignreport.tsv` | Per-read primer assignment report from align_trim |
+| `$SAMPLE.amplicon_depths.tsv` | Per-amplicon read depth report |
 
 ### Variant calling
 
-We use the following commands on the `$SAMPLE.primertrimmed.rg.sorted.bam` alignment:
+Variant calling is performed per read group using [Clair3](https://github.com/HKU-BAL/Clair3) (`run_clair3.sh`). Per-pool VCFs are merged into a single file using `artic_vcf_merge`.
 
-- [run_clair3.sh](https://github.com/HKU-BAL/Clair3)
+During merging, any variants that fall within primer binding sites are separated into `$SAMPLE.primers.vcf` and excluded from the merged output — these positions are unreliable due to primer softmasking. The details are written to `$SAMPLE.primersitereport.txt`.
 
-The variant calling steps are run for each **read group** in turn. We then merge variants reported per read group into a single file using the `artic_vcf_merge` module.
+The merged variants are then filtered by `artic_vcf_filter` into PASS and FAIL files using the following thresholds:
 
-Opionally, we can check the merged variant file against the primer scheme. This will allow us to detect variants called in primer and amplicon overlap regions.
+| Filter | Threshold |
+| ------ | --------- |
+| Variant quality (QUAL) | ≥ 10 |
+| Allele frequency (AF) | ≥ 0.6 |
+| Frameshift indel quality | ≥ 50 (bypassed with `--no-frameshifts`) |
+| All indels | excluded when `--no-indels` is set |
 
-We then use the `artic_vcf_filter` module to filter the merged variant file through a set of workflow specific checks and assign all variants as either PASS or FAIL. The final PASS file is subsequently indexed ready for the next stage.
+Finally, passing variants are normalised against the pre-consensus using [bcftools norm](https://github.com/samtools/bcftools) to ensure REF alleles match the masked reference before consensus generation.
 
-Finally the variants which have passed filtering are normalised against the depth masked pre-consensus using [bcftools norm](https://github.com/samtools/bcftools) to ensure that the REF column in the VCF matches the pre-consensus for the final output.
+#### Outputs
 
-#### stage output
+| File | Description |
+| ---- | ----------- |
+| `$SAMPLE.normalised.vcf.gz` / `.tbi` | Normalised PASS variants — these are the variants applied to produce the consensus |
+| `$SAMPLE.pass.vcf` | PASS variants before normalisation |
+| `$SAMPLE.fail.vcf` | Variants that did not pass quality filtering |
 
-| file name                | description                                                     |
-| ------------------------ | --------------------------------------------------------------- |
-| `$SAMPLE.$READGROUP.vcf` | the raw variants detected (one file per primer pool)            |
-| `$SAMPLE.merged.vcf`     | the raw variants detected merged into one file                  |
-| `$SAMPLE.vcfreport.txt`  | a report evaluating reported variants against the primer scheme |
-| `$SAMPLE.fail.vcf`       | variants deemed too low quality                                 |
-| `$SAMPLE.pass.vcf.gz`    | detected variants (indexed)                                     |
-| `$SAMPLE.normalised.vcf.gz` | normalised variants (indexed)                                     |
+#### Intermediates
+
+| File | Description |
+| ---- | ----------- |
+| `$SAMPLE.merged.vcf` | Pre-filter merged variants from all read groups |
+| `$SAMPLE.$POOL.vcf` | Raw per-pool Clair3 output (one file per primer pool) |
+| `$SAMPLE_rg_$POOL/` | Full Clair3 output directory per pool |
+| `$SAMPLE.primers.vcf` | Variants at primer binding sites, excluded from the main merge |
+| `$SAMPLE.primersitereport.txt` | Report of primer-site variant handling |
 
 ### Consensus building
 
-Prior to building a consensus, we use the post-processed alignment from the previous step to check each position of the reference sequence for sample coverage. Any poition that is not covered by at least 20 reads from either read group are marked as low coverage. We use the `artic_make_depth_mask` module for this, which produces coverage information for each read group and also produces a coverage mask to tell us which coordinates in the reference sequence failed the coverage threshold.
+Each position in the reference is checked for read depth against the value of `--min-depth` (default: 20) using `artic_make_depth_mask`. Positions below this threshold are recorded in the coverage mask.
 
-Next, to build a consensus sequence for a sample, we require a pre-consensus sequence based on the input reference sequence. The preconsensus has low quality sites masked out with `N`'s using the coverage mask and the `$SAMPLE.fail.vcf` file. We then use `bcftools consensus` to combine the preconsensus with the `$SAMPLE.normalised.vcf.gz` variants to produce a consensus sequence for the sample. The consensus sequence has the artic workflow written to its header.
+`artic_mask` then produces a pre-consensus sequence by applying low-coverage masking and the FAIL variants to the reference, replacing low-confidence positions with `N`. `bcftools consensus` is then run against the pre-consensus using the normalised PASS variants to produce the final consensus sequence. The consensus header is annotated with the artic workflow identifier by `artic_fasta_header`.
 
-Finally, the consensus sequence is aligned against the reference sequence using `muscle` if the `--use-muscle` parameter is provided.
+If `--align-consensus` is provided, the consensus is aligned against the reference using:
 
-#### stage output
+```
+mafft --6merpair --addfragments $SAMPLE.consensus.fasta $REF > $SAMPLE.aligned.fasta
+```
 
-| file name                  | description                                                           |
-| -------------------------- | --------------------------------------------------------------------- |
-| `$SAMPLE.*_mqc.json`       | stats files which MultiQC can use to make a report                    |
-| `$SAMPLE.consensus.fasta`  | the consensus sequence for the input sample                           |
-| `$SAMPLE.muscle.out.fasta` | an alignment of the consensus sequence against the reference sequence |
+#### Outputs
+
+| File | Description |
+| ---- | ----------- |
+| `$SAMPLE.consensus.fasta` | Final consensus sequence |
+| `$SAMPLE.aligned.fasta` | MAFFT alignment of consensus against reference (only produced with `--align-consensus`) |
+| `$SAMPLE.primer.bed` | Copy of the primer scheme BED used for this run |
+| `$SAMPLE.reference.fasta` | Copy of the reference FASTA used for this run |
+| `$SAMPLE.minion.log.txt` | Log of all commands executed with wall-clock runtimes |
+
+#### Intermediates
+
+| File | Description |
+| ---- | ----------- |
+| `$SAMPLE.coverage_mask.txt` | BED-format record of positions masked below `--min-depth` |
+| `$SAMPLE.preconsensus.fasta` | N-masked reference with FAIL variants applied; input to `bcftools consensus` |
+
+!!! note
+    `$SAMPLE.primer.bed` and `$SAMPLE.reference.fasta` record which scheme was used for this run. In future, when per-segment reference selection is supported, these will become primary outputs of greater significance.
 
 ## Summary of pipeline modules
 
-| module                    | function                                                                                             |
-| ------------------------- | ---------------------------------------------------------------------------------------------------- |
-| align_trim                | alignment post processing (amplicon assignment, softmasking, normalisation)                          |
-| artic_vcf_merge           | combines VCF files from multiple read groups                                                         |
-| artic_vcf_filter          | filters a combined VCF into PASS and FAIL variant files                                              |
-| artic_make_depth_mask     | create a coverage mask from the post-processed alignment                                             |
-| artic_mask                | combines the reference sequence, FAIL variants and coverage mask to produce a pre-consensus sequence |
-| artic_fasta_header        | applies the artic workflow and identifier to the consensus sequence header                           |
+| Module | Function |
+| ------ | -------- |
+| `align_trim` | Amplicon assignment, softmasking, read-group annotation, and normalisation |
+| `artic_vcf_merge` | Combines per-pool VCFs; separates primer-site variants |
+| `artic_vcf_filter` | Filters merged VCF into PASS and FAIL files |
+| `artic_make_depth_mask` | Produces a coverage mask from the post-processed alignment |
+| `artic_mask` | Combines reference, FAIL variants, and coverage mask into a pre-consensus |
+| `artic_fasta_header` | Applies the artic workflow identifier to the consensus header |
+| `artic_get_models` | Downloads Clair3 model files |
+| `artic_get_scheme` | Downloads a primer scheme independently of the full pipeline |

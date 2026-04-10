@@ -239,6 +239,13 @@ def init_pipeline_parser():
     parser_guppyplex.add_argument(
         "--output", metavar="output", help="FASTQ file to write"
     )
+    parser_guppyplex.add_argument(
+        "--threads",
+        type=int,
+        metavar="threads",
+        default=1,
+        help="Number of worker processes for parallel file processing (default: %(default)d)",
+    )
     parser_guppyplex.set_defaults(func=run_subtool)
 
     # filter

@@ -1,0 +1,37 @@
+# Version control
+.git/
+.github/
+
+# Test artifacts (test-data alone is ~900 MB)
+test-data/
+tests/
+.pytest_cache/
+test-runner.sh
+
+# Build/egg artifacts
+build/
+artic.egg-info/
+*.egg-info/
+
+# Documentation
+docs/
+mkdocs.yml
+.readthedocs.yaml
+
+# Primer schemes (runtime user concern, not needed in image)
+primer-schemes/
+ansible/
+lab-on-an-ssd/
+
+# Misc files not needed in the image
+*.md
+CHANGELOG
+setup.bak
+setup.py.bak
+mysample_barcode01.fastq
+*.fastq
+*.bam
+*.vcf
+
+# Claude/editor metadata
+.claude/

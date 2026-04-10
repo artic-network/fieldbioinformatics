@@ -1,9 +1,13 @@
 # Written by Nick Loman (@pathogenomenick)
 
 from clint.textui import colored
+import gzip
+import hashlib
 import os
+import shlex
 import subprocess
 import sys
+import tempfile
 import time
 from artic.utils import get_scheme, choose_model
 from primalbedtools.scheme import Scheme
@@ -99,8 +103,10 @@ def run(parser, args):
             read_file=args.read_file,
         )
 
-        os.system(f"cp {bed} {args.sample}.primer.bed")
-        os.system(f"cp {ref} {args.sample}.reference.fasta")
+        os.system(f"cp {shlex.quote(bed)} {shlex.quote(args.sample + '.primer.bed')}")
+        os.system(
+            f"cp {shlex.quote(ref)} {shlex.quote(args.sample + '.reference.fasta')}"
+        )
 
     if not os.path.exists(bed) or not os.path.exists(ref):
         print(
@@ -125,23 +131,56 @@ def run(parser, args):
         )
         raise SystemExit(1)
 
+    if read_file.endswith(".gz"):
+        with gzip.open(read_file, "rb") as fh:
+            has_content = bool(fh.read(1))
+    else:
+        has_content = os.path.getsize(read_file) > 0
+    if not has_content:
+        print(
+            colored.red(
+                f"Read file '{read_file}' is empty — cannot continue. "
+                f"If you used artic guppyplex to produce this file, check that "
+                f"your --min-length / --max-length and --quality settings are not "
+                f"filtering out all reads, and that the source directory contained "
+                f"FASTQ files. If you provided the file directly, ensure that  your"
+                f"FASTQ file is not empty and is properly formatted."
+            ),
+            file=sys.stderr,
+        )
+        raise SystemExit(4)
+
     ## collect the primer pools
-    scheme = Scheme.from_file(bed)
-    pools = set([row.pool for row in scheme.bedlines] + ["unmatched"])
+    try:
+        scheme = Scheme.from_file(bed)
+        pools = set([row.pool for row in scheme.bedlines] + ["unmatched"])
+    except (ValueError, TypeError) as e:
+        print(
+            colored.red(f"Failed to parse primer scheme BED file '{bed}': {e}"),
+            file=sys.stderr,
+        )
+        raise SystemExit(3)
 
     ## create a holder to keep the pipeline commands in
     cmds = []
 
+    # Convenience: build a quoted path rooted at the sample prefix.
+    def sp(*suffixes):
+        """Return a shell-quoted path: args.sample + each suffix joined."""
+        return shlex.quote(args.sample + "".join(suffixes))
+
     # check the reference fasta has an index and create one if not
     if not os.path.exists("%s.fai" % (ref)):
-        cmds.append("samtools faidx %s" % (ref))
+        cmds.append("samtools faidx %s" % shlex.quote(ref))
 
     # index the ref & align with minimap
     cmds.append(
-        f"minimap2 -a -x map-ont -t {args.threads} {ref} {read_file} | samtools view -bS -F 4 - | samtools sort -o {args.sample}.sorted.bam -"
+        f"minimap2 -a -x map-ont -t {args.threads} {shlex.quote(ref)} {shlex.quote(read_file)}"
+        f" | samtools view -bS -F 4 -"
+        f" | samtools sort -o {sp('.sorted.bam')} -"
     )
 
-    cmds.append(f"samtools index {args.sample}.sorted.bam")
+    cmds.append(f"samtools index {sp('.sorted.bam')}")
 
     # trim the alignments to the primer start sites and normalise the coverage to save time
     normalise_string = f"--normalise {args.normalise}" if args.normalise else ""
@@ -151,94 +190,145 @@ def run(parser, args):
     )
 
     cmds.append(
-        f"align_trim {normalise_string} {bed} --primer-match-threshold {args.primer_match_threshold} --min-mapq {args.min_mapq} {incorrect_pairs_string} --report {args.sample}.alignreport.tsv --amp-depth-report {args.sample}.amplicon_depths.tsv --samfile {args.sample}.sorted.bam -o {args.sample}.primertrimmed.rg.bam"
+        f"align_trim {normalise_string} {shlex.quote(bed)}"
+        f" --primer-match-threshold {args.primer_match_threshold}"
+        f" --min-mapq {args.min_mapq}"
+        f" {incorrect_pairs_string}"
+        f" --report {sp('.alignreport.tsv')}"
+        f" --amp-depth-report {sp('.amplicon_depths.tsv')}"
+        f" --samfile {sp('.sorted.bam')}"
+        f" -o {sp('.primertrimmed.rg.bam')}"
     )
 
     cmds.append(
-        f"samtools sort -T {args.sample} {args.sample}.primertrimmed.rg.bam -o {args.sample}.primertrimmed.rg.sorted.bam"
+        f"samtools sort -T {shlex.quote(args.sample)}"
+        f" {sp('.primertrimmed.rg.bam')}"
+        f" -o {sp('.primertrimmed.rg.sorted.bam')}"
     )
-    cmds.append(f"rm {args.sample}.primertrimmed.rg.bam")
+    cmds.append(f"rm {sp('.primertrimmed.rg.bam')}")
 
-    cmds.append(f"samtools index {args.sample}.primertrimmed.rg.sorted.bam")
+    cmds.append(f"samtools index {sp('.primertrimmed.rg.sorted.bam')}")
 
     # do variant calling on each read group
     for p in pools:
         if os.path.exists("%s.%s.hdf" % (args.sample, p)):
             os.remove("%s.%s.hdf" % (args.sample, p))
 
+        pool_rg_bam = shlex.quote(f"{args.sample}.{p}.primertrimmed.rg.sorted.bam")
+
+        # Clair3 does not behave properly when provided paths with spaces. Use a space-free temp directory keyed on a hash of the sample prefix and pool. On WSL, TMPDIR may point at a Windows path containing spaces, so fall back to /tmp (POSIX) or C:\Temp (Windows) if needed.
+        _tmp_base = tempfile.gettempdir()
+        if " " in _tmp_base:
+            _tmp_base = "C:\\Temp" if sys.platform == "win32" else "/tmp"
+        _clair3_out_path = os.path.join(
+            _tmp_base,
+            "artic_clair3_"
+            + hashlib.md5(f"{args.sample}_{p}".encode()).hexdigest()[:16],
+        )
+        clair3_out = shlex.quote(_clair3_out_path)
+
         # Split the BAM by read group
         cmds.append(
-            f"samtools view -b -r {p} {args.sample}.primertrimmed.rg.sorted.bam -o {args.sample}.{p}.primertrimmed.rg.sorted.bam"
+            f"samtools view -b -r {shlex.quote(str(p))}"
+            f" {sp('.primertrimmed.rg.sorted.bam')}"
+            f" -o {pool_rg_bam}"
         )
 
-        cmds.append(f"samtools index {args.sample}.{p}.primertrimmed.rg.sorted.bam")
+        cmds.append(f"samtools index {pool_rg_bam}")
 
         cmds.append(
-            f"run_clair3.sh --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --bam_fn='{args.sample}.{p}.primertrimmed.rg.sorted.bam' --ref_fn='{ref}' --output='{args.sample}_rg_{p}' --threads='{args.threads}' --platform='ont' --model_path='{full_model_path}' --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail"
+            f"run_clair3.sh --enable_long_indel --chunk_size=10000"
+            f" --haploid_sensitive --no_phasing_for_fa"
+            f" --bam_fn={pool_rg_bam}"
+            f" --ref_fn={shlex.quote(ref)}"
+            f" --output={clair3_out}"
+            f" --threads={shlex.quote(str(args.threads))}"
+            f" --platform=ont"
+            f" --model_path={shlex.quote(full_model_path)}"
+            f" --include_all_ctgs"
+            f" --enable_variant_calling_at_sequence_head_and_tail"
         )
 
         cmds.append(
-            f"bgzip -dc {args.sample}_rg_{p}/merge_output.vcf.gz > {args.sample}.{p}.vcf"
+            f"bgzip -dc {shlex.quote(os.path.join(_clair3_out_path, 'merge_output.vcf.gz'))}"
+            f" > {shlex.quote(f'{args.sample}.{p}.vcf')}"
         )
 
-        cmds.append(f"rm {args.sample}.{p}.primertrimmed.rg.sorted.bam")
+        cmds.append(f"rm -rf {clair3_out}")
+        cmds.append(f"rm {pool_rg_bam}")
 
     # merge the called variants for each read group
-    merge_vcf_cmd = "artic_vcf_merge %s %s 2> %s.primersitereport.txt" % (
-        args.sample,
-        bed,
-        args.sample,
+    merge_vcf_cmd = "artic_vcf_merge %s %s 2> %s" % (
+        shlex.quote(args.sample),
+        shlex.quote(bed),
+        shlex.quote(args.sample + ".primersitereport.txt"),
     )
     for p in pools:
-        merge_vcf_cmd += " %s:%s.%s.vcf" % (p, args.sample, p)
+        merge_vcf_cmd += " %s" % shlex.quote("%s:%s.%s.vcf" % (p, args.sample, p))
 
     cmds.append(merge_vcf_cmd)
 
     pre_filter_vcf = f"{args.sample}.merged.vcf"
-    cmds.append(f"bgzip -kf {pre_filter_vcf}")
-    cmds.append(f"tabix -f -p vcf {pre_filter_vcf}.gz")
+    cmds.append(f"bgzip -kf {shlex.quote(pre_filter_vcf)}")
+    cmds.append(f"tabix -f -p vcf {shlex.quote(pre_filter_vcf + '.gz')}")
 
     fs_str = "--no-frameshifts" if args.no_frameshifts else ""
     indel_str = "--no-indels" if args.no_indels else ""
     cmds.append(
-        f"artic_vcf_filter {fs_str} {indel_str} --min-depth {args.min_depth} {pre_filter_vcf}.gz {args.sample}.pass.vcf {args.sample}.fail.vcf"
+        f"artic_vcf_filter {fs_str} {indel_str} --min-depth {args.min_depth}"
+        f" {shlex.quote(pre_filter_vcf + '.gz')}"
+        f" {sp('.pass.vcf')}"
+        f" {sp('.fail.vcf')}"
     )
 
     # get the depth of coverage for each readgroup, create a coverage mask and plots, and add failed variants to the coverage mask (artic_mask must be run before bcftools consensus)
     cmds.append(
-        f"artic_make_depth_mask --depth {args.min_depth} {ref} {args.sample}.primertrimmed.rg.sorted.bam {args.sample}.coverage_mask.txt"
+        f"artic_make_depth_mask --depth {args.min_depth}"
+        f" {shlex.quote(ref)}"
+        f" {sp('.primertrimmed.rg.sorted.bam')}"
+        f" {sp('.coverage_mask.txt')}"
     )
 
     cmds.append(
-        f"artic_mask {ref} {args.sample}.coverage_mask.txt {args.sample}.fail.vcf {args.sample}.preconsensus.fasta"
+        f"artic_mask {shlex.quote(ref)}"
+        f" {sp('.coverage_mask.txt')}"
+        f" {sp('.fail.vcf')}"
+        f" {sp('.preconsensus.fasta')}"
     )
 
     post_filter_vcf_file = f"{args.sample}.pass.vcf"
 
     # generate the consensus sequence
-    cmds.append(f"bgzip -kf {post_filter_vcf_file}")
-    cmds.append(f"tabix -f -p vcf {post_filter_vcf_file}.gz")
+    cmds.append(f"bgzip -kf {shlex.quote(post_filter_vcf_file)}")
+    cmds.append(f"tabix -f -p vcf {shlex.quote(post_filter_vcf_file + '.gz')}")
 
     # Normalise variants in the pass/fail VCF files
     post_normalisation_vcf_file = f"{args.sample}.normalised.vcf.gz"
     cmds.append(
-        f"bcftools norm --check-ref x --fasta-ref {args.sample}.preconsensus.fasta -O z -o {post_normalisation_vcf_file} {post_filter_vcf_file}.gz"
+        f"bcftools norm --check-ref x"
+        f" --fasta-ref {sp('.preconsensus.fasta')}"
+        f" -O z -o {shlex.quote(post_normalisation_vcf_file)}"
+        f" {shlex.quote(post_filter_vcf_file + '.gz')}"
     )
-    cmds.append(f"tabix -f -p vcf {post_normalisation_vcf_file}")
+    cmds.append(f"tabix -f -p vcf {shlex.quote(post_normalisation_vcf_file)}")
     cmds.append(
-        f"bcftools consensus -f {args.sample}.preconsensus.fasta {post_normalisation_vcf_file} -m {args.sample}.coverage_mask.txt -o {args.sample}.consensus.fasta"
+        f"bcftools consensus -f {sp('.preconsensus.fasta')}"
+        f" {shlex.quote(post_normalisation_vcf_file)}"
+        f" -m {sp('.coverage_mask.txt')}"
+        f" -o {sp('.consensus.fasta')}"
     )
 
     # apply the header to the consensus sequence and run alignment against the reference sequence
-    caller = "clair3"
     linearise_fasta = "--linearise-fasta" if args.linearise_fasta else ""
     cmds.append(
-        f"artic_fasta_header {linearise_fasta} {args.sample}.consensus.fasta {args.sample}"
+        f"artic_fasta_header {linearise_fasta} {sp('.consensus.fasta')} {shlex.quote(args.sample)}"
     )
 
     if args.align_consensus:
         cmds.append(
-            f"mafft --6merpair --addfragments {args.sample}.consensus.fasta {ref} > {args.sample}.aligned.fasta"
+            f"mafft --6merpair --addfragments {sp('.consensus.fasta')}"
+            f" {shlex.quote(ref)}"
+            f" > {sp('.aligned.fasta')}"
         )
 
     # define anticipated error codes and messages

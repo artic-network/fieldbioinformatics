@@ -44,6 +44,17 @@ def get_model(
     return model_path
 
 
+def get_pytorch_model(model_dir: Path, model_name: str, model_url: str):
+    model_path = Path(model_dir, model_name)
+    os.makedirs(model_path, exist_ok=True)
+
+    base_url = model_url.rstrip("/")
+    for fname in ["pileup.pt", "full_alignment.pt"]:
+        download_file(f"{base_url}/{fname}", Path(model_path, fname))
+
+    return model_path
+
+
 def main():
     import argparse
 
@@ -54,6 +65,12 @@ def main():
         default=f"{os.getenv('CONDA_PREFIX')}/bin/models/",
         help="Directory to download the model to, default is: %(default)s",
     )
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        metavar="MODEL",
+        help="Only download the specified model(s) by name. Downloads all models if omitted.",
+    )
     args = parser.parse_args()
 
     if not os.getenv("CONDA_PREFIX"):
@@ -63,21 +80,41 @@ def main():
         )
 
     models = CLAIR3_MANIFEST
+    if args.models:
+        models = [m for m in models if m["name"] in args.models]
+        unknown = set(args.models) - {m["name"] for m in models}
+        for name in unknown:
+            print(f"Warning: unknown model '{name}' — skipping", file=sys.stderr)
 
     for model in models:
 
-        if (
-            not os.path.exists(Path(args.model_dir, model["name"]))
-            or len(os.listdir(Path(args.model_dir, model["name"]))) == 0
-        ):
-            get_model(
-                model_dir=args.model_dir,
-                model_fname=model["model_fname"],
-                model_url=model["model_url"],
-                model_name=model["name"],
-            )
-            print(f"Downloaded model: {model['name']}", file=sys.stderr)
+        model_path = Path(args.model_dir, model["name"])
 
+        if model.get("pytorch"):
+            needs_download = not all(
+                Path(model_path, f).exists()
+                for f in ["pileup.pt", "full_alignment.pt"]
+            )
+        else:
+            needs_download = (
+                not model_path.exists() or len(os.listdir(model_path)) == 0
+            )
+
+        if needs_download:
+            if model.get("pytorch"):
+                get_pytorch_model(
+                    model_dir=args.model_dir,
+                    model_name=model["name"],
+                    model_url=model["model_url"],
+                )
+            else:
+                get_model(
+                    model_dir=args.model_dir,
+                    model_fname=model["model_fname"],
+                    model_url=model["model_url"],
+                    model_name=model["name"],
+                )
+            print(f"Downloaded model: {model['name']}", file=sys.stderr)
         else:
             print(
                 f"Model {model['name']} already exists, skipping download",

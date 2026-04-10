@@ -3,6 +3,7 @@ from Bio import SeqIO
 import os
 import gzip
 import fnmatch
+import concurrent.futures
 import pandas as pd
 from mimetypes import guess_type
 from functools import partial
@@ -25,6 +26,38 @@ def get_read_mean_quality(record):
     )
 
 
+def _process_file(args_tuple):
+    """Module-level worker: filter reads from a single FASTQ file.
+
+    Returns a list of SeqRecord objects that pass all filters.
+    Deduplication is handled by the caller across all files.
+    """
+    fn, min_length, max_length, quality, skip_quality_check, sample = args_tuple
+    encoding = guess_type(fn)[1]
+    _open = open
+    if encoding == "gzip":
+        _open = partial(gzip.open, mode="rt")
+
+    records = []
+    with _open(fn) as f:
+        try:
+            for rec in SeqIO.parse(f, "fastq"):
+                if max_length and len(rec) > max_length:
+                    continue
+                if min_length and len(rec) < min_length:
+                    continue
+                if not skip_quality_check and get_read_mean_quality(rec) < quality:
+                    continue
+                if sample < 1:
+                    r = random()
+                    if r >= sample:
+                        continue
+                records.append(rec)
+        except ValueError:
+            pass
+    return records
+
+
 def run(parser, args):
     files = os.listdir(args.directory)
     fastq_files = [
@@ -42,42 +75,36 @@ def run(parser, args):
         else:
             fastq_outfn = args.output
 
-        outfh = open(fastq_outfn, "w")
+        if fastq_outfn.lower().endswith(".gz"):
+            outfh = gzip.open(fastq_outfn, "wt")
+        else:
+            outfh = open(fastq_outfn, "w")
+
         print(
             "Processing %s files in %s" % (len(fastq_files), args.directory),
             file=sys.stderr,
         )
 
         dups = set()
+        worker_args = [
+            (
+                fn,
+                args.min_length,
+                args.max_length,
+                args.quality,
+                args.skip_quality_check,
+                args.sample,
+            )
+            for fn in fastq_files
+        ]
 
-        for fn in fastq_files:
-            encoding = guess_type(fn)[1]
-            _open = open
-            # only accommodating gzip compression at present
-            if encoding == "gzip":
-                _open = partial(gzip.open, mode="rt")
-            with _open(fn) as f:
-                try:
-                    for rec in SeqIO.parse(f, "fastq"):
-                        if args.max_length and len(rec) > args.max_length:
-                            continue
-                        if args.min_length and len(rec) < args.min_length:
-                            continue
-                        if (
-                            not args.skip_quality_check
-                            and get_read_mean_quality(rec) < args.quality
-                        ):
-                            continue
-                        if args.sample < 1:
-                            r = random()
-                            if r >= args.sample:
-                                continue
-
-                        if rec.id not in dups:
-                            SeqIO.write([rec], outfh, "fastq")
-                            dups.add(rec.id)
-                except ValueError:
-                    pass
+        threads = getattr(args, "threads", 1)
+        with concurrent.futures.ProcessPoolExecutor(max_workers=threads) as executor:
+            for file_records in executor.map(_process_file, worker_args):
+                for rec in file_records:
+                    if rec.id not in dups:
+                        SeqIO.write([rec], outfh, "fastq")
+                        dups.add(rec.id)
 
         outfh.close()
         print(f"{fastq_outfn}\t{len(dups)}")

@@ -1,18 +1,27 @@
-from cyvcf2 import VCF, Writer
+import pysam
 import sys
-from operator import attrgetter
 from collections import defaultdict
 
 from primalbedtools.scheme import Scheme
 from primalbedtools.bedfiles import merge_primers
 
 
+def _has_variants(fn):
+    with pysam.VariantFile(fn) as vcf:
+        return next(iter(vcf), None) is not None
+
+
 def vcf_merge(args):
 
-    scheme = Scheme.from_file(args.bedfile)
-
-    # Merge the primers
-    scheme.bedlines = merge_primers(scheme.bedlines)
+    try:
+        scheme = Scheme.from_file(args.bedfile)
+        scheme.bedlines = merge_primers(scheme.bedlines)
+    except (ValueError, TypeError) as e:
+        print(
+            f"Failed to parse primer scheme BED file '{args.bedfile}': {e}",
+            file=sys.stderr,
+        )
+        raise SystemExit(3)
 
     primer_map = defaultdict(dict)
 
@@ -20,62 +29,61 @@ def vcf_merge(args):
         for n in range(p.start, p.end + 1):
             primer_map[p.pool][n] = p.primername
 
-    template_vcf = None
+    template_header = None
 
     pool_map = {}
     for param in args.vcflist:
-        pool_name, file_name = param.split(":")
+        pool_name, file_name = param.split(":", 1)
         pool_map[file_name] = pool_name
-        if not template_vcf:
-            vcf_reader = VCF(file_name)
-            if vcf_reader.seqnames:
-                template_vcf = vcf_reader
+        if not template_header:
+            if _has_variants(file_name):
+                with pysam.VariantFile(file_name) as vcf_reader:
+                    template_header = vcf_reader.header.copy()
             else:
                 print(
                     f"Not using {file_name} as VCF template since it has no variants",
                     file=sys.stderr,
                 )
 
-    # vcf_reader.infos["Pool"] = vcf.parser._Format("Pool", 1, "String", "The pool name")
-    vcf_reader.add_info_to_header(
-        {"ID": "Pool", "Number": 1, "Type": "String", "Description": "The pool name"}
+    if template_header is None:
+        # All input VCFs were empty — grab the header from the first file.
+        first_file = next(iter(pool_map))
+        with pysam.VariantFile(first_file) as vcf_reader:
+            template_header = vcf_reader.header.copy()
+
+    template_header.info.add("Pool", 1, "String", "The pool name")
+
+    vcf_writer = pysam.VariantFile(
+        f"{args.prefix}.merged.vcf", "w", header=template_header
     )
-    vcf_writer = Writer(f"{args.prefix}.merged.vcf", template_vcf, "w")
-    vcf_writer.write_header()
-    vcf_writer_primers = Writer(f"{args.prefix}.primers.vcf", template_vcf, "w")
-    vcf_writer_primers.write_header()
+    vcf_writer_primers = pysam.VariantFile(
+        f"{args.prefix}.primers.vcf", "w", header=template_header
+    )
 
     variants = []
     for file_name, pool_name in pool_map.items():
-        vcf_reader = VCF(file_name)
-        if not vcf_reader.seqnames:
+        if not _has_variants(file_name):
             print(f"Skipping {file_name} as it has no variants", file=sys.stderr)
             continue
 
-        vcf_reader.add_info_to_header(
-            {
-                "ID": "Pool",
-                "Number": 1,
-                "Type": "String",
-                "Description": "The pool name",
-            }
-        )
-        for v in vcf_reader:
-            v.INFO["Pool"] = pool_name
-            variants.append(v)
+        with pysam.VariantFile(file_name) as vcf_reader:
+            vcf_reader.header.info.add("Pool", 1, "String", "The pool name")
+            for v in vcf_reader:
+                v.info["Pool"] = pool_name
+                variants.append(v.copy())
 
-    variants.sort(key=attrgetter("CHROM", "POS"))
+    variants.sort(key=lambda v: (v.chrom, v.pos))
 
     for v in variants:
-        if v.POS in primer_map[v.INFO["Pool"]]:
-            vcf_writer_primers.write_record(v)
+        if v.pos in primer_map[v.info["Pool"]]:
+            vcf_writer_primers.write(v)
             print(
                 "found primer binding site mismatch: %s"
-                % (primer_map[v.INFO["Pool"]][v.POS]),
+                % (primer_map[v.info["Pool"]][v.pos]),
                 file=sys.stderr,
             )
         else:
-            vcf_writer.write_record(v)
+            vcf_writer.write(v)
 
 
 def main():
