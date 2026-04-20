@@ -53,8 +53,8 @@ def _process_file(args_tuple):
                     if r >= sample:
                         continue
                 records.append(rec)
-        except ValueError:
-            pass
+        except (ValueError, gzip.BadGzipFile, EOFError) as e:
+            print(f"Warning: skipping {fn}: {e}", file=sys.stderr)
     return records
 
 
@@ -63,7 +63,9 @@ def run(parser, args):
     fastq_files = [
         os.path.join(args.directory, f)
         for f in files
-        if fnmatch.fnmatch(f, "*.fastq*") and not f.endswith(".temp")
+        if fnmatch.fnmatch(f, "*.fastq*")
+        and not f.endswith(".temp")
+        and not f.startswith(".")
     ]
 
     if fastq_files:
