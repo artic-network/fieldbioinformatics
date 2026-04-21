@@ -236,3 +236,21 @@ class TestClair3Filter:
         f = Clair3Filter(no_frameshifts=False, min_depth=20, min_mask_allele_frequency=0.1)
         v = _mock_variant(qual=50.0, af=0.1, dp=100)
         assert f.check_filter(v) == "mask"
+
+    def test_refcall_is_discarded(self):
+        """Clair3 RefCall entries must be discarded, not passed or masked.
+
+        AF for RefCalls is the REF allele frequency — it looks high but is the wrong
+        field. The position is fine; keep the reference base.
+        """
+        f = self._filter()
+        v = _mock_variant(ref="T", alt=(".",), qual=22.0, af=0.88, dp=200, ad=(177,))
+        v.filter = {"RefCall"}
+        assert f.check_filter(v) == "discard"
+
+    def test_non_refcall_not_discarded_by_filter_field(self):
+        """A passing variant without RefCall in FILTER is not caught by the RefCall guard."""
+        f = self._filter()
+        v = _mock_variant(ref="A", alt=("T",), qual=50.0, af=0.9, dp=100, ad=(10, 90))
+        v.filter = {"PASS"}
+        assert f.check_filter(v) == "pass"

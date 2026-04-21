@@ -51,6 +51,10 @@ class Clair3Filter:
                     keep reference base (only: low minor allele count)
         'pass'    — variant passes all filters
         """
+        # Discard RefCall variants, caused by this issue: https://github.com/HKU-BAL/Clair3/issues/436
+        if "RefCall" in v.filter:
+            return "discard"
+
         qual = v.qual
 
         if qual < self.min_variant_quality:
@@ -144,16 +148,18 @@ def go(args):
         elif result == "mask":
             index = "%s-%s" % (v.chrom, v.pos)
             if len(group_variants[index]) > 1:
-                if any(filter_obj.check_filter(ov) == "pass" for ov in group_variants[index]):
+                if any(
+                    filter_obj.check_filter(ov) == "pass"
+                    for ov in group_variants[index]
+                ):
                     print("Suppress variant %s\n" % (v.pos))
                     continue
             vcf_writer_filtered.write(v)
 
         else:  # "discard"
             index = "%s-%s" % (v.chrom, v.pos)
-            any_pass = (
-                len(group_variants[index]) > 1
-                and any(filter_obj.check_filter(ov) == "pass" for ov in group_variants[index])
+            any_pass = len(group_variants[index]) > 1 and any(
+                filter_obj.check_filter(ov) == "pass" for ov in group_variants[index]
             )
             if any_pass:
                 print("Suppress variant %s\n" % (v.pos))
