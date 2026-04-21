@@ -53,6 +53,11 @@ class TestNonZeroExit(TestCase):
                 linearise_fasta=False,
                 align_consensus=False,
                 dry_run=False,
+                min_variant_quality=10,
+                min_allele_frequency=0.6,
+                min_frameshift_quality=50,
+                min_mask_allele_frequency=0.1,
+                min_minor_allele_count=5,
             )
 
             with pytest.raises(SystemExit) as cm:
@@ -162,6 +167,11 @@ class TestAlignTrimExitCode(TestCase):
                 linearise_fasta=False,
                 align_consensus=False,
                 dry_run=False,
+                min_variant_quality=10,
+                min_allele_frequency=0.6,
+                min_frameshift_quality=50,
+                min_mask_allele_frequency=0.1,
+                min_minor_allele_count=5,
             )
 
             with pytest.raises(SystemExit) as cm:
@@ -238,6 +248,11 @@ class TestSpacesInPaths:
             linearise_fasta=False,
             align_consensus=False,
             dry_run=True,
+            min_variant_quality=10,
+            min_allele_frequency=0.6,
+            min_frameshift_quality=50,
+            min_mask_allele_frequency=0.1,
+            min_minor_allele_count=5,
         )
 
     def _dry_run(self, tmp_path, sample_name="my sample"):
