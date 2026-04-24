@@ -365,3 +365,91 @@ class TestSpacesInPaths:
         result = _read_output_fastq(out)
         assert len(result) == 1
         assert result[0].id == "gz_read"
+
+
+# ---------------------------------------------------------------------------
+# Hidden files
+# ---------------------------------------------------------------------------
+
+class TestHiddenFiles:
+    """Files whose names start with '.' must be ignored."""
+
+    def test_hidden_fastq_is_ignored(self, tmp_path):
+        visible = _make_record("visible", "ACGT" * 25, [30] * 100)
+        hidden = _make_record("hidden", "ACGT" * 25, [30] * 100)
+        _write_fastq(tmp_path / "reads.fastq", [visible])
+        _write_fastq(tmp_path / ".hidden.fastq", [hidden])
+        out = str(tmp_path / "out.fastq")
+        args = _make_args(tmp_path, quality=7.0, output=out)
+        run(None, args)
+        result = _read_output_fastq(out)
+        assert len(result) == 1
+        assert result[0].id == "visible"
+
+    def test_hidden_fastq_gz_is_ignored(self, tmp_path):
+        visible = _make_record("visible", "ACGT" * 25, [30] * 100)
+        hidden = _make_record("hidden", "ACGT" * 25, [30] * 100)
+        _write_fastq(tmp_path / "reads.fastq", [visible])
+        _write_fastq_gz(tmp_path / ".hidden.fastq.gz", [hidden])
+        out = str(tmp_path / "out.fastq")
+        args = _make_args(tmp_path, quality=7.0, output=out)
+        run(None, args)
+        result = _read_output_fastq(out)
+        assert len(result) == 1
+        assert result[0].id == "visible"
+
+    def test_only_hidden_files_produces_no_output(self, tmp_path):
+        hidden = _make_record("hidden", "ACGT" * 25, [30] * 100)
+        _write_fastq(tmp_path / ".hidden.fastq", [hidden])
+        out = str(tmp_path / "out.fastq")
+        args = _make_args(tmp_path, quality=7.0, output=out)
+        run(None, args)
+        assert not (tmp_path / "out.fastq").exists()
+
+
+# ---------------------------------------------------------------------------
+# Invalid FASTQ skip logic
+# ---------------------------------------------------------------------------
+
+class TestInvalidFastqSkip:
+    """Corrupt or malformed files are skipped with a warning; valid files still processed."""
+
+    def test_corrupt_fastq_is_skipped(self, tmp_path):
+        """A file with garbage content is skipped; no exception is raised."""
+        (tmp_path / "corrupt.fastq").write_bytes(b"this is not valid fastq content\n@\n")
+        valid = _make_record("valid", "ACGT" * 25, [30] * 100)
+        _write_fastq(tmp_path / "reads.fastq", [valid])
+        out = str(tmp_path / "out.fastq")
+        args = _make_args(tmp_path, quality=7.0, output=out)
+        run(None, args)
+        result = _read_output_fastq(out)
+        assert len(result) == 1
+        assert result[0].id == "valid"
+
+    def test_corrupt_gzip_is_skipped(self, tmp_path):
+        """A file with .fastq.gz extension but invalid gzip content is skipped."""
+        (tmp_path / "corrupt.fastq.gz").write_bytes(b"not gzip data at all")
+        valid = _make_record("valid", "ACGT" * 25, [30] * 100)
+        _write_fastq(tmp_path / "reads.fastq", [valid])
+        out = str(tmp_path / "out.fastq")
+        args = _make_args(tmp_path, quality=7.0, output=out)
+        run(None, args)
+        result = _read_output_fastq(out)
+        assert len(result) == 1
+        assert result[0].id == "valid"
+
+    def test_truncated_gzip_is_skipped(self, tmp_path, capsys):
+        """A truncated gzip file is skipped gracefully."""
+        buf = io.BytesIO()
+        with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
+            gz.write(b"@read1\nACGT\n+\nIIII\n")
+        truncated = buf.getvalue()[: len(buf.getvalue()) // 2]
+        (tmp_path / "truncated.fastq.gz").write_bytes(truncated)
+        valid = _make_record("valid", "ACGT" * 25, [30] * 100)
+        _write_fastq(tmp_path / "reads.fastq", [valid])
+        out = str(tmp_path / "out.fastq")
+        args = _make_args(tmp_path, quality=7.0, output=out)
+        run(None, args)
+        result = _read_output_fastq(out)
+        assert len(result) == 1
+        assert result[0].id == "valid"
