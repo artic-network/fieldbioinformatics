@@ -205,19 +205,19 @@ def init_pipeline_parser():
         "--min-allele-frequency",
         type=float,
         default=0.6,
-        help="Minimum allele frequency (AF FORMAT field) for a variant to pass (default: %(default)s)",
+        help="Minimum allele frequency (AF FORMAT field) for a variant to be added to the final consensus sequence (default: %(default)s)",
     )
     filter_options.add_argument(
         "--min-mask-allele-frequency",
         type=float,
         default=0.1,
-        help="Minimum allele frequency below which a variant is discarded rather than masked; variants between this and --min-allele-frequency result in the position being masked with N (default: %(default)s)",
+        help="Minimum allele frequency below which a variant is discarded rather than masked. (default: %(default)s)",
     )
     filter_options.add_argument(
         "--min-frameshift-quality",
         type=int,
         default=50,
-        help="Minimum QUAL score for frameshifting indels (default: %(default)d)",
+        help="Minimum QUAL score for frameshifting indels, the default is higher than the usual minimum variant quality due to frameshift indels being extremely rare in viruses. (default: %(default)d)",
     )
     filter_options.add_argument(
         "--min-minor-allele-count",
