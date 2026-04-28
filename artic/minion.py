@@ -275,10 +275,17 @@ def run(parser, args):
     fs_str = "--no-frameshifts" if args.no_frameshifts else ""
     indel_str = "--no-indels" if args.no_indels else ""
     cmds.append(
-        f"artic_vcf_filter {fs_str} {indel_str} --min-depth {args.min_depth}"
+        f"artic_vcf_filter {fs_str} {indel_str}"
+        f" --min-depth {args.min_depth}"
+        f" --min-variant-quality {args.min_variant_quality}"
+        f" --min-allele-frequency {args.min_allele_frequency}"
+        f" --min-mask-allele-frequency {args.min_mask_allele_frequency}"
+        f" --min-frameshift-quality {args.min_frameshift_quality}"
+        f" --min-minor-allele-count {args.min_minor_allele_count}"
         f" {shlex.quote(pre_filter_vcf + '.gz')}"
         f" {sp('.pass.vcf')}"
         f" {sp('.fail.vcf')}"
+        f" {sp('.ignore.vcf')}"
     )
 
     # get the depth of coverage for each readgroup, create a coverage mask and plots, and add failed variants to the coverage mask (artic_mask must be run before bcftools consensus)

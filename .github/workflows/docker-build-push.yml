@@ -24,10 +24,10 @@ jobs:
         with:
           images: quay.io/artic/fieldbioinformatics
           flavor: |
-            latest=true
-            suffix=-models-included
+            latest=false
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern={{version}},suffix=-models-included
+            type=raw,value=latest-models-included
 
       - name: Checkout
         uses: actions/checkout@v3

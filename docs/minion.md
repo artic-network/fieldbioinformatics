@@ -74,14 +74,20 @@ Variant calling is performed per read group using [Clair3](https://github.com/HK
 
 During merging, any variants that fall within primer binding sites are separated into `$SAMPLE.primers.vcf` and excluded from the merged output — these positions are unreliable due to primer softmasking. The details are written to `$SAMPLE.primersitereport.txt`.
 
-The merged variants are then filtered by `artic_vcf_filter` into PASS and FAIL files using the following thresholds:
+The merged variants are then filtered by `artic_vcf_filter` into three output files. Each failing variant is classified as either **mask** or **discard**:
 
-| Filter | Threshold |
-| ------ | --------- |
-| Variant quality (QUAL) | ≥ 10 |
-| Allele frequency (AF) | ≥ 0.6 |
-| Frameshift indel quality | ≥ 50 (bypassed with `--no-frameshifts`) |
-| All indels | excluded when `--no-indels` is set |
+- **Mask** — the position is genuinely ambiguous; it will be replaced with `N` in the consensus. This applies when the variant has low quality, mixed reads (low allele frequency above the ignore threshold), a frameshift, or insufficient depth.
+- **Discard** — the variant call is likely an artefact but the position itself is fine; the reference base is kept. This applies when the allele frequency is below the ignore threshold (suggesting noise rather than a real mixed site) or when the absolute alt read count is too low despite adequate quality.
+
+| Filter | Default threshold | Result on failure |
+| ------ | ----------------- | ----------------- |
+| Variant quality (QUAL) | ≥ 10 (`--min-variant-quality`) | mask |
+| Allele frequency (AF) — lower bound | ≥ 0.1 (`--min-mask-allele-frequency`) | discard (below this, variant is noise) |
+| Allele frequency (AF) — upper bound | ≥ 0.6 (`--min-allele-frequency`) | mask (between bounds, position is ambiguous) |
+| Frameshift indel quality | ≥ 50 (`--min-frameshift-quality`), or always excluded with `--no-frameshifts` | mask |
+| Read depth (DP) | ≥ `--min-depth` | mask |
+| Alt allele read count (AD) | ≥ 5 (`--min-minor-allele-count`) | discard (too few reads despite good quality) |
+| All indels | excluded when `--no-indels` is set | — |
 
 Finally, passing variants are normalised against the pre-consensus using [bcftools norm](https://github.com/samtools/bcftools) to ensure REF alleles match the masked reference before consensus generation.
 
@@ -91,7 +97,8 @@ Finally, passing variants are normalised against the pre-consensus using [bcftoo
 | ---- | ----------- |
 | `$SAMPLE.normalised.vcf.gz` / `.tbi` | Normalised PASS variants — these are the variants applied to produce the consensus |
 | `$SAMPLE.pass.vcf` | PASS variants before normalisation |
-| `$SAMPLE.fail.vcf` | Variants that did not pass quality filtering |
+| `$SAMPLE.fail.vcf` | Mask variants — positions that will be replaced with `N` in the consensus |
+| `$SAMPLE.ignore.vcf` | Discarded variants — rejected as likely artefacts; the reference base is kept at these positions |
 
 #### Intermediates
 
@@ -107,7 +114,7 @@ Finally, passing variants are normalised against the pre-consensus using [bcftoo
 
 Each position in the reference is checked for read depth against the value of `--min-depth` (default: 20) using `artic_make_depth_mask`. Positions below this threshold are recorded in the coverage mask.
 
-`artic_mask` then produces a pre-consensus sequence by applying low-coverage masking and the FAIL variants to the reference, replacing low-confidence positions with `N`. `bcftools consensus` is then run against the pre-consensus using the normalised PASS variants to produce the final consensus sequence. The consensus header is annotated with the artic workflow identifier by `artic_fasta_header`.
+`artic_mask` then produces a pre-consensus sequence by applying low-coverage masking and the mask variants (`$SAMPLE.fail.vcf`) to the reference, replacing low-confidence positions with `N`. Discarded variants (`$SAMPLE.ignore.vcf`) are not applied — the reference base is used at those positions. `bcftools consensus` is then run against the pre-consensus using the normalised PASS variants to produce the final consensus sequence. The consensus header is annotated with the artic workflow identifier by `artic_fasta_header`.
 
 If `--align-consensus` is provided, the consensus is aligned against the reference using:
 

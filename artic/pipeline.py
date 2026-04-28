@@ -190,6 +190,42 @@ def init_pipeline_parser():
         help="Output linearised (unwrapped) FASTA consensus files",
     )
     parser_minion.add_argument("--dry-run", action="store_true")
+
+    filter_options = parser_minion.add_argument_group(
+        "Variant Filter Options",
+        "Fine-grained control over the VCF filter thresholds applied by artic_vcf_filter",
+    )
+    filter_options.add_argument(
+        "--min-variant-quality",
+        type=int,
+        default=10,
+        help="Minimum QUAL score for a variant to pass (default: %(default)d)",
+    )
+    filter_options.add_argument(
+        "--min-allele-frequency",
+        type=float,
+        default=0.6,
+        help="Minimum allele frequency (AF FORMAT field) for a variant to be added to the final consensus sequence (default: %(default)s)",
+    )
+    filter_options.add_argument(
+        "--min-mask-allele-frequency",
+        type=float,
+        default=0.1,
+        help="Minimum allele frequency below which a variant is discarded rather than masked. (default: %(default)s)",
+    )
+    filter_options.add_argument(
+        "--min-frameshift-quality",
+        type=int,
+        default=50,
+        help="Minimum QUAL score for frameshifting indels, the default is higher than the usual minimum variant quality due to frameshift indels being extremely rare in viruses. (default: %(default)d)",
+    )
+    filter_options.add_argument(
+        "--min-minor-allele-count",
+        type=int,
+        default=4,
+        help="Minimum alt allele read count (AD FORMAT field) for a variant to pass; low-count variants are quietly discarded rather than masked (default: %(default)d)",
+    )
+
     parser_minion.set_defaults(func=run_subtool)
 
     # guppyplex
