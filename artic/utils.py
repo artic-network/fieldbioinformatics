@@ -12,6 +12,7 @@ from Bio import SeqIO
 import gzip
 import csv
 import json
+from typing import Union
 
 CLAIR3_MANIFEST = [
     # R10.4.1 / R10.4 models — PyTorch, from clair3_models_rerio_pytorch
@@ -702,7 +703,7 @@ def get_scheme_legacy(scheme_name, scheme_directory, scheme_version="1"):
     raise SystemExit(1)
 
 
-def _get_basecall_model_id(description: str) -> str | None:
+def _get_basecall_model_id(description: str) -> Union[str, None]:
     """Extract the basecall model string from a FASTQ read description.
 
     Supports two header formats emitted by Dorado:
