@@ -776,7 +776,7 @@ def choose_model(read_file: str) -> dict:
     if model_id is None:
         print(
             colored.red(
-                "Provided fastq does not contain basecall_model_version_id in the read header so clair3 model cannot be chosen automatically, please provide an appropriate model with the --model parameter",
+                "Provided fastq does not contain basecall_model_version_id (old format) or RG:Z (new format) tag in the read header so clair3 model cannot be chosen automatically, please provide an appropriate model with the --model parameter",
             ),
             file=sys.stderr,
         )
