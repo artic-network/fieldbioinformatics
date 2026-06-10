@@ -110,6 +110,18 @@ def tmp_fastq_gz(tmp_path):
 
 
 @pytest.fixture
+def tmp_fastq_new_format(tmp_path):
+    """FASTQ with one read using the new SAM-style tab-separated header (RG:Z tag)."""
+    fastq = tmp_path / "reads_new.fastq"
+    rec = _make_fastq_record(
+        "c097ca25-6acf-468c-9adf-0777aaef1d4f",
+        "c097ca25-6acf-468c-9adf-0777aaef1d4f\tqs:f:17.57\tRG:Z:87a1966c-48c6-48ca-9624-e1f48851e28e_dna_r10.4.1_e8.2_400bps_hac@v4.3.0_barcode01",
+    )
+    write_fastq(str(fastq), [rec])
+    return str(fastq)
+
+
+@pytest.fixture
 def tmp_fastq_no_model_tag(tmp_path):
     """FASTQ whose read header has no basecall_model_version_id."""
     fastq = tmp_path / "reads_no_model.fastq"

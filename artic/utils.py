@@ -12,7 +12,7 @@ from Bio import SeqIO
 import gzip
 import csv
 import json
-
+from typing import Union
 
 CLAIR3_MANIFEST = [
     # R10.4.1 / R10.4 models — PyTorch, from clair3_models_rerio_pytorch
@@ -144,6 +144,11 @@ CLAIR3_MANIFEST = [
     {
         "name": "r1041_e82_400bps_sup_v520",
         "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_sup_v520/",
+        "pytorch": True,
+    },
+    {
+        "name": "r1041_e82_400bps_hac_v600",
+        "model_url": "https://www.bio8.cs.hku.hk/clair3/clair3_models_rerio_pytorch/r1041_e82_400bps_hac_v600/",
         "pytorch": True,
     },
     # R9.4.1 and multi-platform models — PyTorch, from clair3_models_pytorch
@@ -698,6 +703,31 @@ def get_scheme_legacy(scheme_name, scheme_directory, scheme_version="1"):
     raise SystemExit(1)
 
 
+def _get_basecall_model_id(description: str) -> Union[str, None]:
+    """Extract the basecall model string from a FASTQ read description.
+
+    Supports two header formats emitted by Dorado:
+    - Old (key=value): ``basecall_model_version_id=dna_r10.4.1_e8.2_400bps_hac@v5.2.0``
+    - New (SAM tags):  ``RG:Z:<UUID>_dna_r10.4.1_e8.2_400bps_hac@v5.2.0_barcode01``
+    """
+    tokens = description.split()
+
+    # Old format: space-separated key=value pairs
+    kv = {k: v for k, v in (t.split("=", 1) for t in tokens if "=" in t)}
+    if "basecall_model_version_id" in kv:
+        return kv["basecall_model_version_id"]
+
+    # New format: SAM-style TAG:TYPE:VALUE tags; model is embedded in RG:Z
+    for token in tokens:
+        if token.startswith("RG:Z:"):
+            rg_value = token[5:]
+            match = re.search(r"(?:dna|rna)\w*_[^@\s]+@v[\d.]+", rg_value)
+            if match:
+                return match.group(0)
+
+    return None
+
+
 def choose_model(read_file: str) -> dict:
     """
     Choose the appropriate clair3 model based on the `basecall_model_version_id` field in the read header (if it exists)
@@ -742,19 +772,18 @@ def choose_model(read_file: str) -> dict:
             )
             sys.exit(4)
 
-    split_description = read.description.split()
-    split_description = [x.split("=") for x in split_description if "=" in x]
+    model_id = _get_basecall_model_id(read.description)
 
-    tags = {x[0]: x[1] for x in split_description}
-
-    if "basecall_model_version_id" not in tags:
+    if model_id is None:
         print(
             colored.red(
-                "Provided fastq does not contain basecall_model_version_id in the read header so clair3 model cannot be chosen automatically, please provide an appropriate model with the --model parameter",
+                "Provided fastq does not contain basecall_model_version_id (old format) or RG:Z (new format) tag in the read header so clair3 model cannot be chosen automatically, please provide an appropriate model with the --model parameter",
             ),
             file=sys.stderr,
         )
         sys.exit(6)
+
+    tags = {"basecall_model_version_id": model_id}
 
     if len(tags["basecall_model_version_id"].split("_")) == 4:
         molecule, pore_type, kit_id, model = tags["basecall_model_version_id"].split(

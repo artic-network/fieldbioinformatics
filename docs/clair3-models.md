@@ -30,18 +30,29 @@ The `*-models-included` Docker image variant bundles all models. The default Doc
 
 ## Automatic model selection
 
-When `--model` is not provided, the pipeline reads the `basecall_model_version_id` tag from the first read in the input FASTQ and selects a model automatically. The tag is written by Dorado into each read header, for example:
+When `--model` is not provided, the pipeline extracts the basecalling model from the first read in the input FASTQ and selects a Clair3 model automatically. Two header formats are supported.
+
+**Old format** (Dorado < 2.0.0, space-separated key=value pairs):
 
 ```
 @read1 basecall_model_version_id=dna_r10.4.1_e8.2_400bps_hac@v5.2.0 ...
 ```
 
+**New format** (Dorado ≥ 2.0.0, SAM-style tab-separated tags):
+
+```
+@read1	qs:f:17.57	RG:Z:87a1966c-..._dna_r10.4.1_e8.2_400bps_hac@v5.2.0_barcode01	...
+```
+
+In the new format the basecalling model is embedded in the `RG:Z` tag value as `<run-id>_<model>_<barcode>`. Both formats are detected automatically — no configuration is required.
+
 The selection algorithm:
 
-1. Splits the tag on `_` to extract pore type, kit ID, speed tier, and basecaller version.
-2. Filters available models by pore type and speed tier.
-3. Matches the basecaller version string (e.g. `v520` for Dorado 5.2.0).
-4. If exactly one model matches at each step it is selected and a warning is printed. If no match is found at any step the pipeline exits with code 6.
+1. Extracts the model string (e.g. `dna_r10.4.1_e8.2_400bps_hac@v5.2.0`) from whichever header format is present.
+2. Splits the model string on `_` to extract pore type, kit ID, speed tier, and basecaller version.
+3. Filters available models by pore type and speed tier.
+4. Matches the basecaller version string (e.g. `v520` for Dorado 5.2.0).
+5. If exactly one model matches at each step it is selected and a warning is printed. If no match is found at any step the pipeline exits with code 6.
 
 Use `--model` to override auto-selection at any time.
 
@@ -55,12 +66,13 @@ If you see exit code 6 for a `fast`-mode Dorado model: no versioned Clair3 fast 
 
 ### Dorado models
 
-These models correspond to data basecalled with [Dorado](https://github.com/nanoporetech/dorado). The Dorado basecall model column shows the `basecall_model_version_id` tag value that will auto-select each model.
+These models correspond to data basecalled with [Dorado](https://github.com/nanoporetech/dorado). The Dorado basecall model column shows the [dorado basecalling model tag](https://software-docs.nanoporetech.com/dorado/latest/models/list/) value that will auto-select each model.
 
 #### R10.4.1 — 400 bps
 
-| Clair3 model                | Dorado basecall model                |
+| Clair3 model                | Dorado basecalling model             |
 | --------------------------- | ------------------------------------ |
+| `r1041_e82_400bps_hac_v600` | `dna_r10.4.1_e8.2_400bps_hac@v6.0.0` |
 | `r1041_e82_400bps_hac_v520` | `dna_r10.4.1_e8.2_400bps_hac@v5.2.0` |
 | `r1041_e82_400bps_sup_v520` | `dna_r10.4.1_e8.2_400bps_sup@v5.2.0` |
 | `r1041_e82_400bps_hac_v500` | `dna_r10.4.1_e8.2_400bps_hac@v5.0.0` |
@@ -79,7 +91,7 @@ These models correspond to data basecalled with [Dorado](https://github.com/nano
 
 #### R10.4.1 — 260 bps
 
-| Clair3 model                | Dorado basecall model                |
+| Clair3 model                | Dorado basecalling model             |
 | --------------------------- | ------------------------------------ |
 | `r1041_e82_260bps_hac_v410` | `dna_r10.4.1_e8.2_260bps_hac@v4.1.0` |
 | `r1041_e82_260bps_sup_v410` | `dna_r10.4.1_e8.2_260bps_sup@v4.1.0` |
@@ -88,7 +100,7 @@ These models correspond to data basecalled with [Dorado](https://github.com/nano
 
 #### R9.4.1
 
-| Clair3 model              | Dorado basecall model    |
+| Clair3 model              | Dorado basecalling model |
 | ------------------------- | ------------------------ |
 | `r941_prom_hac_g360+g422` | `dna_r9.4.1_e8_hac@vX.X` |
 | `r941_prom_sup_g5014`     | `dna_r9.4.1_e8_sup@vX.X` |

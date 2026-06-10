@@ -282,6 +282,17 @@ class TestChooseModel:
         result = choose_model(fastq_gz)
         assert result["name"] == "r941_prom_hac_g360+g422"
 
+    def test_choose_model_new_sam_format(self, tmp_path):
+        """New SAM-style RG:Z header → model extracted and matched correctly."""
+        fastq = str(tmp_path / "reads.fastq")
+        _write_fastq(
+            fastq,
+            "c097ca25",
+            "c097ca25\tqs:f:17.57\tRG:Z:87a1966c-48c6-48ca-9624-e1f48851e28e_dna_r10.4.1_e8.2_400bps_hac@v4.3.0_barcode01",
+        )
+        result = choose_model(fastq)
+        assert result["name"] == "r1041_e82_400bps_hac_v430"
+
     def test_choose_model_no_tag_exits(self, tmp_path):
         """Missing basecall_model_version_id in header → sys.exit(6)"""
         fastq = str(tmp_path / "reads.fastq")
