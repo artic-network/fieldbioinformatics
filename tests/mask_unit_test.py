@@ -82,10 +82,10 @@ def _write_bed(path, lines):
 
 
 def _make_vcf_record(chrom, pos, ref):
-    """pos is 1-based (genomics convention); stored as 0-based to match pysam."""
+    """pos is 1-based (VCF standard)."""
     v = MagicMock()
     v.chrom = chrom
-    v.pos = pos - 1  # pysam is 0-based
+    v.pos = pos
     v.ref = ref
     return v
 
