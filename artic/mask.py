@@ -39,7 +39,7 @@ def go(args):
     with pysam.VariantFile(args.maskvcf) as vcf_reader:
         for record in vcf_reader:
             for n in range(0, len(record.ref)):
-                cons[record.chrom][record.pos + n] = "N"
+                cons[record.chrom][(record.pos - 1) + n] = "N"
 
     fh = open(args.output, "w")
     for k in seqs.keys():
