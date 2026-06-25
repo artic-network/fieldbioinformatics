@@ -296,6 +296,11 @@ class TestSpacesInPaths:
         cmd = next(line for line in lines if line.startswith("align_trim"))
         assert shlex.quote(bed) in cmd, f"bed not quoted in: {cmd!r}"
 
+    def test_align_trim_has_genome_coverage_report(self, tmp_path):
+        lines, _, _, _, sample, _ = self._dry_run(tmp_path)
+        cmd = next(line for line in lines if line.startswith("align_trim"))
+        assert f"--genome-coverage-report {shlex.quote(sample)}" in cmd, f"--genome-coverage-report not found in: {cmd!r}"
+
     def test_samtools_index_quotes_sample_bam(self, tmp_path):
         lines, _, _, _, sample, _ = self._dry_run(tmp_path)
         cmd = next(line for line in lines if line.startswith("samtools index"))
