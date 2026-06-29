@@ -60,6 +60,8 @@ More information on how the primer scheme is used to infer amplicons can be foun
 | ---- | ----------- |
 | `$SAMPLE.sorted.bam` / `.bai` | Raw alignment of reads to the reference |
 | `$SAMPLE.primertrimmed.rg.sorted.bam` / `.bai` | Primer-trimmed, read-group-annotated alignment used for all downstream steps |
+| `$SAMPLE.pre-normalisation.coverage.tsv` | Per-base coverage depth before amplicon normalisation |
+| `$SAMPLE.post-normalisation.coverage.tsv` | Per-base coverage depth after amplicon normalisation |
 
 #### Intermediates
 
