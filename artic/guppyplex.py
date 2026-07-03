@@ -1,10 +1,10 @@
 import sys
-from Bio import SeqIO
 import os
 import gzip
 import fnmatch
 import concurrent.futures
-import pandas as pd
+import numpy as np
+from Bio.SeqIO.QualityIO import FastqGeneralIterator
 from mimetypes import guess_type
 from functools import partial
 from math import log10
@@ -21,15 +21,30 @@ from random import random
 
 
 def get_read_mean_quality(record):
-    return -10 * log10(
-        (10 ** (pd.Series(record.letter_annotations["phred_quality"]) / -10)).mean()
-    )
+    quals = np.asarray(record.letter_annotations["phred_quality"], dtype=np.float64)
+    return -10 * log10(np.mean(10.0 ** (quals / -10.0)))
+
+
+def _mean_phred_quality_from_ascii(qual):
+    """Compute mean Phred quality directly from a raw FASTQ quality string.
+
+    Avoids constructing a SeqRecord (and its list of int quality scores) just
+    to compute a mean - operates on the ASCII string Biopython already parsed.
+    """
+    scores = np.frombuffer(qual.encode("ascii"), dtype=np.uint8).astype(np.float64) - 33
+    return -10 * log10(np.mean(10.0 ** (scores / -10.0)))
 
 
 def _process_file(args_tuple):
     """Module-level worker: filter reads from a single FASTQ file.
 
-    Returns a list of SeqRecord objects that pass all filters.
+    Returns a list of (read_id, formatted_fastq_record) tuples for reads that
+    pass all filters. Records are pre-formatted here (in the worker process)
+    so the main process only has to deduplicate and write raw strings -
+    Bio.SeqIO's SeqRecord construction/serialisation is the dominant cost of
+    this pipeline stage and is avoided entirely by working with the raw
+    title/sequence/quality strings that Bio.SeqIO parses FASTQ into internally.
+
     Deduplication is handled by the caller across all files.
     """
     fn, min_length, max_length, quality, skip_quality_check, sample = args_tuple
@@ -41,18 +56,20 @@ def _process_file(args_tuple):
     records = []
     with _open(fn) as f:
         try:
-            for rec in SeqIO.parse(f, "fastq"):
-                if max_length and len(rec) > max_length:
+            for title, seq, qual in FastqGeneralIterator(f):
+                seq_len = len(seq)
+                if max_length and seq_len > max_length:
                     continue
-                if min_length and len(rec) < min_length:
+                if min_length and seq_len < min_length:
                     continue
-                if not skip_quality_check and get_read_mean_quality(rec) < quality:
+                if not skip_quality_check and _mean_phred_quality_from_ascii(qual) < quality:
                     continue
                 if sample < 1:
                     r = random()
                     if r >= sample:
                         continue
-                records.append(rec)
+                read_id = title.split(maxsplit=1)[0]
+                records.append((read_id, f"@{title}\n{seq}\n+\n{qual}\n"))
         except (ValueError, gzip.BadGzipFile, EOFError) as e:
             print(f"Warning: skipping {fn}: {e}", file=sys.stderr)
     return records
@@ -103,10 +120,10 @@ def run(parser, args):
         threads = getattr(args, "threads", 1)
         with concurrent.futures.ProcessPoolExecutor(max_workers=threads) as executor:
             for file_records in executor.map(_process_file, worker_args):
-                for rec in file_records:
-                    if rec.id not in dups:
-                        SeqIO.write([rec], outfh, "fastq")
-                        dups.add(rec.id)
+                for read_id, text in file_records:
+                    if read_id not in dups:
+                        outfh.write(text)
+                        dups.add(read_id)
 
         outfh.close()
         print(f"{fastq_outfn}\t{len(dups)}")
