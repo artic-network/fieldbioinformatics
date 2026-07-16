@@ -39,16 +39,6 @@ def _mean_phred_quality_from_ascii(qual):
 def _split_file(args_tuple):
     """Module-level worker: split one plain-text FASTQ file into n shards.
 
-    Modern basecallers (e.g. Dorado) commonly write a single large FASTQ per
-    barcode rather than many smaller chunks, which leaves nothing for
-    --threads to parallelise over in the filtering pass below (that pass is
-    file-granular). This does one cheap sequential pass - round-robin
-    re-emitting each record with no quality computation - so the expensive
-    filtering pass has n independent, roughly-equal work units to run in
-    parallel instead of one. gzip input isn't handled here since it can't be
-    split without a full decompress first; callers should only offer plain-
-    text files to this function.
-
     Returns the list of shard file paths (some may end up empty for small
     inputs, which is harmless).
     """
@@ -153,11 +143,7 @@ def run(parser, args):
 
         threads = getattr(args, "threads", 1)
 
-        # If there aren't enough (splittable, plain-text) input files to keep
-        # every worker busy - e.g. a single big per-barcode FASTQ, as newer
-        # basecallers tend to produce - pre-split the large ones into
-        # `threads` shards each so the filtering pass below actually has
-        # enough independent work units to parallelise over.
+        # Pre-split large plain-text FASTQ files into shards for parallel processing, process gzipped files as-is
         split_shards = []
         work_files = fastq_files
         if threads > 1 and len(fastq_files) < threads:
