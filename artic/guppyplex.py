@@ -2,6 +2,7 @@ import sys
 import os
 import gzip
 import fnmatch
+import tempfile
 import concurrent.futures
 import numpy as np
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
@@ -38,14 +39,14 @@ def _mean_phred_quality_from_ascii(qual):
 def _process_file(args_tuple):
     """Module-level worker: filter reads from a single FASTQ file.
 
-    Returns a list of (read_id, formatted_fastq_record) tuples for reads that
-    pass all filters. Records are pre-formatted here (in the worker process)
-    so the main process only has to deduplicate and write raw strings -
-    Bio.SeqIO's SeqRecord construction/serialisation is the dominant cost of
-    this pipeline stage and is avoided entirely by working with the raw
-    title/sequence/quality strings that Bio.SeqIO parses FASTQ into internally.
+    Passing reads are streamed straight to a per-worker temp file on disk as
+    they're found, rather than accumulated in a list and returned - for a
+    large input file that keeps this worker's memory use O(1) instead of
+    O(filtered file size), and avoids pickling a potentially huge list of
+    strings back through the process pool's IPC pipe.
 
-    Deduplication is handled by the caller across all files.
+    Returns the temp file path (or None if nothing passed the filters);
+    deduplication across files is handled by the caller.
     """
     fn, min_length, max_length, quality, skip_quality_check, sample = args_tuple
     encoding = guess_type(fn)[1]
@@ -53,26 +54,36 @@ def _process_file(args_tuple):
     if encoding == "gzip":
         _open = partial(gzip.open, mode="rt")
 
-    records = []
-    with _open(fn) as f:
-        try:
-            for title, seq, qual in FastqGeneralIterator(f):
-                seq_len = len(seq)
-                if max_length and seq_len > max_length:
-                    continue
-                if min_length and seq_len < min_length:
-                    continue
-                if not skip_quality_check and _mean_phred_quality_from_ascii(qual) < quality:
-                    continue
-                if sample < 1:
-                    r = random()
-                    if r >= sample:
+    tmp = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".fastq", prefix="guppyplex_", delete=False
+    )
+    wrote_any = False
+    try:
+        with _open(fn) as f:
+            try:
+                for title, seq, qual in FastqGeneralIterator(f):
+                    seq_len = len(seq)
+                    if max_length and seq_len > max_length:
                         continue
-                read_id = title.split(maxsplit=1)[0]
-                records.append((read_id, f"@{title}\n{seq}\n+\n{qual}\n"))
-        except (ValueError, gzip.BadGzipFile, EOFError) as e:
-            print(f"Warning: skipping {fn}: {e}", file=sys.stderr)
-    return records
+                    if min_length and seq_len < min_length:
+                        continue
+                    if not skip_quality_check and _mean_phred_quality_from_ascii(qual) < quality:
+                        continue
+                    if sample < 1:
+                        r = random()
+                        if r >= sample:
+                            continue
+                    tmp.write(f"@{title}\n{seq}\n+\n{qual}\n")
+                    wrote_any = True
+            except (ValueError, gzip.BadGzipFile, EOFError) as e:
+                print(f"Warning: skipping {fn}: {e}", file=sys.stderr)
+    finally:
+        tmp.close()
+
+    if not wrote_any:
+        os.unlink(tmp.name)
+        return None
+    return tmp.name
 
 
 def run(parser, args):
@@ -119,11 +130,34 @@ def run(parser, args):
 
         threads = getattr(args, "threads", 1)
         with concurrent.futures.ProcessPoolExecutor(max_workers=threads) as executor:
-            for file_records in executor.map(_process_file, worker_args):
-                for read_id, text in file_records:
-                    if read_id not in dups:
-                        outfh.write(text)
-                        dups.add(read_id)
+            futures = [
+                executor.submit(_process_file, wa) for wa in worker_args
+            ]
+            # as_completed (rather than executor.map) merges each worker's
+            # shard as soon as it's ready, instead of buffering results that
+            # finish early while waiting on an earlier-submitted file.
+            for future in concurrent.futures.as_completed(futures):
+                shard_path = future.result()
+                if shard_path is None:
+                    continue
+                try:
+                    with open(shard_path) as shard:
+                        while True:
+                            title_line = shard.readline()
+                            if not title_line:
+                                break
+                            seq_line = shard.readline()
+                            plus_line = shard.readline()
+                            qual_line = shard.readline()
+                            read_id = title_line[1:].split(maxsplit=1)[0]
+                            if read_id not in dups:
+                                outfh.write(title_line)
+                                outfh.write(seq_line)
+                                outfh.write(plus_line)
+                                outfh.write(qual_line)
+                                dups.add(read_id)
+                finally:
+                    os.unlink(shard_path)
 
         outfh.close()
         print(f"{fastq_outfn}\t{len(dups)}")
