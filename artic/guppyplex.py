@@ -36,6 +36,42 @@ def _mean_phred_quality_from_ascii(qual):
     return -10 * log10(np.mean(10.0 ** (scores / -10.0)))
 
 
+def _split_file(args_tuple):
+    """Module-level worker: split one plain-text FASTQ file into n shards.
+
+    Modern basecallers (e.g. Dorado) commonly write a single large FASTQ per
+    barcode rather than many smaller chunks, which leaves nothing for
+    --threads to parallelise over in the filtering pass below (that pass is
+    file-granular). This does one cheap sequential pass - round-robin
+    re-emitting each record with no quality computation - so the expensive
+    filtering pass has n independent, roughly-equal work units to run in
+    parallel instead of one. gzip input isn't handled here since it can't be
+    split without a full decompress first; callers should only offer plain-
+    text files to this function.
+
+    Returns the list of shard file paths (some may end up empty for small
+    inputs, which is harmless).
+    """
+    fn, n = args_tuple
+    shard_files = [
+        tempfile.NamedTemporaryFile(
+            mode="w", suffix=".fastq", prefix="guppyplex_split_", delete=False
+        )
+        for _ in range(n)
+    ]
+    try:
+        with open(fn) as f:
+            try:
+                for i, (title, seq, qual) in enumerate(FastqGeneralIterator(f)):
+                    shard_files[i % n].write(f"@{title}\n{seq}\n+\n{qual}\n")
+            except (ValueError, EOFError) as e:
+                print(f"Warning: skipping {fn}: {e}", file=sys.stderr)
+    finally:
+        for sf in shard_files:
+            sf.close()
+    return [sf.name for sf in shard_files]
+
+
 def _process_file(args_tuple):
     """Module-level worker: filter reads from a single FASTQ file.
 
@@ -115,6 +151,26 @@ def run(parser, args):
             file=sys.stderr,
         )
 
+        threads = getattr(args, "threads", 1)
+
+        # If there aren't enough (splittable, plain-text) input files to keep
+        # every worker busy - e.g. a single big per-barcode FASTQ, as newer
+        # basecallers tend to produce - pre-split the large ones into
+        # `threads` shards each so the filtering pass below actually has
+        # enough independent work units to parallelise over.
+        split_shards = []
+        work_files = fastq_files
+        if threads > 1 and len(fastq_files) < threads:
+            splittable = [fn for fn in fastq_files if guess_type(fn)[1] != "gzip"]
+            unsplittable = [fn for fn in fastq_files if guess_type(fn)[1] == "gzip"]
+            if splittable:
+                with concurrent.futures.ProcessPoolExecutor(max_workers=threads) as executor:
+                    for shards in executor.map(
+                        _split_file, [(fn, threads) for fn in splittable]
+                    ):
+                        split_shards.extend(shards)
+                work_files = split_shards + unsplittable
+
         dups = set()
         worker_args = [
             (
@@ -125,10 +181,9 @@ def run(parser, args):
                 args.skip_quality_check,
                 args.sample,
             )
-            for fn in fastq_files
+            for fn in work_files
         ]
 
-        threads = getattr(args, "threads", 1)
         with concurrent.futures.ProcessPoolExecutor(max_workers=threads) as executor:
             futures = [
                 executor.submit(_process_file, wa) for wa in worker_args
@@ -158,6 +213,10 @@ def run(parser, args):
                                 dups.add(read_id)
                 finally:
                     os.unlink(shard_path)
+
+        for sp in split_shards:
+            if os.path.exists(sp):
+                os.unlink(sp)
 
         outfh.close()
         print(f"{fastq_outfn}\t{len(dups)}")
