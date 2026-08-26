@@ -164,6 +164,13 @@ CLAIR3_MANIFEST = [
     },
 ]
 
+# CLIMB-hosted mirror of CLAIR3_MANIFEST, used as a fallback if the primary
+# (HKU) model URL is unreachable.
+CLAIR3_MODEL_BACKUP_URL = os.getenv(
+    "ARTIC_CLAIR3_MODEL_BACKUP_URL",
+    "https://artic-example-datasets.s3.climb.ac.uk/clair3-models",
+)
+
 
 def getPrimerDirection(primerID):
     """Infer the primer direction based on it's ID containing LEFT/RIGHT
