@@ -1,5 +1,6 @@
 """Unit tests for artic/get_models.py — focuses on needs_download logic."""
 
+import requests
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -28,12 +29,15 @@ _TF_FILES = [
 ]
 
 
-def _run_main(tmp_path, manifest, mock_get_pytorch, mock_get_model):
+def _run_main(tmp_path, manifest, mock_get_pytorch, mock_get_model, extra_args=None):
     with (
         patch("artic.get_models.CLAIR3_MANIFEST", manifest),
         patch("artic.get_models.get_pytorch_model", mock_get_pytorch),
         patch("artic.get_models.get_model", mock_get_model),
-        patch("sys.argv", ["artic_get_models", "--model-dir", str(tmp_path)]),
+        patch(
+            "sys.argv",
+            ["artic_get_models", "--model-dir", str(tmp_path)] + (extra_args or []),
+        ),
     ):
         main()
 
@@ -127,3 +131,87 @@ class TestTfNeedsDownload:
         mock_dl = MagicMock()
         _run_main(tmp_path, [_TF_MODEL], MagicMock(), mock_dl)
         mock_dl.assert_not_called()
+
+
+_BACKUP_BASE_URL = "https://backup.example.com/clair3-models"
+_BACKUP_URL = f"{_BACKUP_BASE_URL}/{_PYTORCH_MODEL['name']}/"
+
+
+class TestBackupFallback:
+    def test_primary_failure_falls_back_to_backup(self, tmp_path):
+        mock_dl = MagicMock(
+            side_effect=[requests.HTTPError("primary down"), tmp_path]
+        )
+        _run_main(
+            tmp_path,
+            [_PYTORCH_MODEL],
+            mock_dl,
+            MagicMock(),
+            extra_args=["--backup-url", _BACKUP_BASE_URL],
+        )
+
+        assert mock_dl.call_count == 2
+        assert mock_dl.call_args_list[0].kwargs["model_url"] == _PYTORCH_MODEL["model_url"]
+        assert mock_dl.call_args_list[1].kwargs["model_url"] == _BACKUP_URL
+
+    def test_primary_success_skips_backup(self, tmp_path):
+        mock_dl = MagicMock(return_value=tmp_path)
+        _run_main(
+            tmp_path,
+            [_PYTORCH_MODEL],
+            mock_dl,
+            MagicMock(),
+            extra_args=["--backup-url", _BACKUP_BASE_URL],
+        )
+
+        mock_dl.assert_called_once()
+
+    def test_both_sources_failing_aborts(self, tmp_path):
+        mock_dl = MagicMock(side_effect=requests.HTTPError("down"))
+        with pytest.raises(SystemExit):
+            _run_main(
+                tmp_path,
+                [_PYTORCH_MODEL],
+                mock_dl,
+                MagicMock(),
+                extra_args=["--backup-url", _BACKUP_BASE_URL],
+            )
+
+        assert mock_dl.call_count == 2
+
+    def test_no_backup_flag_disables_fallback(self, tmp_path):
+        mock_dl = MagicMock(side_effect=requests.HTTPError("down"))
+        with pytest.raises(SystemExit):
+            _run_main(
+                tmp_path,
+                [_PYTORCH_MODEL],
+                mock_dl,
+                MagicMock(),
+                extra_args=["--backup-url", _BACKUP_BASE_URL, "--no-backup"],
+            )
+
+        mock_dl.assert_called_once()
+
+    def test_partial_download_cleaned_up_before_retry(self, tmp_path):
+        model_dir = tmp_path / _PYTORCH_MODEL["name"]
+        calls = []
+
+        def side_effect(*args, **kwargs):
+            calls.append(kwargs)
+            if len(calls) == 1:
+                model_dir.mkdir(exist_ok=True)
+                (model_dir / "pileup.pt").write_text("")
+                raise requests.HTTPError("primary down")
+            return tmp_path
+
+        mock_dl = MagicMock(side_effect=side_effect)
+        _run_main(
+            tmp_path,
+            [_PYTORCH_MODEL],
+            mock_dl,
+            MagicMock(),
+            extra_args=["--backup-url", _BACKUP_BASE_URL],
+        )
+
+        assert mock_dl.call_count == 2
+        assert not model_dir.exists()

@@ -4,11 +4,12 @@ from pathlib import Path
 import tarfile
 import sys
 import shutil
-from artic.utils import CLAIR3_MANIFEST
+from clint.textui import colored
+from artic.utils import CLAIR3_MANIFEST, CLAIR3_MODEL_BACKUP_URL
 
 
 def download_file(url: str, local_path: Path):
-    with requests.get(url, stream=True) as r:
+    with requests.get(url, stream=True, timeout=(10, 60)) as r:
         r.raise_for_status()
         with open(local_path, "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
@@ -55,6 +56,63 @@ def get_pytorch_model(model_dir: Path, model_name: str, model_url: str):
     return model_path
 
 
+def _model_backup_url(model: dict, backup_base_url: str) -> str:
+    return f"{backup_base_url.rstrip('/')}/{model['name']}/"
+
+
+def _cleanup_partial_download(model_dir: Path, model: dict):
+    if model.get("pytorch"):
+        shutil.rmtree(Path(model_dir, model["name"]), ignore_errors=True)
+    else:
+        Path(model_dir, model["model_fname"]).unlink(missing_ok=True)
+
+
+def fetch_model(model: dict, model_dir: Path, backup_base_url: str = None):
+    """Download a clair3 model, trying model["model_url"] first and falling
+    back to backup_base_url (if given) if the primary URL fails."""
+
+    candidate_urls = [model["model_url"]]
+    if backup_base_url:
+        candidate_urls.append(_model_backup_url(model, backup_base_url))
+
+    last_error = None
+    for i, model_url in enumerate(candidate_urls):
+        try:
+            if model.get("pytorch"):
+                get_pytorch_model(
+                    model_dir=model_dir,
+                    model_name=model["name"],
+                    model_url=model_url,
+                )
+            else:
+                get_model(
+                    model_dir=model_dir,
+                    model_fname=model["model_fname"],
+                    model_url=model_url,
+                    model_name=model["name"],
+                )
+            return
+        except (requests.RequestException, tarfile.TarError, ValueError) as e:
+            last_error = e
+            _cleanup_partial_download(model_dir, model)
+            is_last_candidate = i == len(candidate_urls) - 1
+            print(
+                colored.yellow(
+                    f"Failed to download model '{model['name']}' from {model_url}: {e}"
+                ),
+                file=sys.stderr,
+            )
+            if not is_last_candidate:
+                print(
+                    colored.yellow(f"Retrying '{model['name']}' from backup source"),
+                    file=sys.stderr,
+                )
+
+    raise RuntimeError(
+        f"Failed to download model '{model['name']}' from all sources: {candidate_urls}"
+    ) from last_error
+
+
 def main():
     import argparse
 
@@ -71,7 +129,19 @@ def main():
         metavar="MODEL",
         help="Only download the specified model(s) by name. Downloads all models if omitted.",
     )
+    parser.add_argument(
+        "--backup-url",
+        default=CLAIR3_MODEL_BACKUP_URL,
+        help="Base URL of a backup model source, tried if the primary model URL fails. Default is: %(default)s",
+    )
+    parser.add_argument(
+        "--no-backup",
+        action="store_true",
+        help="Do not fall back to the backup model source if the primary download fails.",
+    )
     args = parser.parse_args()
+
+    backup_base_url = None if args.no_backup else args.backup_url
 
     if not os.getenv("CONDA_PREFIX"):
         print(
@@ -101,19 +171,11 @@ def main():
             )
 
         if needs_download:
-            if model.get("pytorch"):
-                get_pytorch_model(
-                    model_dir=args.model_dir,
-                    model_name=model["name"],
-                    model_url=model["model_url"],
-                )
-            else:
-                get_model(
-                    model_dir=args.model_dir,
-                    model_fname=model["model_fname"],
-                    model_url=model["model_url"],
-                    model_name=model["name"],
-                )
+            try:
+                fetch_model(model, args.model_dir, backup_base_url)
+            except RuntimeError as e:
+                print(colored.red(str(e)), file=sys.stderr)
+                raise SystemExit(1)
             print(f"Downloaded model: {model['name']}", file=sys.stderr)
         else:
             print(
