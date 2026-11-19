@@ -54,7 +54,7 @@ Variants called within primer binding sites are separated into `$SAMPLE.primers.
 
 ### Pipeline produces no consensus or an all-N consensus
 
-This usually means coverage is below `--min-depth` across most of the genome. Check `$SAMPLE.amplicon_depths.tsv` to see per-amplicon depth. Common causes:
+This usually means coverage is below `--min-depth` across most of the genome. Check `$SAMPLE.amplicon_depths.tsv` to see per-amplicon depth, and `$SAMPLE.summary.tsv` / `$SAMPLE.amplicons.tsv` to see how many reads were removed and why (a high `removed_no_primer_match` or `removed_mismatched_primers` count suggests the wrong primer scheme). Common causes:
 
 - Very low input read count.
 - Amplicon dropout (one or more amplicons failed in the library prep).

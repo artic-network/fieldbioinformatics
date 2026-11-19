@@ -196,7 +196,7 @@ def run(parser, args):
         f" {incorrect_pairs_string}"
         f" --report {sp('.alignreport.tsv')}"
         f" --amp-depth-report {sp('.amplicon_depths.tsv')}"
-        f" --genome-coverage-report {sp('')}"
+        f" --qc-prefix {sp('')}"
         f" --samfile {sp('.sorted.bam')}"
         f" -o {sp('.primertrimmed.rg.bam')}"
     )

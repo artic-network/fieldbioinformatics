@@ -48,9 +48,11 @@ Optionally it can also:
 
 - remove primer sequence by further softmasking (`--primer-match-threshold` controls fuzzy matching)
 - downsample reads per amplicon to `--normalise` depth (set to `0` to disable)
-- remove reads with mismatched primer pairs, e.g. from amplicon read-through (use `--allow-mismatched-primers` to retain these)
+- remove reads with mismatched primer pairs, e.g. from amplicon read-through (use `--allow-mismatched-primers` to retain these). Reads lying entirely inside the overlap of two neighbouring amplicons are always removed, even with `--allow-mismatched-primers`, since they cannot be assigned to either amplicon
 
 Softmasking adjusts the CIGAR of each [alignment segment](https://samtools.github.io/hts-specs/SAMv1.pdf) so that soft clips replace any reference- or query-consuming operations outside primer boundaries. The leftmost mapping position is updated accordingly.
+
+`align_trim` also writes a set of QC reports (prefixed `$SAMPLE.`) describing what happened to every read: how many were kept or removed and why, per-amplicon outcomes, the primer pair combinations seen, split (chimeric) alignments, and concordance between overlapping amplicons.
 
 More information on how the primer scheme is used to infer amplicons can be found in [Primer Schemes](./primer-schemes.md).
 
@@ -62,13 +64,18 @@ More information on how the primer scheme is used to infer amplicons can be foun
 | `$SAMPLE.primertrimmed.rg.sorted.bam` / `.bai` | Primer-trimmed, read-group-annotated alignment used for all downstream steps |
 | `$SAMPLE.pre-normalisation.coverage.tsv` | Per-base coverage depth before amplicon normalisation |
 | `$SAMPLE.post-normalisation.coverage.tsv` | Per-base coverage depth after amplicon normalisation |
+| `$SAMPLE.summary.tsv` | Run summary: total `fragments`, `kept`, and a `removed_<reason>` count per removal reason (e.g. `low_mapq`, `no_primer_match`, `ambiguous_amplicon`, `mismatched_primers`, `by_normalise`) |
+| `$SAMPLE.amplicons.tsv` | Per-amplicon read fates: `fragments`, `kept`, and `removed_<reason>` counts for each amplicon |
 
 #### Intermediates
 
 | File | Description |
 | ---- | ----------- |
 | `$SAMPLE.alignreport.tsv` | Per-read primer assignment report from align_trim |
-| `$SAMPLE.amplicon_depths.tsv` | Per-amplicon read depth report |
+| `$SAMPLE.amplicon_depths.tsv` | Mean fragment depth per amplicon (`mean_fragment_depth`) |
+| `$SAMPLE.primer_pairs.tsv` | Counts of each left/right primer combination observed, classified by `type` (e.g. `same_amplicon`, `spans_amplicons_same_pool`, `inside_overlap`) |
+| `$SAMPLE.split_reads.tsv` | Supplementary (split) alignments and where the parts join, classified by `type` (`amplicon_chimera`, `joined_inside_amplicon`, `low_mapq_part`) |
+| `$SAMPLE.overlaps.tsv` | Per amplicon overlap: fragments removed as ambiguous, and base-frequency concordance between the two amplicons covering it |
 
 ### Variant calling
 
