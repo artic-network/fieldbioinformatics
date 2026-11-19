@@ -296,10 +296,10 @@ class TestSpacesInPaths:
         cmd = next(line for line in lines if line.startswith("align_trim"))
         assert shlex.quote(bed) in cmd, f"bed not quoted in: {cmd!r}"
 
-    def test_align_trim_has_genome_coverage_report(self, tmp_path):
+    def test_align_trim_has_qc_prefix(self, tmp_path):
         lines, _, _, _, sample, _ = self._dry_run(tmp_path)
         cmd = next(line for line in lines if line.startswith("align_trim"))
-        assert f"--genome-coverage-report {shlex.quote(sample)}" in cmd, f"--genome-coverage-report not found in: {cmd!r}"
+        assert f"--qc-prefix {shlex.quote(sample)}" in cmd, f"--qc-prefix not found in: {cmd!r}"
 
     def test_samtools_index_quotes_sample_bam(self, tmp_path):
         lines, _, _, _, sample, _ = self._dry_run(tmp_path)
@@ -308,9 +308,16 @@ class TestSpacesInPaths:
 
     def test_clair3_quotes_model_path(self, tmp_path):
         lines, _, _, _, _, model_dir = self._dry_run(tmp_path)
-        cmd = next(line for line in lines if line.startswith("run_clair3.sh"))
         full_model = f"{model_dir}/{self.MODEL}"
+        cmd = next(line for line in lines if line.startswith("ln -s") and "model" in line.split()[-1])
         assert shlex.quote(full_model) in cmd, f"model path not quoted in: {cmd!r}"
+
+    def test_clair3_args_have_no_spaces(self, tmp_path):
+        """Clair3 shlex-splits its input paths internally, so every path it is given must be space-free."""
+        lines, *_ = self._dry_run(tmp_path)
+        cmd = next(line for line in lines if line.startswith("run_clair3.sh"))
+        for arg in shlex.split(cmd)[1:]:
+            assert " " not in arg, f"clair3 argument contains a space: {arg!r}"
 
     def test_merge_vcf_quotes_sample_and_bed(self, tmp_path):
         lines, _, bed, _, sample, _ = self._dry_run(tmp_path)

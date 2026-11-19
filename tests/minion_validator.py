@@ -543,3 +543,9 @@ class TestMinionSpacedPaths(unittest.TestCase):
                 os.path.exists(f"{sample_prefix}.normalised.vcf.gz"),
                 "No VCF produced when running with spaced paths",
             )
+            # Older Clair3 versions silently called nothing when given spaced paths, so check variants were actually called.
+            with open(f"{sample_prefix}.merged.vcf") as vcf:
+                n_records = sum(1 for line in vcf if not line.startswith("#"))
+            self.assertGreater(
+                n_records, 0, "No variants called when running with spaced paths"
+            )
