@@ -215,18 +215,32 @@ def run(parser, args):
         if os.path.exists("%s.%s.hdf" % (args.sample, p)):
             os.remove("%s.%s.hdf" % (args.sample, p))
 
-        pool_rg_bam = shlex.quote(f"{args.sample}.{p}.primertrimmed.rg.sorted.bam")
-
-        # Clair3 does not behave properly when provided paths with spaces. Use a space-free temp directory keyed on a hash of the sample prefix and pool. On WSL, TMPDIR may point at a Windows path containing spaces, so fall back to /tmp (POSIX) or C:\Temp (Windows) if needed.
+        # Clair3 shlex-splits some of its input paths internally (e.g. `samtools idxstats {bam_fn}`), so any input path containing a space breaks it. Clair3 >= 2.0.5 fails on this; earlier versions silently called no variants. Give Clair3 a space-free working directory, keyed on a hash of the sample prefix and pool, holding the per-pool BAM and symlinks to the reference and model. Clair3 only uses abspath (not realpath), so the symlinked paths stay space-free. On WSL, TMPDIR may point at a Windows path containing spaces, so fall back to /tmp (POSIX) or C:\Temp (Windows) if needed.
         _tmp_base = tempfile.gettempdir()
         if " " in _tmp_base:
             _tmp_base = "C:\\Temp" if sys.platform == "win32" else "/tmp"
-        _clair3_out_path = os.path.join(
+        _clair3_dir = os.path.join(
             _tmp_base,
             "artic_clair3_"
             + hashlib.md5(f"{args.sample}_{p}".encode()).hexdigest()[:16],
         )
-        clair3_out = shlex.quote(_clair3_out_path)
+        _clair3_ref = os.path.join(_clair3_dir, "reference.fasta")
+        _clair3_out_path = os.path.join(_clair3_dir, "output")
+        clair3_dir = shlex.quote(_clair3_dir)
+        clair3_ref = shlex.quote(_clair3_ref)
+        clair3_model = shlex.quote(os.path.join(_clair3_dir, "model"))
+        pool_rg_bam = shlex.quote(os.path.join(_clair3_dir, "pool.bam"))
+
+        cmds.append(f"rm -rf {clair3_dir}")
+        cmds.append(f"mkdir -p {clair3_dir}")
+        cmds.append(f"ln -s {shlex.quote(os.path.abspath(ref))} {clair3_ref}")
+        cmds.append(
+            f"ln -s {shlex.quote(os.path.abspath(ref + '.fai'))}"
+            f" {shlex.quote(_clair3_ref + '.fai')}"
+        )
+        cmds.append(
+            f"ln -s {shlex.quote(os.path.abspath(full_model_path))} {clair3_model}"
+        )
 
         # Split the BAM by read group
         cmds.append(
@@ -241,11 +255,11 @@ def run(parser, args):
             f"run_clair3.sh --enable_long_indel --chunk_size=10000"
             f" --haploid_sensitive --no_phasing_for_fa"
             f" --bam_fn={pool_rg_bam}"
-            f" --ref_fn={shlex.quote(ref)}"
-            f" --output={clair3_out}"
+            f" --ref_fn={clair3_ref}"
+            f" --output={shlex.quote(_clair3_out_path)}"
             f" --threads={shlex.quote(str(args.threads))}"
             f" --platform=ont"
-            f" --model_path={shlex.quote(full_model_path)}"
+            f" --model_path={clair3_model}"
             f" --include_all_ctgs"
             f" --enable_variant_calling_at_sequence_head_and_tail"
         )
@@ -255,8 +269,7 @@ def run(parser, args):
             f" > {shlex.quote(f'{args.sample}.{p}.vcf')}"
         )
 
-        cmds.append(f"rm -rf {clair3_out}")
-        cmds.append(f"rm {pool_rg_bam}")
+        cmds.append(f"rm -rf {clair3_dir}")
 
     # merge the called variants for each read group
     merge_vcf_cmd = "artic_vcf_merge %s %s 2> %s" % (

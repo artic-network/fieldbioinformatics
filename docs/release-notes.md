@@ -39,6 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reads lying entirely inside the overlap of two neighbouring amplicons are now always removed, even with `--allow-mismatched-primers`, as they cannot be assigned to either amplicon.
 - The changelog uses the Keep a Changelog format, and missing releases have been filled in from the git history and GitHub release notes.
 
+### Fixed
+
+- Clair3 no longer receives paths that contain spaces. Because Clair3 splits some of its input paths on whitespace, Clair3 >= 2.0.5 failed when the sample prefix, reference or model path contained a space, and earlier versions quietly called no variants. The per-pool BAM, the reference and the model are now placed in a temporary directory with no spaces in its path.
+
 ## [1.11.2] - 2026-08-26
 
 ### Added
