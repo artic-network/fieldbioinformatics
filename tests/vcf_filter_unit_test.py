@@ -167,10 +167,10 @@ class TestClair3Filter:
         assert f.check_filter(v) == "mask"
 
     def test_long_frameshift_length_threshold(self):
-        # 49 and 50 bp deletions are both frameshifts; only the 50 bp one counts as long
+        # 8 and 10 bp deletions are both frameshifts; only the 10 bp one counts as long
         f = self._filter()
-        short = _mock_variant(ref="T" + "A" * 49, alt=["T"], qual=30.0, af=0.9, dp=100)
-        long_ = _mock_variant(ref="T" + "A" * 50, alt=["T"], qual=30.0, af=0.9, dp=100)
+        short = _mock_variant(ref="T" + "A" * 8, alt=["T"], qual=30.0, af=0.9, dp=100)
+        long_ = _mock_variant(ref="T" + "A" * 10, alt=["T"], qual=30.0, af=0.9, dp=100)
         assert f.check_filter(short) == "mask"
         assert f.check_filter(long_) == "pass"
 
@@ -222,7 +222,7 @@ class TestClair3Filter:
         f = self._filter()
         assert f.min_variant_quality == 10
         assert f.min_frameshift_quality == 50
-        assert f.long_frameshift_length == 50
+        assert f.long_frameshift_length == 10
         assert f.min_long_frameshift_quality == 20
         assert f.min_allele_frequency == 0.6
         assert f.min_minor_allele_count == 5

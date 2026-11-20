@@ -41,7 +41,7 @@ class Clair3Filter:
         min_allele_frequency=0.6,
         min_mask_allele_frequency=0.1,
         min_minor_allele_count=5,
-        long_frameshift_length=50,
+        long_frameshift_length=10,
         min_long_frameshift_quality=20,
     ):
         self.no_frameshifts = no_frameshifts
@@ -92,8 +92,9 @@ class Clair3Filter:
             if self.no_frameshifts:
                 return "mask"
             # require a higher quality for frameshifting indels, they're far more likely to be errors.
-            # Long frameshifting indels are not a typical basecalling error, and Clair3 rarely
-            # assigns indels a QUAL anywhere near min_frameshift_quality, so use a lower bar for them.
+            # Noisy ONT reads rarely produce frameshifting indel errors of long_frameshift_length
+            # or more, and Clair3 rarely assigns indels a QUAL anywhere near
+            # min_frameshift_quality, so use a lower bar for long ones.
             if indel_length(v) >= self.long_frameshift_length:
                 min_qual = self.min_long_frameshift_quality
             else:
