@@ -201,7 +201,7 @@ def main():
     parser.add_argument(
         "--long-frameshift-length",
         type=int,
-        default=50,
+        default=10,
         help="Frameshifting indels at least this long use --min-long-frameshift-quality instead of --min-frameshift-quality (default: %(default)d)",
     )
     parser.add_argument(
