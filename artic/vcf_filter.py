@@ -23,6 +23,14 @@ def in_frame(v):
     return False
 
 
+def indel_length(v):
+    """Number of bases inserted or deleted by a single-ALT variant (0 for SNVs/MNVs)."""
+    alts = v.alts or ()
+    if not alts:  # No ALT alleles (e.g. a deletion), consistent with in_frame
+        return len(v.ref)
+    return abs(len(alts[0]) - len(v.ref))
+
+
 class Clair3Filter:
     def __init__(
         self,
@@ -33,11 +41,15 @@ class Clair3Filter:
         min_allele_frequency=0.6,
         min_mask_allele_frequency=0.1,
         min_minor_allele_count=5,
+        long_frameshift_length=10,
+        min_long_frameshift_quality=20,
     ):
         self.no_frameshifts = no_frameshifts
         self.min_depth = min_depth
         self.min_variant_quality = min_variant_quality
         self.min_frameshift_quality = min_frameshift_quality
+        self.long_frameshift_length = long_frameshift_length
+        self.min_long_frameshift_quality = min_long_frameshift_quality
         self.min_allele_frequency = min_allele_frequency
         self.min_mask_allele_frequency = min_mask_allele_frequency
         self.min_minor_allele_count = min_minor_allele_count
@@ -79,8 +91,15 @@ class Clair3Filter:
         if not in_frame(v):
             if self.no_frameshifts:
                 return "mask"
-            # require a higher quality for frameshifting indels, they're far more likely to be errors
-            if qual < self.min_frameshift_quality:
+            # require a higher quality for frameshifting indels, they're far more likely to be errors.
+            # Noisy ONT reads rarely produce frameshifting indel errors of long_frameshift_length
+            # or more, and Clair3 rarely assigns indels a QUAL anywhere near
+            # min_frameshift_quality, so use a lower bar for long ones.
+            if indel_length(v) >= self.long_frameshift_length:
+                min_qual = self.min_long_frameshift_quality
+            else:
+                min_qual = self.min_frameshift_quality
+            if qual < min_qual:
                 return "mask"
 
         try:
@@ -119,6 +138,8 @@ def go(args):
         args.min_allele_frequency,
         args.min_mask_allele_frequency,
         args.min_minor_allele_count,
+        args.long_frameshift_length,
+        args.min_long_frameshift_quality,
     )
 
     variants = [v for v in vcf_reader]
@@ -178,6 +199,18 @@ def main():
     parser.add_argument("--min-allele-frequency", type=float, default=0.6)
     parser.add_argument("--min-mask-allele-frequency", type=float, default=0.1)
     parser.add_argument("--min-minor-allele-count", type=int, default=5)
+    parser.add_argument(
+        "--long-frameshift-length",
+        type=int,
+        default=10,
+        help="Frameshifting indels at least this long use --min-long-frameshift-quality instead of --min-frameshift-quality (default: %(default)d)",
+    )
+    parser.add_argument(
+        "--min-long-frameshift-quality",
+        type=int,
+        default=20,
+        help="Minimum QUAL for long frameshifting indels (default: %(default)d)",
+    )
 
     parser.add_argument("inputvcf")
     parser.add_argument("output_pass_vcf")

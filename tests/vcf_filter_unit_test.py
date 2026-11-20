@@ -155,6 +155,35 @@ class TestClair3Filter:
         v = _mock_variant(ref="A", alt=["AA"], qual=60.0, af=0.9, dp=100)
         assert f.check_filter(v) == "pass"
 
+    def test_passes_long_frameshift_deletion_at_lower_qual(self):
+        # 259 bp deletion: frameshift, but long, so only needs QUAL >= 20
+        f = self._filter()
+        v = _mock_variant(ref="T" + "A" * 259, alt=["T"], qual=22.25, af=0.77, dp=710)
+        assert f.check_filter(v) == "pass"
+
+    def test_fails_long_frameshift_below_long_qual(self):
+        f = self._filter()
+        v = _mock_variant(ref="T" + "A" * 259, alt=["T"], qual=19.9, af=0.77, dp=710)
+        assert f.check_filter(v) == "mask"
+
+    def test_long_frameshift_length_threshold(self):
+        # 8 and 10 bp deletions are both frameshifts; only the 10 bp one counts as long
+        f = self._filter()
+        short = _mock_variant(ref="T" + "A" * 8, alt=["T"], qual=30.0, af=0.9, dp=100)
+        long_ = _mock_variant(ref="T" + "A" * 10, alt=["T"], qual=30.0, af=0.9, dp=100)
+        assert f.check_filter(short) == "mask"
+        assert f.check_filter(long_) == "pass"
+
+    def test_long_frameshift_insertion_at_lower_qual(self):
+        f = self._filter()
+        v = _mock_variant(ref="T", alt=["T" + "A" * 52], qual=25.0, af=0.9, dp=100)
+        assert f.check_filter(v) == "pass"
+
+    def test_no_frameshifts_flag_rejects_long_frameshift(self):
+        f = self._filter(no_frameshifts=True)
+        v = _mock_variant(ref="T" + "A" * 259, alt=["T"], qual=60.0, af=0.9, dp=100)
+        assert f.check_filter(v) == "mask"
+
     def test_no_frameshifts_flag_rejects_frameshift(self):
         f = self._filter(no_frameshifts=True)
         v = _mock_variant(ref="A", alt=["AA"], qual=60.0, af=0.9, dp=100)
@@ -193,6 +222,8 @@ class TestClair3Filter:
         f = self._filter()
         assert f.min_variant_quality == 10
         assert f.min_frameshift_quality == 50
+        assert f.long_frameshift_length == 10
+        assert f.min_long_frameshift_quality == 20
         assert f.min_allele_frequency == 0.6
         assert f.min_minor_allele_count == 5
 
