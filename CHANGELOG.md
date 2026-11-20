@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Docker images no longer contain the models Clair3 >= 2.0.5 bundles in `$CONDA_PREFIX/bin/models`. The default image is now model-free (several hundred MB smaller), and the `-models-included` image contains exactly artic's model manifest.
+
 ## [1.12.0] - 2026-11-19
 
 ### Added
