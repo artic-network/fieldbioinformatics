@@ -41,7 +41,7 @@ class Clair3Filter:
         min_allele_frequency=0.6,
         min_mask_allele_frequency=0.1,
         min_minor_allele_count=5,
-        long_frameshift_length=10,
+        long_frameshift_length=20,
         min_long_frameshift_quality=20,
     ):
         self.no_frameshifts = no_frameshifts
@@ -202,7 +202,7 @@ def main():
     parser.add_argument(
         "--long-frameshift-length",
         type=int,
-        default=10,
+        default=20,
         help="Frameshifting indels at least this long use --min-long-frameshift-quality instead of --min-frameshift-quality (default: %(default)d)",
     )
     parser.add_argument(

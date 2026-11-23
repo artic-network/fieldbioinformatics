@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Frameshifting indels of 20 bp or more now only need a QUAL of 20 (`--min-long-frameshift-quality`) instead of `--min-frameshift-quality` (50) to reach the consensus, as ONT reads rarely produce frameshift errors that long and Clair3 rarely gives long indels a high QUAL. The length is set with `vcf_filter --long-frameshift-length`.
+
 ### Fixed
 
 - Docker images no longer contain the models Clair3 >= 2.0.5 bundles in `$CONDA_PREFIX/bin/models`. The default image is now model-free (several hundred MB smaller), and the `-models-included` image contains exactly artic's model manifest.
