@@ -25,7 +25,7 @@ jobs:
 
       - name: get models
         run: |
-          artic_get_models --models r941_prom_hac_g360+g422
+          artic_get_models --models r941_prom_hac_g360+g422 r1041_e82_400bps_hac_v420
         shell: micromamba-shell {0}
 
       - name: Run unit tests

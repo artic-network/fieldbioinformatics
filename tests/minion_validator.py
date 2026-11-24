@@ -419,6 +419,90 @@ class TestMinion(unittest.TestCase):
             cleanUp(sampleID)
 
 
+class TestMinionLongFrameshiftDeletion(unittest.TestCase):
+    """A 259 bp frameshifting deletion at MN908947.3:27402 must reach the consensus.
+
+    test-data/DEL27402 holds 200 simulated R10.4.1 reads of SARSCoV2120 amplicon 27
+    (see simulate_del27402.py). minimap2 soft-clips many of the deletion reads at the
+    breakpoint, so Clair3 reports the deletion with a low QUAL (~28). That is below
+    --min-frameshift-quality but above --min-long-frameshift-quality.
+    """
+
+    MODEL_NAME = "r1041_e82_400bps_hac_v420"
+    SAMPLE_ID = "DEL27402"
+    DELETION = (27402, 27661)  # 0-based half-open deleted bases; VCF POS 27402 is the anchor
+
+    def test_long_frameshift_deletion_in_consensus(self):
+        conda_prefix = os.getenv("CONDA_PREFIX")
+        if not conda_prefix:
+            self.skipTest("CONDA_PREFIX not set — cannot locate clair3 models")
+        model_dir = os.path.join(conda_prefix, "bin", "models")
+        if not os.path.isdir(os.path.join(model_dir, self.MODEL_NAME)):
+            self.skipTest(
+                f"Clair3 model '{self.MODEL_NAME}' not found at {model_dir} — "
+                f"run 'artic_get_models --models {self.MODEL_NAME}' first"
+            )
+
+        fixture = os.path.join(dataDir, self.SAMPLE_ID)
+        ref = dataDir + "primer-schemes/nCoV-2019/V3/nCoV-2019.reference.fasta"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prefix = os.path.join(tmpdir, self.SAMPLE_ID)
+            cmd = [
+                "minion",
+                "--threads",
+                "2",
+                "--normalise",
+                "1000",
+                "--model",
+                self.MODEL_NAME,
+                "--model-dir",
+                model_dir,
+                "--bed",
+                os.path.join(fixture, f"{self.SAMPLE_ID}.primer.bed"),
+                "--ref",
+                ref,
+                "--read-file",
+                os.path.join(fixture, f"{self.SAMPLE_ID}.fastq"),
+                prefix,
+            ]
+            parser = pipeline.init_pipeline_parser()
+            args = parser.parse_args(cmd)
+            try:
+                args.func(parser, args)
+            except SystemExit:
+                self.fail("artic minion exited early with an error")
+
+            deletions = [
+                rec
+                for rec in pysam.VariantFile(f"{prefix}.pass.vcf")
+                if rec.pos == self.DELETION[0]
+            ]
+            self.assertEqual(
+                len(deletions), 1, "259 bp deletion at 27402 not in the pass VCF"
+            )
+            rec = deletions[0]
+            self.assertEqual(len(rec.ref) - len(rec.alts[0]), 259)
+            self.assertLess(
+                rec.qual,
+                args.min_frameshift_quality,
+                "deletion QUAL is no longer below --min-frameshift-quality, "
+                "so this test no longer exercises the long-frameshift threshold",
+            )
+
+            reference = str(next(SeqIO.parse(ref, "fasta")).seq)
+            start, end = self.DELETION
+            consensus = str(next(SeqIO.parse(f"{prefix}.consensus.fasta", "fasta")).seq)
+            self.assertNotIn(
+                reference[start:end], consensus, "deleted sequence left in consensus"
+            )
+            self.assertIn(
+                reference[start - 20 : start] + reference[end : end + 20],
+                consensus,
+                "deletion junction missing from consensus",
+            )
+
+
 @pytest.mark.slow
 class TestMinionSpacedPaths(unittest.TestCase):
     """Regression: the full pipeline must complete when every path argument

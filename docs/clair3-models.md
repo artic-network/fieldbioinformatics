@@ -26,7 +26,7 @@ Models are stored in `$CONDA_PREFIX/bin/models/` by default. For a custom locati
 artic_get_models --model-dir /path/to/models
 ```
 
-The `*-models-included` Docker image variant bundles all models. The default Docker image does not include models — use `--model-dir` to mount a pre-downloaded model directory. `artic_get_models` is needed for conda/source installs and to prepare models for use with the default Docker image.
+Only the `*-models-included` Docker image bundles models. With the default image, mount a downloaded model directory and pass it with `--model-dir`.
 
 ## Automatic model selection
 
@@ -59,8 +59,6 @@ Use `--model` to override auto-selection at any time.
 ## Guppy vs Dorado compatibility
 
 Clair3 models whose names contain a `g`-prefixed version suffix (e.g. `_g632`, `_g5014`) were trained on data basecalled with **Guppy**. These models are **not compatible with Dorado-basecalled data** and will produce incorrect variant calls if used with it.
-
-If you see exit code 6 for a `fast`-mode Dorado model: no versioned Clair3 fast model exists for R10.4.1 data. Re-basecall with `hac` or `sup`.
 
 ## Available models
 

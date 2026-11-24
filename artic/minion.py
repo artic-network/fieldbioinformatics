@@ -175,7 +175,7 @@ def run(parser, args):
 
     # index the ref & align with minimap
     cmds.append(
-        f"minimap2 -a -x map-ont -t {args.threads} {shlex.quote(ref)} {shlex.quote(read_file)}"
+        f"minimap2 -a -x map-ont -E 2,0 -t {args.threads} {shlex.quote(ref)} {shlex.quote(read_file)}"
         f" | samtools view -bS -F 4 -"
         f" | samtools sort -o {sp('.sorted.bam')} -"
     )

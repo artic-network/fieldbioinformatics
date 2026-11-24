@@ -10,8 +10,6 @@ date: 2024-11-11
 
 # Commands
 
-This page documents the available commands via the `artic` command line interface.
-
 ## guppyplex
 
 ### Overview
@@ -96,7 +94,7 @@ artic minion \
 | `--no-frameshifts`            | N        | False                       | Exclude frameshift indels (lengths not divisible by 3) from the consensus                                                                                                                         |
 | `--min-variant-quality`       | N        | 10                          | Minimum QUAL score for a variant to pass; variants below this are masked with `N` in the consensus                                                                                                |
 | `--min-allele-frequency`      | N        | 0.6                         | Minimum allele frequency (AF) for a variant to be applied to the consensus.                                                                                                                       |
-| `--min-mask-allele-frequency` | N        | 0.1                         | Minimum allele frequency below which a variant is discarded (reference base kept) rather than masked; below this threshold the variant is considered noise rather than a genuinely ambiguous site |
+| `--min-mask-allele-frequency` | N        | 0.1                         | Minimum allele frequency below which a variant is discarded (reference base kept) rather than masked |
 | `--min-frameshift-quality`    | N        | 50                          | Minimum QUAL score for frameshifting indels (higher bar than SNPs); ignored when `--no-frameshifts` is set                                                                                        |
 | `--min-minor-allele-count`    | N        | 5                           | Minimum number of alt-supporting reads (AD field) for a variant to pass; variants with adequate quality but fewer than this many alt reads are discarded (reference base kept)                    |
 | `--align-consensus`           | N        | False                       | After consensus generation, produce a MAFFT alignment of the consensus against the reference (`$SAMPLE.aligned.fasta`)                                                                            |
@@ -132,7 +130,7 @@ artic filter --min-length 400 --max-length 700 reads.fastq > filtered.fastq
 Download the Clair3 models required by the pipeline. Under a standard conda installation models are stored in `$CONDA_PREFIX/bin/models/`. Models are distributed as PyTorch checkpoints (`pileup.pt` and `full_alignment.pt`) from the [HKU Clair3 model repository](https://www.bio8.cs.hku.hk/clair3/).
 
 !!! note
-    The Docker image bundles all models — `artic_get_models` only needs to be run for conda or source installs.
+    Only the `-models-included` Docker image bundles models.
 
 ### Usage example
 
