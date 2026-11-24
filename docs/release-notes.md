@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-11-24
+
 ### Changed
 
 - Frameshifting indels of 20 bp or more now only need a QUAL of 20 (`--min-long-frameshift-quality`) instead of `--min-frameshift-quality` (50) to reach the consensus. The length is set with `vcf_filter --long-frameshift-length`.
@@ -626,7 +628,8 @@ Combines the two 1.1.0 release candidates with a few patches.
 - Updated Nanopolish to 0.6, which adds default support for various nanopore models.
 - Updated samtools to 1.4.
 
-[Unreleased]: https://github.com/artic-network/fieldbioinformatics/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/artic-network/fieldbioinformatics/compare/v1.12.1...HEAD
+[1.12.1]: https://github.com/artic-network/fieldbioinformatics/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/artic-network/fieldbioinformatics/compare/v1.11.2...v1.12.0
 [1.11.2]: https://github.com/artic-network/fieldbioinformatics/compare/v1.11.1...v1.11.2
 [1.11.1]: https://github.com/artic-network/fieldbioinformatics/compare/v1.11.0...v1.11.1
