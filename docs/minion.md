@@ -48,7 +48,7 @@ Optionally it can also:
 
 - remove primer sequence by further softmasking (`--primer-match-threshold` controls fuzzy matching)
 - downsample reads per amplicon to `--normalise` depth (set to `0` to disable)
-- remove reads with mismatched primer pairs, e.g. from amplicon read-through (use `--allow-mismatched-primers` to retain these). Reads lying entirely inside the overlap of two neighbouring amplicons are always removed, even with `--allow-mismatched-primers`, since they cannot be assigned to either amplicon
+- remove reads with mismatched primer pairs, e.g. from amplicon read-through (use `--allow-mismatched-primers` to retain these). Reads lying entirely inside the overlap of two neighbouring amplicons are always removed, even with `--allow-mismatched-primers`
 
 Softmasking adjusts the CIGAR of each [alignment segment](https://samtools.github.io/hts-specs/SAMv1.pdf) so that soft clips replace any reference- or query-consuming operations outside primer boundaries. The leftmost mapping position is updated accordingly.
 
@@ -91,11 +91,12 @@ The merged variants are then filtered by `artic_vcf_filter` into three output fi
 | Filter | Default threshold | Result on failure |
 | ------ | ----------------- | ----------------- |
 | Variant quality (QUAL) | ≥ 10 (`--min-variant-quality`) | mask |
-| Allele frequency (AF) — lower bound | ≥ 0.1 (`--min-mask-allele-frequency`) | discard (below this, variant is noise) |
-| Allele frequency (AF) — upper bound | ≥ 0.6 (`--min-allele-frequency`) | mask (between bounds, position is ambiguous) |
+| Allele frequency (AF) — lower bound | ≥ 0.1 (`--min-mask-allele-frequency`) | discard |
+| Allele frequency (AF) — upper bound | ≥ 0.6 (`--min-allele-frequency`) | mask |
 | Frameshift indel quality | ≥ 50 (`--min-frameshift-quality`), or always excluded with `--no-frameshifts` | mask |
+| Long frameshift indel quality (≥ 20 bp) | ≥ 20, replacing `--min-frameshift-quality` | mask |
 | Read depth (DP) | ≥ `--min-depth` | mask |
-| Alt allele read count (AD) | ≥ 5 (`--min-minor-allele-count`) | discard (too few reads despite good quality) |
+| Alt allele read count (AD) | ≥ 5 (`--min-minor-allele-count`) | discard |
 | All indels | excluded when `--no-indels` is set | — |
 
 Finally, passing variants are normalised against the pre-consensus using [bcftools norm](https://github.com/samtools/bcftools) to ensure REF alleles match the masked reference before consensus generation.
@@ -147,9 +148,6 @@ mafft --6merpair --addfragments $SAMPLE.consensus.fasta $REF > $SAMPLE.aligned.f
 | ---- | ----------- |
 | `$SAMPLE.coverage_mask.txt` | BED-format record of positions masked below `--min-depth` |
 | `$SAMPLE.preconsensus.fasta` | N-masked reference with FAIL variants applied; input to `bcftools consensus` |
-
-!!! note
-    `$SAMPLE.primer.bed` and `$SAMPLE.reference.fasta` record which scheme was used for this run. In future, when per-segment reference selection is supported, these will become primary outputs of greater significance.
 
 ## Summary of pipeline modules
 

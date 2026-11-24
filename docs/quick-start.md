@@ -15,7 +15,6 @@ This guide walks through a complete end-to-end run of the artic pipeline, from r
 ## Prerequisites
 
 - The pipeline is installed (see [Installation](./installation.md))
-- For conda/source installs: Clair3 models have been downloaded (see below)
 - Your reads are in a single FASTQ file, basecalled with Dorado hac or sup mode
 
 !!! note
@@ -27,7 +26,7 @@ This guide walks through a complete end-to-end run of the artic pipeline, from r
 artic_get_models
 ```
 
-This downloads all supported Clair3 models to `$CONDA_PREFIX/bin/models/`. Only needs to be run once per environment. Skip this step if you are using the `latest-models-included` Docker image — models are pre-bundled. The default `latest` Docker image does not include models; mount a pre-downloaded model directory with `--model-dir` instead.
+This downloads all supported Clair3 models to `$CONDA_PREFIX/bin/models/`, once per environment. For Docker, see [Installation](./installation.md#via-docker).
 
 ## 2. Aggregate reads with guppyplex
 

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Frameshifting indels of 20 bp or more now only need a QUAL of 20 (`--min-long-frameshift-quality`) instead of `--min-frameshift-quality` (50) to reach the consensus, as ONT reads rarely produce frameshift errors that long and Clair3 rarely gives long indels a high QUAL. The length is set with `vcf_filter --long-frameshift-length`.
+- Frameshifting indels of 20 bp or more now only need a QUAL of 20 (`--min-long-frameshift-quality`) instead of `--min-frameshift-quality` (50) to reach the consensus. The length is set with `vcf_filter --long-frameshift-length`.
 
 ### Fixed
 
@@ -28,14 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Requires `align_trim` >= 2.0.0. `artic minion` passes `--qc-prefix` in place of the removed `--genome-coverage-report`. Until 2.0.0 is on bioconda, `environment.yml` installs it from PyPI.
+- Requires `align_trim` >= 2.0.0. `artic minion` passes `--qc-prefix` in place of the removed `--genome-coverage-report`.
 - The `mean_depth` column in `$SAMPLE.amplicon_depths.tsv` is renamed `mean_fragment_depth`.
-- Reads lying entirely inside the overlap of two neighbouring amplicons are now always removed, even with `--allow-mismatched-primers`, as they cannot be assigned to either amplicon.
-- The changelog uses the Keep a Changelog format, and missing releases have been filled in from the git history and GitHub release notes.
+- Reads lying entirely inside the overlap of two neighbouring amplicons are now always removed, even with `--allow-mismatched-primers`.
 
 ### Fixed
 
-- Clair3 no longer receives paths that contain spaces. Because Clair3 splits some of its input paths on whitespace, Clair3 >= 2.0.5 failed when the sample prefix, reference or model path contained a space, and earlier versions quietly called no variants. The per-pool BAM, the reference and the model are now placed in a temporary directory with no spaces in its path.
+- Variant calling failed (Clair3 >= 2.0.5) or silently called no variants (earlier Clair3) when the sample prefix, reference or model path contained a space.
 
 ## [1.11.2] - 2026-08-26
 
@@ -53,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Two per-base coverage depth reports show the effect of normalisation: `$SAMPLE.pre-normalisation.coverage.tsv` and `$SAMPLE.post-normalisation.coverage.tsv`. They are useful for comparing specimens against negative controls (NTCs): at very high depth, normalisation can make an NTC and a specimen look much more alike than they are ([#194](https://github.com/artic-network/fieldbioinformatics/pull/194)).
+- Two per-base coverage depth reports show the effect of normalisation: `$SAMPLE.pre-normalisation.coverage.tsv` and `$SAMPLE.post-normalisation.coverage.tsv`. ([#194](https://github.com/artic-network/fieldbioinformatics/pull/194)).
 
 ### Changed
 
@@ -142,7 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `$SAMPLE.primer.bed` and `$SAMPLE.reference.fasta` outputs record the primer scheme and reference used. This is useful when the pipeline selects the reference itself, for example with the `artic-inrb-mpox` scheme.
+- `$SAMPLE.primer.bed` and `$SAMPLE.reference.fasta` outputs record the primer scheme and reference used.
 
 ## [1.8.2] - 2025-09-10
 

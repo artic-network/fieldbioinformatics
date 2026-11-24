@@ -37,7 +37,7 @@ Downloaded scheme files are cached in `--scheme-directory` (default: `./primer-s
 
 ## Scheme aliases
 
-The pipeline also consults an `aliases.json` file from the same repository. This allows short or alternative names to resolve transparently to canonical scheme names. For example, a user may supply `--scheme-name sars-cov-2` and have it resolve to the canonical name automatically. No extra action is required — alias resolution happens silently during scheme lookup.
+The pipeline also consults an `aliases.json` file from the same repository. This allows short or alternative names to resolve transparently to canonical scheme names. For example, a user may supply `--scheme-name sars-cov-2` and have it resolve to the canonical name automatically.
 
 ## Automatic reference selection
 

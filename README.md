@@ -16,7 +16,7 @@
 
 `artic` is a pipeline and set of accompanying tools for working with viral nanopore sequencing data, generated from tiling amplicon schemes.
 
-It is designed to help run the artic bioinformatics protocols; an SOP for running command-line viral amplicon sequencing bioinformatics [is available on the ARTIC website.](https://artic.network/fieldbioinformatics/fieldbioinformatics-sop.html).
+It is designed to help run the artic bioinformatics protocols; an SOP for running command-line viral amplicon sequencing bioinformatics [is available on the ARTIC website](https://artic.network/fieldbioinformatics/fieldbioinformatics-sop.html).
 
 Features include:
 
@@ -40,8 +40,6 @@ Please make sure you are using either mamba or conda version >= 23.10.0 where li
 
 #### 1. downloading the source:
 
-<!-- Download a [release](https://github.com/artic-network/fieldbioinformatics/releases) or use the latest master (which tracks the current release): -->
-
 ```sh
 git clone https://github.com/artic-network/fieldbioinformatics
 cd fieldbioinformatics
@@ -49,8 +47,7 @@ cd fieldbioinformatics
 
 #### 2. installing dependencies:
 
-The `artic pipeline` has several [software dependencies](https://github.com/artic-network/fieldbioinformatics/blob/master/environment.yml). You can solve these dependencies using the minimal conda environment we have provided, Please make sure you are using either mamba or conda version >= 23.10.0 where libmamba solver was made the default conda solver.
-:
+Install the [software dependencies](https://github.com/artic-network/fieldbioinformatics/blob/master/environment.yml) with the provided conda environment:
 
 ```sh
 conda env create -f environment.yml

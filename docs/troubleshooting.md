@@ -50,7 +50,7 @@ Clair3 is memory-intensive, particularly on long references or at high depth. Op
 
 ### Some variants are absent from the merged VCF
 
-Variants called within primer binding sites are separated into `$SAMPLE.primers.vcf` and excluded from `$SAMPLE.merged.vcf`. This is expected behaviour — these positions are unreliable due to primer softmasking. Check `$SAMPLE.primersitereport.txt` for details.
+Variants called within primer binding sites are separated into `$SAMPLE.primers.vcf` and excluded from `$SAMPLE.merged.vcf`. Check `$SAMPLE.primersitereport.txt` for details.
 
 ### Pipeline produces no consensus or an all-N consensus
 

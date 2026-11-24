@@ -25,5 +25,3 @@ Features include:
 - consensus building
 
 `artic` is designed to help run the artic bioinformatics protocols; for example the [MPXV fieldbioinformatics SOP](https://artic.network/mpxv/mpxv-bioinformatics-sop.html).
-
-Use the navigation dropdowns on the left to read more about the pipeline, it's installation and getting started.
