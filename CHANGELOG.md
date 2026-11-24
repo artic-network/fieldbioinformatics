@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Frameshifting indels of 20 bp or more now only need a QUAL of 20 (`--min-long-frameshift-quality`) instead of `--min-frameshift-quality` (50) to reach the consensus. The length is set with `vcf_filter --long-frameshift-length`.
+- Minimap2 per-base gap penalty is set to 0 to allow for better alignment of long indels in tagmented data.
 
 ### Fixed
 
